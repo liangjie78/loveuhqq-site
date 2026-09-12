@@ -25,6 +25,6 @@ npm run preview
 
 GitHub 自动部署尚未配置：当前 CLI 登录不能读取 GitHub App 安装列表（HTTP 403），未绕过权限或创建额外凭据。GitHub 是唯一正式源码；生产构建来自本仓库相同提交，不使用其他仓库或 Sites 托管副本。
 
-后续使用开发分支 → PR → 用户手动 Merge → 授权部署；不直接 push 默认分支，不自动 merge。首次允许一次初始基线 push。
+后续 Git 协作按当前仓库流程和任务目标自主选择分支或 worktree，必要时完成 commit、常规 push 和 PR 创建/更新；默认分支保持 PR-first，不直接 push 默认分支，最终 PR 由用户手动 Merge。PR 合并、历史改写、tag、force push 与生产部署仍需明确授权；用户要求仅本地、不提交或不推送时优先服从。
 
 当前状态：基础占位页已完成生产部署；首页、CSS、favicon 均验证 HTTP 200，权威 DNS 解析正常。已用真实浏览器验证 1440×900 与 390×844 的浅色/深色布局，无水平溢出。操作、验证和回滚见 [部署说明](docs/DEPLOYMENT.md)，视觉方向见 [设计说明](docs/DESIGN.md)。

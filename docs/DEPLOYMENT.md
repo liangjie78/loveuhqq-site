@@ -17,7 +17,7 @@
 
 ## 正常发布
 
-1. 开发使用 feature/fix/chore 分支 → push → PR；用户手动 Merge，禁止 auto-merge 和直接 push main。首次建库仅允许一次初始生产基线。
+1. 开发按仓库流程使用 feature/fix/chore 分支或 worktree；完成必要验证后，可自主 commit、push 和创建/更新 PR。默认分支保持 PR-first，不直接 push main；PR 合并、历史改写、tag、force push 与生产部署需明确授权。
 2. 取得本次生产部署授权，核验干净 main 与 origin/main 的提交一致。确认账号、目标 Worker、Custom Domain 无异常；已有其他资源占用目标时停止报告。
 3. 根据当前环境满足依赖的 Node.js 引擎要求，运行 `npm ci`、`npm run build`，检查 dist 中 HTML、CSS 和 favicon。
 4. 运行项目级 `npm run deploy`（重新 build 后 wrangler deploy），记录返回的版本 ID。只发布这个 Worker。

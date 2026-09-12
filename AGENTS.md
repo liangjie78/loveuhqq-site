@@ -7,7 +7,7 @@
 - UI 变更先读取 `docs/DESIGN.md`。当前只有占位页，不自行增加正式恋爱内容或私人信息。
 - 生产部署、Cloudflare 和 DNS 等外部修改必须有当前任务明确授权；只操作本项目，不影响其他站点。
 - 不读取、输出或提交秘密；凭据使用工具现有的安全登录机制。
-- 正常开发采用 `feature/`、`fix/` 或 `chore/` 分支，push 后创建 PR；不直接 push 默认分支，不自动 merge。最终 PR 由用户在 GitHub 网页或 App 手动 Merge。
-- 第一次创建仓库允许建立并 push 一次初始生产基线，之后进入 PR-first 流程。
+- Git 协作按当前仓库流程和任务目标自主判断 commit、常规 push、branch/worktree 与 PR；本项目默认分支保持 PR-first，不直接 push 默认分支，已有相关 PR 时优先更新，无法确定时使用独立任务分支和 PR。
+- PR 合并、amend、rebase、reset、tag、force push 和生产部署仍需明确授权；对 `reset --hard`、`clean`、force push 等难恢复操作还要核实目标与影响。用户要求仅本地、不提交或不推送时优先服从。
 - 当前采用手动 Wrangler 部署；未来改变自动部署方式时同步更新本文件、README 和 DEPLOYMENT。
 - 完成前必须实际 `npm run build`，检查产物和受影响路径；部署后核验域名、HTTP、正文和实际资源，不能仅凭退出码声称成功。
