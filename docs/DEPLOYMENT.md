@@ -1,0 +1,47 @@
+# 部署说明
+
+## 唯一来源与拓扑
+
+`GitHub liangjie78/loveuhqq-site 的 main → 同提交本地构建 → dist → Cloudflare Worker Static Assets loveuhqq-site → loveuhqq.x23.shop`
+
+当前为手动 Wrangler 部署，Cloudflare 没有配置 Git 自动构建来源。没有第二个源码仓库。GitHub 自动部署尚未配置，当前 GitHub CLI 登录读取 App installations 返回 403；不绕过权限。
+
+## 目标
+
+- Worker：`loveuhqq-site`
+- Custom Domain：`loveuhqq.x23.shop`
+- Zone：`x23.shop`
+- 账户：由 `wrangler.jsonc` 中 account_id 明确指定，部署前用项目级 `wrangler whoami` 核对。
+- 静态产物：`dist/`，无需 Worker 后端入口或 Astro 服务端 adapter。
+- DNS 与 HTTPS 由 Cloudflare Custom Domain 管理；不手工替换其他 DNS 记录。
+
+## 正常发布
+
+1. 开发使用 feature/fix/chore 分支 → push → PR；用户手动 Merge，禁止 auto-merge 和直接 push main。首次建库仅允许一次初始生产基线。
+2. 取得本次生产部署授权，核验干净 main 与 origin/main 的提交一致。确认账号、目标 Worker、Custom Domain 无异常；已有其他资源占用目标时停止报告。
+3. 根据当前环境满足依赖的 Node.js 引擎要求，运行 `npm ci`、`npm run build`，检查 dist 中 HTML、CSS 和 favicon。
+4. 运行项目级 `npm run deploy`（重新 build 后 wrangler deploy），记录返回的版本 ID。只发布这个 Worker。
+5. 核验 Custom Domain 指向正确 Worker，查询 Cloudflare 权威 DNS，并访问 HTTPS：首页须为 200 且为本项目中文占位内容，实际 CSS/favicon 必须为 200；不可出现 work1 或 x23-personal-site 页面。
+
+## 回滚
+
+经用户明确授权后，先用项目级 `wrangler deployments list` 查找本 Worker 的已知良好版本，再按安装版本的 `wrangler rollback --help` 执行针对该版本的回滚；随后重做域名、HTML 和资源验证。首次发布尚无旧生产版本可回滚。需要源码回退时通过新分支和 PR 恢复已知良好内容，由用户手动合并后重新构建部署；不 reset 或 force push。
+
+## 安全边界
+
+不读取、回显或提交密码、Token、Cookie、API Key。使用现有安全登录机制；不提交 node_modules、dist、.wrangler、.env 或 .dev.vars。不修改 x23.shop 根域、blogtext.x23.shop、x23-personal-site 或其他资源。
+
+未来启用 GitHub 自动部署前核实 Git Integration 权限，只关联本私有仓库，生产分支限定 main，构建 `npm run build`，部署使用项目级 Wrangler。保持用户手动 Merge，更新 README、AGENTS 和本文件，再验证真实触发与部署结果。
+
+## 首次部署证据（2026-09-13，Asia/Shanghai）
+
+- Wrangler 4.131.1 返回 `Deployed loveuhqq-site triggers`，目标为 `loveuhqq.x23.shop (custom domain)`。
+- 生产版本：`bbfde3b2-0df1-4c37-a8b0-6e169c1e6c6f`，deployments list 确认流量 100%。
+- 权威服务器 arya.ns.cloudflare.com 返回 A：104.21.65.200、172.67.166.139，并返回 AAAA。
+- 首页、`/_astro/index.DsI3j6bR.css`、`/favicon.svg` 均为 HTTPS 200。CSS/favicon SHA-256 与 dist 一致。
+- Cloudflare 在响应中附加统计及安全脚本；去除这些脚本后 HTML 与 dist/index.html 完全一致，未出现其他项目内容。没有修改账户现有相关设置。
+- Cloudflare API 确认本 Worker 无 Builds triggers，自动部署未配置。原 x23-personal-site 的修改时间与操作前相同。
+- 浏览器连接失败，手机/桌面视觉验收尚未完成；不能将源码中的响应式规则当成实际截图验证。
+- 本机执行环境的 npm 默认脚本子进程未找到 Node；本轮以临时 npm_config_script_shell 指向现场可用 PowerShell 后安装、构建成功。未修改全局 npm 或系统 PATH。其他环境按实际情况诊断，不固定此 workaround。
+
+参考：[Cloudflare Static Assets](https://developers.cloudflare.com/workers/static-assets/)。
