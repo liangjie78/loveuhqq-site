@@ -1,8 +1,8 @@
-:root { color-scheme: light dark; font-family: system-ui, -apple-system, "Segoe UI", "Microsoft YaHei", sans-serif; color: #30272d; background: #faf7f8; --muted: #77616e; --accent: #a43f68; }
+:root { color-scheme: light dark; font-family: system-ui, -apple-system, "Segoe UI", "Microsoft YaHei", sans-serif; color: #30272d; background: #faf7f8; --muted: #77616e; --accent: #a43f68; text-size-adjust: 100%; -webkit-text-size-adjust: 100%; }
 * { box-sizing: border-box; }
-body { margin: 0; min-height: 100svh; display: grid; place-items: center; padding: 2rem 1.5rem; }
-main { width: min(100%, 38rem); text-align: center; padding: 3rem 0; }
-.mark { display: inline-block; font-family: Georgia, serif; color: var(--accent); font-size: 2rem; }
+body { width: 100%; margin: 0; min-height: 100svh; display: grid; place-items: center; padding: 2rem 1.5rem; }
+main { width: 100%; max-width: 38rem; min-width: 0; margin-inline: auto; text-align: center; padding: 3rem 0; }
+.mark { display: inline-block; color: var(--accent); font-family: system-ui, -apple-system, "Segoe UI", "Microsoft YaHei", sans-serif; font-size: 1.125rem; font-weight: 500; letter-spacing: 0.12em; line-height: 1.5; }
 h1 { margin: 1.25rem 0 2rem; font-family: Georgia, "Times New Roman", serif; font-weight: 400; font-size: clamp(2.75rem, 9vw, 4.5rem); letter-spacing: -0.04em; line-height: 1.15; }
 p { line-height: 1.9; }
 .message { margin: 0; font-size: 1.125rem; overflow-wrap: anywhere; }
