@@ -5,8 +5,8 @@ main { width: min(100%, 38rem); text-align: center; padding: 3rem 0; }
 .mark { display: inline-block; font-family: Georgia, serif; color: var(--accent); font-size: 2rem; }
 h1 { margin: 1.25rem 0 2rem; font-family: Georgia, "Times New Roman", serif; font-weight: 400; font-size: clamp(2.75rem, 9vw, 4.5rem); letter-spacing: -0.04em; line-height: 1.15; }
 p { line-height: 1.9; }
-.message { margin: 0; font-size: 1.125rem; }
+.message { margin: 0; font-size: 1.125rem; overflow-wrap: anywhere; }
 .status { margin: 2rem 0 0; color: var(--muted); font-size: 0.9375rem; }
 .mobile-break { display: none; }
-@media (max-width: 420px) { .mobile-break { display: initial; } }
+@media (max-width: 420px) { .mobile-break { display: block; } }
 @media (prefers-color-scheme: dark) { :root { color: #f4eaf0; background: #191519; --muted: #bba6b3; --accent: #e79bbb; } }

@@ -44,4 +44,12 @@
 - 浏览器连接失败，手机/桌面视觉验收尚未完成；不能将源码中的响应式规则当成实际截图验证。
 - 本机执行环境的 npm 默认脚本子进程未找到 Node；本轮以临时 npm_config_script_shell 指向现场可用 PowerShell 后安装、构建成功。未修改全局 npm 或系统 PATH。其他环境按实际情况诊断，不固定此 workaround。
 
+## 移动布局修复与最终验收（2026-09-13，Asia/Shanghai）
+
+- 真实浏览器截图发现 390px 视口下中文说明可能横向溢出；修复 `src/styles/global.css` 的移动断行为块级换行，并保留长文本溢出保护。
+- 重新执行 Astro build，并由 Wrangler 4.131.1 成功部署 `loveuhqq-site`；生产版本：`f13edbea-7582-4975-a765-141655debcc4`，仍绑定 `loveuhqq.x23.shop`。
+- 真实浏览器在 1440×900 和 390×844、浅色和深色四种组合下访问线上 URL：均 HTTP 200、标题/viewport/lang 正确、占位正文存在、`document.documentElement.scrollWidth` 与视口宽度相等；手机断行计算样式为 `block`。
+- 线上 CSS `/_astro/index.C6OwKbcM.css` 与本地 `dist` 哈希一致，favicon 同样一致；权威 DNS 仍解析到 Cloudflare，Custom Domain 仍指向 `loveuhqq-site`。
+- 这次只更新本项目 Worker；`blogtext.x23.shop` 仍指向 `x23-personal-site`，没有改动其他资源。GitHub 自动部署仍未配置。
+
 参考：[Cloudflare Static Assets](https://developers.cloudflare.com/workers/static-assets/)。
