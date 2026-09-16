@@ -1,0 +1,39 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="360" viewBox="0 0 1200 360" role="img" aria-labelledby="title desc">
+  <title id="title">loveuhqq static placeholder site</title>
+  <desc id="desc">A small Astro site that builds static assets and is deployed manually to a Cloudflare Worker custom domain.</desc>
+
+  <rect width="1200" height="360" rx="28" fill="#191519"/>
+  <g stroke="#392C35" stroke-width="1">
+    <path d="M0 72H1200M0 144H1200M0 216H1200M0 288H1200"/>
+    <path d="M72 0V360M144 0V360M216 0V360M288 0V360M360 0V360M432 0V360M504 0V360M576 0V360M648 0V360M720 0V360M792 0V360M864 0V360M936 0V360M1008 0V360M1080 0V360M1152 0V360"/>
+  </g>
+
+  <g transform="translate(60 50)">
+    <text x="0" y="18" fill="#E79BBB" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="17" font-weight="700" letter-spacing="1.4">PRIVATE / STATIC SITE</text>
+    <text x="0" y="112" fill="#F4EAF0" font-family="Georgia, Songti SC, serif" font-size="72" font-weight="400" letter-spacing="-2">loveuhqq</text>
+    <text x="2" y="166" fill="#F4EAF0" font-family="-apple-system, BlinkMacSystemFont, Segoe UI, Microsoft YaHei, sans-serif" font-size="27">一个仍在慢慢搭建中的中文占位首页</text>
+    <text x="2" y="220" fill="#BBA6B3" font-family="-apple-system, BlinkMacSystemFont, Segoe UI, Microsoft YaHei, sans-serif" font-size="20">Astro · static output · manual Wrangler deploy</text>
+    <rect x="2" y="252" width="162" height="34" rx="17" fill="#3B2330" stroke="#A43F68"/>
+    <text x="83" y="275" fill="#F3C2D4" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="16" font-weight="700" text-anchor="middle">PLACEHOLDER</text>
+  </g>
+
+  <g transform="translate(690 64)">
+    <path d="M54 94H392M392 94l-12-8m12 8l-12 8" stroke="#A43F68" stroke-width="4" stroke-linecap="round" fill="none"/>
+    <path d="M54 184H392M392 184l-12-8m12 8l-12 8" stroke="#A43F68" stroke-width="4" stroke-linecap="round" fill="none"/>
+    <g font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="18" text-anchor="middle">
+      <rect x="0" y="56" width="112" height="76" rx="18" fill="#30232D" stroke="#A43F68" stroke-width="2"/>
+      <text x="56" y="88" fill="#F4EAF0" font-weight="700">Astro</text>
+      <text x="56" y="112" fill="#BBA6B3" font-size="15">source</text>
+      <rect x="170" y="56" width="112" height="76" rx="18" fill="#30232D" stroke="#A43F68" stroke-width="2"/>
+      <text x="226" y="88" fill="#F4EAF0" font-weight="700">dist/</text>
+      <text x="226" y="112" fill="#BBA6B3" font-size="15">static build</text>
+      <rect x="340" y="56" width="112" height="76" rx="18" fill="#30232D" stroke="#A43F68" stroke-width="2"/>
+      <text x="396" y="88" fill="#F4EAF0" font-weight="700">Worker</text>
+      <text x="396" y="112" fill="#BBA6B3" font-size="15">Wrangler</text>
+      <text x="56" y="176" fill="#F1B4C9" font-size="16">npm run build</text>
+      <text x="226" y="176" fill="#F1B4C9" font-size="16">manual publish</text>
+      <text x="396" y="176" fill="#F1B4C9" font-size="16">x23.shop</text>
+    </g>
+    <text x="226" y="246" fill="#8F7887" font-family="-apple-system, BlinkMacSystemFont, Segoe UI, sans-serif" font-size="18" text-anchor="middle">loveuhqq.x23.shop</text>
+  </g>
+</svg>
