@@ -1,14 +1,21 @@
+<p align="center">
+  <img src="./assets/readme/hero.svg" width="100%" alt="loveuhqq：Astro 静态占位首页，手动部署到 Cloudflare Worker">
+</p>
+
 # loveuhqq
 
-向女朋友表达爱意的独立个人网站。目前只有中文占位首页，尚未开始正式内容设计。
+一个仍在慢慢搭建中的独立个人网站。目前只有中文占位首页，尚未开始正式内容设计。
 
-- 正式网址：https://loveuhqq.x23.shop
-- 唯一正式源码：https://github.com/liangjie78/loveuhqq-site （Private）
-- 技术栈：Astro + TypeScript + 普通 CSS，默认静态生成，无后端、数据库或 UI 框架。
+## 当前状态
+
+- 正式网址：[loveuhqq.x23.shop](https://loveuhqq.x23.shop)
+- 唯一正式源码：[liangjie78/loveuhqq-site](https://github.com/liangjie78/loveuhqq-site)（Private）
+- 页面状态：只保留站名、两句中文说明和系统深色模式适配，没有照片、纪念日、背景音乐或第三方素材；页面文案以源码为准。
+- 技术边界：Astro + TypeScript + 普通 CSS，默认静态生成；没有后端、数据库或 UI 框架。
 
 ## 本地开发
 
-使用满足 package.json 引擎要求的 Node.js 和 npm。先检查当前环境，再运行：
+使用满足 `package.json` 引擎要求的 Node.js 和 npm。依赖版本由 `package-lock.json` 固定：
 
 ```sh
 npm ci
@@ -17,14 +24,30 @@ npm run build
 npm run preview
 ```
 
-依赖为项目级，版本由 package-lock.json 固定。构建输出在 `dist/`，不提交到 Git。
+构建输出在 `dist/`，不提交到 Git。当前页面入口是 [`src/pages/index.astro`](src/pages/index.astro)，样式入口是 [`src/styles/global.css`](src/styles/global.css)。
 
-## 部署
+## 部署路径
 
-当前采用手动项目级 Wrangler 部署：经用户授权后，从已合并的 `main` 干净源码运行 `npm ci`、`npm run deploy`。构建后上传 `dist` 至独立 Worker `loveuhqq-site`，绑定正式 Custom Domain。
+当前采用手动项目级 Wrangler 部署：经用户授权后，从已合并的 `main` 干净源码运行 `npm ci` 和 `npm run deploy`。`npm run deploy` 会先构建，再把 `dist/` 上传到独立 Worker `loveuhqq-site`，并绑定正式 Custom Domain：
 
-GitHub 自动部署尚未配置：当前 CLI 登录不能读取 GitHub App 安装列表（HTTP 403），未绕过权限或创建额外凭据。GitHub 是唯一正式源码；生产构建来自本仓库相同提交，不使用其他仓库或 Sites 托管副本。
+```text
+GitHub main → npm run build → dist/ → Cloudflare Worker → loveuhqq.x23.shop
+```
 
-后续 Git 协作按当前仓库流程和任务目标自主选择分支或 worktree，必要时完成 commit、常规 push 和 PR 创建/更新；默认分支保持 PR-first，不直接 push 默认分支，最终 PR 由用户手动 Merge。PR 合并、历史改写、tag、force push 与生产部署仍需明确授权；用户要求仅本地、不提交或不推送时优先服从。
+GitHub 自动部署尚未配置；没有绕过权限或创建额外凭据。GitHub 是唯一正式源码，生产构建来自本仓库相同提交，不使用其他仓库或 Sites 托管副本。
 
-当前状态：基础占位页已完成生产部署；首页、CSS、favicon 均验证 HTTP 200，权威 DNS 解析正常。已用真实浏览器验证 1440×900 与 390×844 的浅色/深色布局，无水平溢出。操作、验证和回滚见 [部署说明](docs/DEPLOYMENT.md)，视觉方向见 [设计说明](docs/DESIGN.md)。
+生产操作、回滚、DNS 边界和已有验证证据见 [部署说明](docs/DEPLOYMENT.md)，视觉约束见 [设计说明](docs/DESIGN.md)。生产部署、Cloudflare 和 DNS 修改都需要当前任务的明确授权。
+
+## 相关文件
+
+| 文件 | 作用 |
+| --- | --- |
+| [`astro.config.mjs`](astro.config.mjs) | Astro 构建配置 |
+| [`wrangler.jsonc`](wrangler.jsonc) | Worker、静态资源目录和 Custom Domain 配置 |
+| [`public/favicon.svg`](public/favicon.svg) | 页面 favicon |
+| [`docs/DEPLOYMENT.md`](docs/DEPLOYMENT.md) | 发布、核验和回滚边界 |
+| [`docs/DESIGN.md`](docs/DESIGN.md) | 当前占位页的视觉方向 |
+
+## 生产状态说明
+
+基础占位页已经完成生产部署；首页、CSS、favicon 和权威 DNS 均曾完成 HTTP/线上核验。当前仓库只描述已存在的占位内容，不把后续正式设计或自动部署写成已完成能力。
