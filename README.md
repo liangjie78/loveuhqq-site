@@ -59,4 +59,4 @@ GitHub 自动部署尚未配置；没有绕过权限或创建额外凭据。GitH
 
 ## 生产状态说明
 
-温柔信笺首页已于 2026-09-22 完成生产部署。首页、CSS 与 favicon 均返回 HTTP 200，线上静态资源与本地构建一致；源码提交、生产版本和验收结果见 [部署说明](docs/DEPLOYMENT.md)。后续仍采用手动发布，合并 PR 不会自动更新正式网站。
+当前采用手动发布，合并 PR 不会自动更新正式网站。V2 实现与本次发布核验见 [PR #6](https://github.com/liangjie78/loveuhqq-site/pull/6)；既往版本的部署证据保留在 [部署说明](docs/DEPLOYMENT.md) 中。
