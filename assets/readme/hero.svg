@@ -1,5 +1,5 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1200" height="360" viewBox="0 0 1200 360" role="img" aria-labelledby="title desc">
-  <title id="title">loveuhqq static placeholder site</title>
+  <title id="title">loveuhqq anniversary landing page</title>
   <desc id="desc">A small Astro site that builds static assets and is deployed manually to a Cloudflare Worker custom domain.</desc>
 
   <rect width="1200" height="360" rx="28" fill="#191519"/>
@@ -11,10 +11,10 @@
   <g transform="translate(60 50)">
     <text x="0" y="18" fill="#E79BBB" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="17" font-weight="700" letter-spacing="1.4">PRIVATE / STATIC SITE</text>
     <text x="0" y="112" fill="#F4EAF0" font-family="Georgia, Songti SC, serif" font-size="72" font-weight="400" letter-spacing="-2">loveuhqq</text>
-    <text x="2" y="166" fill="#F4EAF0" font-family="-apple-system, BlinkMacSystemFont, Segoe UI, Microsoft YaHei, sans-serif" font-size="27">一个仍在慢慢搭建中的中文占位首页</text>
+    <text x="2" y="166" fill="#F4EAF0" font-family="-apple-system, BlinkMacSystemFont, Segoe UI, Microsoft YaHei, sans-serif" font-size="27">一张写给何青青的温柔信笺</text>
     <text x="2" y="220" fill="#BBA6B3" font-family="-apple-system, BlinkMacSystemFont, Segoe UI, Microsoft YaHei, sans-serif" font-size="20">Astro · static output · manual Wrangler deploy</text>
     <rect x="2" y="252" width="162" height="34" rx="17" fill="#3B2330" stroke="#A43F68"/>
-    <text x="83" y="275" fill="#F3C2D4" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="16" font-weight="700" text-anchor="middle">PLACEHOLDER</text>
+    <text x="83" y="275" fill="#F3C2D4" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="16" font-weight="700" text-anchor="middle">LETTER / V1</text>
   </g>
 
   <g transform="translate(690 64)">

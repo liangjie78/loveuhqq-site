@@ -1,22 +1,101 @@
 ---
+import { relationshipStartDate } from '../lib/anniversary';
 import '../styles/global.css';
+
+const startDateLabel = relationshipStartDate.replaceAll('-', '.');
 ---
+
 <!doctype html>
 <html lang="zh-CN">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <meta name="description" content="这里以后会放一些只属于我们的东西。网站正在慢慢搭建中。" />
-    <meta name="color-scheme" content="light dark" />
+    <meta
+      name="description"
+      content={`爱你，何青青。把平凡的日子，慢慢写成我们的故事。始于 ${startDateLabel}。`}
+    />
+    <meta name="color-scheme" content="light" />
+    <meta name="theme-color" content="#f8f3eb" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
-    <title>loveuhqq · 慢慢搭建中</title>
+    <title>爱你，何青青。 · loveuhqq</title>
   </head>
   <body>
-    <main>
-      <span class="mark" aria-hidden="true">爱你何青青</span>
-      <h1>loveuhqq</h1>
-      <p class="message">这里以后会放一些<br class="mobile-break" />只属于我们的东西。</p>
-      <p class="status">网站正在慢慢搭建中。</p>
+    <main class="letter" aria-labelledby="letter-title">
+      <p class="signature fade-in">loveuhqq</p>
+
+      <header class="dedication">
+        <h1 id="letter-title" class="fade-in">
+          <span>爱你，</span><span>何青青。</span>
+        </h1>
+        <p class="message fade-in">
+          <span>把平凡的日子，</span><span>慢慢写成我们的故事。</span>
+        </p>
+      </header>
+
+      <div class="anniversary fade-in">
+        <div class="day-counter-slot">
+          <p class="day-counter" data-anniversary-count hidden>
+            <span>我们在一起的第</span>
+            <strong data-anniversary-day></strong>
+            <span>天</span>
+          </p>
+        </div>
+        <p class="date">始于 <time datetime={relationshipStartDate}>{startDateLabel}</time></p>
+      </div>
+
+      <svg
+        class="envelope fade-in"
+        xmlns="http://www.w3.org/2000/svg"
+        viewBox="0 0 160 120"
+        aria-hidden="true"
+        focusable="false"
+        fill="none"
+      >
+        <g transform="rotate(-14 80 60)" stroke="currentColor" stroke-width="0.9" stroke-linejoin="round">
+          <path d="M18 26 143 27 141 102 17 100Z" />
+          <path d="M21 28 140 30 138 98 20 97Z" opacity="0.45" />
+          <path d="m18 26 63 46 62-45M18 100l47-40m76 42L96 60" />
+          <path d="m22 32 5 9m-2-10 5 8m-7 48 6 9m-3-13 7 12m102-11 4 9m-8-6 6 9" opacity="0.45" />
+          <path
+            d="M81 77c-5-7-15-13-14-20 1-7 10-8 14-1 4-7 13-6 14 1 1 7-9 13-14 20Z"
+            fill="currentColor"
+            stroke="none"
+          />
+        </g>
+      </svg>
     </main>
+
+    <script>
+      import { getAnniversaryDay, getNextShanghaiMidnight } from '../lib/anniversary';
+
+      const counter = document.querySelector<HTMLElement>('[data-anniversary-count]');
+      const day = document.querySelector<HTMLElement>('[data-anniversary-day]');
+
+      if (counter && day) {
+        let midnightTimer: number | undefined;
+
+        function refreshAnniversary() {
+          const now = new Date();
+          const anniversaryDay = getAnniversaryDay(now);
+
+          day!.textContent = String(anniversaryDay);
+          counter!.hidden = anniversaryDay < 1;
+
+          window.clearTimeout(midnightTimer);
+          midnightTimer = window.setTimeout(
+            refreshAnniversary,
+            getNextShanghaiMidnight(now).getTime() - now.getTime() + 100,
+          );
+        }
+
+        refreshAnniversary();
+
+        document.addEventListener('visibilitychange', () => {
+          if (document.visibilityState === 'visible') refreshAnniversary();
+        });
+        window.addEventListener('pageshow', refreshAnniversary);
+        window.addEventListener('pagehide', () => window.clearTimeout(midnightTimer));
+      }
+    </script>
   </body>
 </html>

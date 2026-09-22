@@ -1,12 +1,223 @@
-:root { color-scheme: light dark; font-family: system-ui, -apple-system, "Segoe UI", "Microsoft YaHei", sans-serif; color: #30272d; background: #faf7f8; --muted: #77616e; --accent: #a43f68; text-size-adjust: 100%; -webkit-text-size-adjust: 100%; }
-* { box-sizing: border-box; }
-body { width: 100%; margin: 0; min-height: 100svh; display: grid; place-items: center; padding: 2rem 1.5rem; }
-main { width: 100%; max-width: 38rem; min-width: 0; margin-inline: auto; text-align: center; padding: 3rem 0; }
-.mark { display: inline-block; color: var(--accent); font-family: system-ui, -apple-system, "Segoe UI", "Microsoft YaHei", sans-serif; font-size: 1.125rem; font-weight: 500; letter-spacing: 0.12em; line-height: 1.5; }
-h1 { margin: 1.25rem 0 2rem; font-family: Georgia, "Times New Roman", serif; font-weight: 400; font-size: clamp(2.75rem, 9vw, 4.5rem); letter-spacing: -0.04em; line-height: 1.15; }
-p { line-height: 1.9; }
-.message { margin: 0; font-size: 1.125rem; overflow-wrap: anywhere; }
-.status { margin: 2rem 0 0; color: var(--muted); font-size: 0.9375rem; }
-.mobile-break { display: none; }
-@media (max-width: 420px) { .mobile-break { display: block; } }
-@media (prefers-color-scheme: dark) { :root { color: #f4eaf0; background: #191519; --muted: #bba6b3; --accent: #e79bbb; } }
+:root {
+  color-scheme: light;
+  --paper: #f8f3eb;
+  --ink: #493b35;
+  --muted: #796a60;
+  --rose: #a46b76;
+  --envelope: #b77984;
+  --font-letter: "Songti SC", "STSong", "SimSun", serif;
+  --font-latin: Georgia, "Times New Roman", serif;
+  color: var(--ink);
+  background: var(--paper);
+  font-family: var(--font-letter);
+  font-synthesis: none;
+  text-size-adjust: 100%;
+  -webkit-text-size-adjust: 100%;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  display: grid;
+  place-items: center;
+  width: 100%;
+  min-height: 100svh;
+  margin: 0;
+  padding: 4rem 1.5rem;
+}
+
+body::before {
+  position: fixed;
+  z-index: -1;
+  inset: 0;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180' viewBox='0 0 180 180'%3E%3Cfilter id='grain'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.72' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Cpath fill='%23000' filter='url(%23grain)' opacity='.35' d='M0 0h180v180H0z'/%3E%3C/svg%3E");
+  opacity: 0.2;
+  pointer-events: none;
+  content: "";
+}
+
+::selection {
+  color: var(--ink);
+  background: #ecd6d7;
+}
+
+.letter {
+  position: relative;
+  width: 100%;
+  max-width: 56rem;
+  min-width: 0;
+  margin-inline: auto;
+  padding-block: 1.5rem 2rem;
+  text-align: center;
+}
+
+.signature {
+  margin: 0 0 clamp(3.5rem, 8svh, 5.5rem);
+  font-family: var(--font-latin);
+  font-size: 1.125rem;
+  letter-spacing: 0.22em;
+  line-height: 1.5;
+}
+
+.dedication,
+.anniversary {
+  max-width: 40rem;
+  margin-inline: auto;
+}
+
+h1 {
+  margin: 0;
+  font-size: clamp(3.5rem, 7.2vw, 5.5rem);
+  font-weight: 400;
+  letter-spacing: -0.04em;
+  line-height: 1.35;
+  animation-delay: 120ms;
+}
+
+h1 span,
+.message span {
+  display: inline-block;
+}
+
+.message {
+  margin: 2rem 0 0;
+  font-size: clamp(1.0625rem, 2vw, 1.3125rem);
+  letter-spacing: 0.06em;
+  line-height: 2;
+  animation-delay: 240ms;
+}
+
+.anniversary {
+  margin-top: clamp(3.5rem, 8svh, 5rem);
+  animation-delay: 360ms;
+}
+
+.day-counter-slot {
+  display: grid;
+  min-height: 5rem;
+  place-items: center;
+}
+
+.day-counter {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: center;
+  column-gap: 0.625rem;
+  margin: 0;
+  font-size: clamp(1.0625rem, 2vw, 1.3125rem);
+  line-height: 1.6;
+}
+
+.day-counter[hidden] {
+  display: none;
+}
+
+.day-counter strong {
+  color: var(--rose);
+  font-family: var(--font-latin);
+  font-size: clamp(3.5rem, 6vw, 4.5rem);
+  font-weight: 400;
+  font-variant-numeric: lining-nums tabular-nums;
+  line-height: 1;
+}
+
+.date {
+  margin: 1.25rem 0 0;
+  color: var(--muted);
+  font-size: 0.9375rem;
+  letter-spacing: 0.12em;
+  line-height: 1.8;
+}
+
+.date time {
+  margin-left: 0.4em;
+  font-family: var(--font-latin);
+  letter-spacing: 0.1em;
+}
+
+.envelope {
+  position: absolute;
+  right: 0;
+  bottom: -0.25rem;
+  width: 8.5rem;
+  height: auto;
+  color: var(--envelope);
+  opacity: 0.8;
+  pointer-events: none;
+  animation-delay: 480ms;
+}
+
+.fade-in {
+  animation-name: letter-appear;
+  animation-duration: 520ms;
+  animation-timing-function: ease-out;
+  animation-fill-mode: backwards;
+}
+
+@keyframes letter-appear {
+  from { opacity: 0; }
+}
+
+@media (max-width: 600px) {
+  body {
+    padding-block: 2.5rem;
+  }
+
+  .letter {
+    padding-block: 1rem 5.5rem;
+  }
+
+  .signature {
+    margin-bottom: 3rem;
+    font-size: 1rem;
+  }
+
+  h1 {
+    font-size: clamp(2.75rem, 13vw, 3.75rem);
+    letter-spacing: -0.03em;
+    line-height: 1.5;
+  }
+
+  h1 span,
+  .message span {
+    display: block;
+  }
+
+  .message {
+    margin-top: 1.5rem;
+    font-size: 1.0625rem;
+    letter-spacing: 0.035em;
+  }
+
+  .anniversary {
+    margin-top: 2.5rem;
+  }
+
+  .day-counter-slot {
+    min-height: 4rem;
+  }
+
+  .day-counter {
+    font-size: 1.0625rem;
+    column-gap: 0.5rem;
+  }
+
+  .date {
+    margin-top: 1rem;
+  }
+
+  .envelope {
+    right: 0.25rem;
+    bottom: -0.25rem;
+    width: 6rem;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .fade-in {
+    animation: none;
+  }
+}

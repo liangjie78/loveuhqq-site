@@ -1,17 +1,20 @@
 <p align="center">
-  <img src="./assets/readme/hero.svg" width="100%" alt="loveuhqq：Astro 静态占位首页，手动部署到 Cloudflare Worker">
+  <img src="./assets/readme/hero.svg" width="100%" alt="loveuhqq：温柔信笺纪念页，Astro 静态生成并手动部署到 Cloudflare Worker">
 </p>
 
 # loveuhqq
 
-一个仍在慢慢搭建中的独立个人网站。目前只有中文占位首页，尚未开始正式内容设计。
+一张写给何青青的温柔信笺，把平凡的日子，慢慢写成我们的故事。
 
 ## 当前状态
 
 - 正式网址：[loveuhqq.x23.shop](https://loveuhqq.x23.shop)
 - 唯一正式源码：[liangjie78/loveuhqq-site](https://github.com/liangjie78/loveuhqq-site)（Private）
-- 页面状态：只保留站名、两句中文说明和系统深色模式适配，没有照片、纪念日、背景音乐或第三方素材；页面文案以源码为准。
+- 页面状态：暖白纸纹、宋体标题、小信封与一次性淡入，使用固定浅色；支持手机排版和减少动态效果偏好。
+- 纪念时间：从 2026-07-01 开始，当天算第 1 天，按北京时间自动更新；JavaScript 不可用时保留文案和起始日期。
 - 技术边界：Astro + TypeScript + 普通 CSS，默认静态生成；没有后端、数据库或 UI 框架。
+
+界面截图：[桌面](docs/previews/landing-desktop.png) · [手机](docs/previews/landing-mobile.png)。截图固定在 2026-09-22，显示相恋第 84 天；实际页面按访问当天更新。
 
 ## 本地开发
 
@@ -20,6 +23,7 @@
 ```sh
 npm ci
 npm run dev
+npm test
 npm run build
 npm run preview
 ```
@@ -46,8 +50,9 @@ GitHub 自动部署尚未配置；没有绕过权限或创建额外凭据。GitH
 | [`wrangler.jsonc`](wrangler.jsonc) | Worker、静态资源目录和 Custom Domain 配置 |
 | [`public/favicon.svg`](public/favicon.svg) | 页面 favicon |
 | [`docs/DEPLOYMENT.md`](docs/DEPLOYMENT.md) | 发布、核验和回滚边界 |
-| [`docs/DESIGN.md`](docs/DESIGN.md) | 当前占位页的视觉方向 |
+| [`src/lib/anniversary.ts`](src/lib/anniversary.ts) | 起始日期、北京时间天数与跨日计算 |
+| [`docs/DESIGN.md`](docs/DESIGN.md) | 信笺首页的视觉与行为约定 |
 
 ## 生产状态说明
 
-基础占位页已经完成生产部署；首页、CSS、favicon 和权威 DNS 均曾完成 HTTP/线上核验。当前仓库只描述已存在的占位内容，不把后续正式设计或自动部署写成已完成能力。
+基础占位页已经完成生产部署；首页、CSS、favicon 和权威 DNS 均曾完成 HTTP/线上核验。本次信笺首页尚未部署，开发预览、PR 合并与生产发布分别核验，不把本地实现视为线上生效。
