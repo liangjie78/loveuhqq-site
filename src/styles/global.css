@@ -94,18 +94,9 @@ img { display: block; max-width: 100%; }
 .hero h1 > span { color: var(--rose); }
 .hero .intro { margin-top: 1.7rem; font-size: clamp(.95rem, 1.3vw, 1.12rem); line-height: 1.9; color: var(--muted); letter-spacing: .035em; }
 .hero .button { margin-top: 2rem; }
-.hero-visual { position: relative; height: min(37rem, 65dvh); min-height: 25rem; display: grid; align-content: end; justify-items: center; }
-.orbit-art { position: absolute; width: 100%; height: 88%; top: -3%; left: 0; }
-.glass-orbit { position: absolute; width: 61%; aspect-ratio: .81; border-radius: 50%; --ring-width: clamp(2rem, 4.4vw, 4.7rem); }
-.glass-orbit::before { content: ''; position: absolute; inset: 0; padding: var(--ring-width); border-radius: inherit; background: conic-gradient(from 140deg, #b477a9, #efd7ec 16%, #ffffff 29%, #fae7f4 36%, #cf9fc6 48%, #fff5fc 65%, #f1d0e1 80%, #b477a9); box-shadow: inset 3px 3px 10px #fff9, inset -3px -3px 10px #b37ba85c; -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0); mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0); -webkit-mask-composite: xor; mask-composite: exclude; }
-.glass-orbit::after { content: ''; position: absolute; inset: calc(var(--ring-width) - 1px); border-radius: inherit; border: 1px solid #fff9; box-shadow: 4px 4px 16px #a66c932c, inset 3px 4px 9px #a7789520; }
-.orbit-back { left: 4%; top: 4%; transform: rotate(-37deg); }
-.orbit-front { right: 0; top: 17%; transform: rotate(35deg); }
-.orbit-shadow { position: absolute; left: 12%; bottom: -3%; width: 85%; height: 18%; border-radius: 50%; background: radial-gradient(ellipse, #9f5b8736, transparent 68%); }
-.orbit-caption { position: absolute; right: 4%; top: 0; font-size: .6rem; letter-spacing: .3em; color: #9b7487; writing-mode: vertical-rl; }
-.orbit-spark { position: absolute; color: #fff; font: 300 2rem/1 sans-serif; }
-.spark-one { top: 10%; right: 19%; }.spark-two { bottom: 22%; left: 0; font-size: 1.2rem; }
-.relationship { position: relative; width: 65%; max-width: 20rem; padding: 1.2rem 1.6rem; border-radius: 1.4rem; text-align: center; }
+.hero-visual { height: min(37rem, 65dvh); min-height: 25rem; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+.paper-heart { width: clamp(17rem, 29vw, 23rem); height: auto; flex: none; }
+.relationship { position: relative; z-index: 1; width: min(65%, 18rem); margin-top: -1.25rem; padding: 1rem 1.4rem; border-radius: 1.4rem; text-align: center; }
 .day-counter > p:first-child { color: var(--muted); font-size: .68rem; letter-spacing: .12em; }
 .day-counter > p:last-child { display: flex; align-items: baseline; justify-content: center; gap: .55rem; margin-top: .1rem; }
 .day-counter strong { color: var(--ink); font-size: clamp(3rem, 5.5vw, 5rem); font-weight: 400; letter-spacing: -.06em; font-variant-numeric: tabular-nums; line-height: 1.15; }
@@ -214,12 +205,6 @@ img { display: block; max-width: 100%; }
 .motion-ready [data-reveal] { opacity: 0; transform: translateY(12px); transition: opacity 450ms var(--ease), transform 500ms var(--ease); }
 .motion-ready .is-revealed [data-reveal] { opacity: 1; transform: none; }
 @keyframes dialog-appear { from { opacity: 0; transform: translateY(8px) scale(.99); } }
-@supports (animation-timeline: view()) {
-  @media (prefers-reduced-motion: no-preference) {
-    .orbit-art { animation: orbit-scroll linear both; animation-timeline: view(); animation-range: exit 0% exit 100%; }
-    @keyframes orbit-scroll { to { transform: translateY(-35px) scale(.96); } }
-  }
-}
 
 @media (max-width: 1100px) {
   :root { --page-pad: 5vw; }
@@ -227,9 +212,8 @@ img { display: block; max-width: 100%; }
   .header-date { display: none; }
   .chapter-nav { right: .4rem; }
   .hero-visual { min-height: 22rem; }
-  .orbit-art { width: 87%; left: 4%; }
   .frame-orbit { width: 98%; left: 1%; }
-  .relationship { width: 74%; }
+  .relationship { width: min(74%, 18rem); }
   .photo-card-caption { padding: 1.1rem; }
 }
 @media (max-width: 700px) {
@@ -257,12 +241,9 @@ img { display: block; max-width: 100%; }
   .hero .intro { margin-top: 1rem; font-size: .85rem; line-height: 1.85; }
   .hero .button { margin-top: 1.2rem; }
   .button { min-height: 2.8rem; font-size: .72rem; padding: .65rem 1.1rem; gap: 1.6rem; }
-  .hero-visual { height: clamp(11rem, 26dvh, 16rem); min-height: 0; justify-items: end; }
-  .orbit-art { width: 65%; height: 100%; top: -12%; left: 0; }
-  .glass-orbit { --ring-width: 1.8rem; width: 55%; }
-  .orbit-back { left: 7%; }.orbit-front { right: 4%; top: 20%; }
-  .orbit-caption, .orbit-spark { display: none; }
-  .relationship { width: 52%; padding: .85rem; border-radius: 1rem; }
+  .hero-visual { height: clamp(16.5rem, 34dvh, 19rem); min-height: 0; }
+  .paper-heart { width: clamp(9rem, 39vw, 11rem); }
+  .relationship { width: min(58%, 12rem); margin-top: -.85rem; padding: .7rem; border-radius: 1rem; }
   .day-counter strong { font-size: 3rem; }
   .day-counter > p:first-child { font-size: .65rem; }
   .relationship .date { font-size: .65rem; }
@@ -339,6 +320,7 @@ img { display: block; max-width: 100%; }
   .hero .intro { margin-top: 1rem; }
   .hero .button { margin-top: 1.2rem; }
   .hero-visual { min-height: 0; height: 65dvh; }
+  .paper-heart { width: min(19rem, 44dvh); }
   .relationship { padding: .8rem 1rem; }
   .day-counter strong { font-size: 3.5rem; }
   .counter-line, .counter-note { display: none; }
@@ -366,9 +348,10 @@ img { display: block; max-width: 100%; }
   .hero h1 { font-size: 2.9rem; margin-top: .65rem; }
   .hero .intro { margin-top: .65rem; font-size: .78rem; }
   .hero .button { margin-top: .8rem; }
-  .hero-visual { height: 9.5rem; }
+  .hero-visual { height: 12.5rem; }
+  .paper-heart { width: 7.5rem; }
   .hero-layout { gap: .2rem; }
-  .relationship { padding: .65rem; }
+  .relationship { margin-top: -.6rem; padding: .5rem; }
   .day-counter strong { font-size: 2.5rem; }
   .counter-line, .counter-note { display: none; }
   .split-layout { gap: .9rem; }
@@ -399,7 +382,7 @@ img { display: block; max-width: 100%; }
   .hero .intro { font-size: .72rem; margin-top: .5rem; }
   .hero .button { margin-top: .6rem; }
   .hero-visual { height: 63dvh; }
-  .orbit-art { width: 85%; height: 85%; left: 4%; }
+  .paper-heart { width: min(16rem, 43dvh); }
   .relationship { width: 67%; padding: .6rem; }
   .day-counter strong { font-size: 2.5rem; }
   .section-copy h2, .future-copy h2 { font-size: 2rem; margin-top: .5rem; }
