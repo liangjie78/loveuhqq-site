@@ -4,7 +4,7 @@
 
 - 技术栈：Astro、TypeScript、普通 CSS，静态生成至 `dist`，使用项目级 Wrangler 部署到 Cloudflare Workers Static Assets。
 - 执行前识别当前环境、依赖和有效规范；不写死本机绝对路径、Shell、旧版本或历史工具状态。Codex 使用原生工具；AgentDock 仅用于 Chat 聊天模式。
-- UI 变更先读取 `docs/DESIGN.md`。当前为温柔信笺纪念首页，只使用用户已确认的称呼、文案与纪念日期；不自行增加其他恋爱经历或私人信息。
+- UI 变更先读取 `docs/DESIGN.md`。当前为柔粉毛玻璃风格的全屏滚动纪念册，只使用用户已确认的称呼、文案与纪念日期；不自行增加其他恋爱经历或私人信息。
 - 生产部署、Cloudflare 和 DNS 等外部修改必须有当前任务明确授权；只操作本项目，不影响其他站点。
 - 不读取、输出或提交秘密；凭据使用工具现有的安全登录机制。
 - Git 协作按当前仓库流程和任务目标自主判断 commit、常规 push、branch/worktree 与 PR；本项目默认分支保持 PR-first，不直接 push 默认分支，已有相关 PR 时优先更新，无法确定时使用独立任务分支和 PR。

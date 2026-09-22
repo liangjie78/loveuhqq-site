@@ -15,7 +15,8 @@ function refreshDates() {
   day.textContent = String(anniversaryDay);
   counter.hidden = anniversaryDay < 1;
   const upcoming = getUpcomingAnniversary(now);
-  document.querySelector<HTMLElement>('#anniversary-title')!.textContent = '下一个值得期待的日子';
+  document.querySelector<HTMLElement>('[data-milestone-heading]')!.textContent = '下一个';
+  document.querySelector<HTMLElement>('[data-milestone-ending]')!.textContent = '值得期待的日子。';
   milestoneTitle.textContent = upcoming.title;
   milestoneDate.dateTime = upcoming.date;
   milestoneDate.textContent = upcoming.date.replaceAll('-', '.');
@@ -60,6 +61,33 @@ document.addEventListener('click', (event) => {
   if (!(event.target as Element).closest('.site-header')) setMenu(false);
 });
 
+document.addEventListener('focusin', (event) => {
+  if (!(event.target as Element).closest('.site-header')) setMenu(false);
+});
+window.matchMedia('(max-width: 700px)').addEventListener('change', () => setMenu(false));
+
+const chapters = [...document.querySelectorAll<HTMLElement>('.chapter')];
+const chapterLinks = document.querySelectorAll<HTMLAnchorElement>('#site-nav a, .chapter-nav a');
+const visibleChapters = new Map<Element, number>();
+
+if ('IntersectionObserver' in window) {
+  const chapterObserver = new IntersectionObserver((entries) => {
+    for (const entry of entries) {
+      visibleChapters.set(entry.target, entry.intersectionRatio);
+      if (entry.intersectionRatio >= .15) entry.target.classList.add('is-revealed');
+    }
+    const current = [...visibleChapters].sort((a, b) => b[1] - a[1])[0];
+    if (!current || current[1] === 0) return;
+    for (const link of chapterLinks) {
+      if (link.hash === '#' + current[0].id) link.setAttribute('aria-current', 'location');
+      else link.removeAttribute('aria-current');
+    }
+  }, { threshold: [0, .15, .35, .5, .65, .85, 1] });
+
+  chapters.forEach((chapter) => chapterObserver.observe(chapter));
+  document.documentElement.classList.add('motion-ready');
+}
+
 const gallery = document.querySelector<HTMLDialogElement>('.photo-dialog')!;
 const galleryImage = gallery.querySelector<HTMLImageElement>('[data-gallery-image]')!;
 const galleryCaption = gallery.querySelector<HTMLElement>('[data-gallery-caption]')!;
@@ -79,7 +107,7 @@ function openGallery(index: number, trigger: HTMLElement) {
   galleryTrigger = trigger;
   showPhoto(index);
   gallery.showModal();
-  document.body.classList.add('gallery-open');
+  document.documentElement.classList.add('gallery-open');
 }
 
 document.querySelectorAll<HTMLAnchorElement>('[data-photo-index]').forEach((link) => {
@@ -107,6 +135,6 @@ gallery.addEventListener('click', (event) => {
   }
 });
 gallery.addEventListener('close', () => {
-  document.body.classList.remove('gallery-open');
+  document.documentElement.classList.remove('gallery-open');
   galleryTrigger?.focus({ preventScroll: true });
 });
