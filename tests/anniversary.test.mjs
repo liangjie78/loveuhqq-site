@@ -4,6 +4,8 @@ import test from 'node:test';
 import {
   getAnniversaryDay,
   getNextShanghaiMidnight,
+  getUpcomingAnniversary,
+  hundredthDayDate,
   relationshipStartDate,
 } from '../src/lib/anniversary.ts';
 
@@ -11,6 +13,7 @@ const date = (value) => new Date(value);
 
 test('exports the confirmed relationship start date', () => {
   assert.equal(relationshipStartDate, '2026-07-01');
+  assert.equal(hundredthDayDate, '2026-10-08');
 });
 
 test('counts inclusive days by the Shanghai calendar date', () => {
@@ -76,5 +79,109 @@ test('rejects invalid dates', () => {
   assert.throws(
     () => getNextShanghaiMidnight(new Date(Number.NaN)),
     RangeError,
+  );
+  assert.throws(
+    () => getUpcomingAnniversary(new Date(Number.NaN)),
+    RangeError,
+  );
+});
+
+test('returns the start milestone before and on the relationship start date', () => {
+  assert.deepEqual(
+    getUpcomingAnniversary(date('2026-06-30T15:59:59.999Z')),
+    {
+      title: '故事开始的那一天',
+      date: '2026-07-01',
+      daysRemaining: 1,
+    },
+  );
+  assert.deepEqual(
+    getUpcomingAnniversary(date('2026-07-01T00:00:00+08:00')),
+    {
+      title: '故事开始的那一天',
+      date: '2026-07-01',
+      daysRemaining: 0,
+    },
+  );
+});
+
+test('selects the 100th day before and on its Shanghai calendar date', () => {
+  assert.deepEqual(
+    getUpcomingAnniversary(date('2026-10-07T23:59:59+08:00')),
+    {
+      title: '第 100 天',
+      date: '2026-10-08',
+      daysRemaining: 1,
+    },
+  );
+  assert.deepEqual(
+    getUpcomingAnniversary(date('2026-10-08T00:00:00+08:00')),
+    {
+      title: '第 100 天',
+      date: '2026-10-08',
+      daysRemaining: 0,
+    },
+  );
+});
+
+test('moves to the first anniversary after the 100th day', () => {
+  assert.deepEqual(
+    getUpcomingAnniversary(date('2026-10-09T00:00:00+08:00')),
+    {
+      title: '第 1 周年',
+      date: '2027-07-01',
+      daysRemaining: 265,
+    },
+  );
+  assert.deepEqual(
+    getUpcomingAnniversary(date('2027-06-30T23:59:59+08:00')),
+    {
+      title: '第 1 周年',
+      date: '2027-07-01',
+      daysRemaining: 1,
+    },
+  );
+  assert.deepEqual(
+    getUpcomingAnniversary(date('2027-07-01T00:00:00+08:00')),
+    {
+      title: '第 1 周年',
+      date: '2027-07-01',
+      daysRemaining: 0,
+    },
+  );
+  assert.deepEqual(
+    getUpcomingAnniversary(date('2027-07-02T00:00:00+08:00')),
+    {
+      title: '第 2 周年',
+      date: '2028-07-01',
+      daysRemaining: 365,
+    },
+  );
+});
+
+test('counts leap-day calendar distance toward the next anniversary', () => {
+  assert.deepEqual(
+    getUpcomingAnniversary(date('2028-02-29T00:00:00+08:00')),
+    {
+      title: '第 2 周年',
+      date: '2028-07-01',
+      daysRemaining: 123,
+    },
+  );
+  assert.deepEqual(
+    getUpcomingAnniversary(date('2028-07-01T00:00:00+08:00')),
+    {
+      title: '第 2 周年',
+      date: '2028-07-01',
+      daysRemaining: 0,
+    },
+  );
+  assert.deepEqual(
+    getUpcomingAnniversary(date('2028-07-02T00:00:00+08:00')),
+    {
+      title: '第 3 周年',
+      date: '2029-07-01',
+      daysRemaining: 364,
+    },
   );
 });
