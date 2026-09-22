@@ -21,11 +21,11 @@
 2. 取得本次生产部署授权，核验干净 main 与 origin/main 的提交一致。确认账号、目标 Worker、Custom Domain 无异常；已有其他资源占用目标时停止报告。
 3. 根据当前环境满足依赖的 Node.js 引擎要求，运行 `npm ci`、`npm run build`，检查 dist 中 HTML、CSS 和 favicon。
 4. 运行项目级 `npm run deploy`（重新 build 后 wrangler deploy），记录返回的版本 ID。只发布这个 Worker。
-5. 核验 Custom Domain 指向正确 Worker，查询 Cloudflare 权威 DNS，并访问 HTTPS：首页须为 200 且为本项目中文占位内容，实际 CSS/favicon 必须为 200；不可出现 work1 或 x23-personal-site 页面。
+5. 核验 Custom Domain 指向正确 Worker，查询 Cloudflare 权威 DNS，并访问 HTTPS：首页须为 200 且正文与本次发布的源码一致，实际 CSS/favicon 必须为 200；不可出现 work1 或 x23-personal-site 页面。
 
 ## 回滚
 
-经用户明确授权后，先用项目级 `wrangler deployments list` 查找本 Worker 的已知良好版本，再按安装版本的 `wrangler rollback --help` 执行针对该版本的回滚；随后重做域名、HTML 和资源验证。首次发布尚无旧生产版本可回滚。需要源码回退时通过新分支和 PR 恢复已知良好内容，由用户手动合并后重新构建部署；不 reset 或 force push。
+经用户明确授权后，先用项目级 `wrangler deployments list` 查找本 Worker 的已知良好版本，再按安装版本的 `wrangler rollback --help` 执行针对该版本的回滚；随后重做域名、HTML 和资源验证。需要源码回退时通过新分支和 PR 恢复已知良好内容，由用户手动合并后重新构建部署；不 reset 或 force push。
 
 ## 安全边界
 
@@ -51,5 +51,15 @@
 - 真实浏览器在 1440×900 和 390×844、浅色和深色四种组合下访问线上 URL：均 HTTP 200、标题/viewport/lang 正确、占位正文存在、`document.documentElement.scrollWidth` 与视口宽度相等；手机断行计算样式为 `block`。
 - 线上 CSS `/_astro/index.C6OwKbcM.css` 与本地 `dist` 哈希一致，favicon 同样一致；权威 DNS 仍解析到 Cloudflare，Custom Domain 仍指向 `loveuhqq-site`。
 - 这次只更新本项目 Worker；`blogtext.x23.shop` 仍指向 `x23-personal-site`，没有改动其他资源。GitHub 自动部署仍未配置。
+
+## 温柔信笺首页发布（2026-09-22，Asia/Shanghai）
+
+- 用户明确授权部署后，从已合并的 PR #4 对应 `main` 提交 `6da5f6e294f57cac1fbd0a4ff28ce3a0756ff894` 发布；构建时工作树干净且与 `origin/main` 一致。
+- `npm ci` 成功，依赖审计为 0 个漏洞；8 项日期测试、`npm run build` 与项目 Wrangler 部署预检通过，再执行 `npm run deploy` 完成正式发布。
+- Worker 仍为 `loveuhqq-site`，Custom Domain 仍为 `loveuhqq.x23.shop`。生产版本为 `53297c93-5a16-4fdc-b47a-e222d8b4ef87`，部署 ID 为 `80d8696a-ec47-4beb-a087-25b8c4193954`，Cloudflare API 确认流量 100%。
+- 正式首页 HTTP 200，标题为“爱你，何青青。 · loveuhqq”，包含确认的文案、纪念日起点与动态天数脚本，旧占位文案已移除。
+- 实际 CSS `/_astro/index.DJzkUCiR.css` 和 `/favicon.svg` 均 HTTP 200，SHA-256 与本地 `dist` 文件一致。
+- 真实线上 Chrome 在 1440×900 和 390×844 下均 HTTP 200，主标题、实时相恋第 84 天、起始日期和信封正常显示；页面无水平溢出、脚本错误或失败资源。线上检查未模拟时间；其他浏览器及真机尚未验证。
+- 权威服务器 `arya.ns.cloudflare.com` 返回 A：`172.67.166.139`、`104.21.65.200`；Custom Domain API 确认目标为本 Worker 的 production 环境，未修改 DNS 或其他站点。
 
 参考：[Cloudflare Static Assets](https://developers.cloudflare.com/workers/static-assets/)。
