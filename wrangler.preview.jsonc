@@ -1,0 +1,9 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "loveuhqq-site-preview",
+  "account_id": "a8baff96e8cfcc965098997737826969",
+  "compatibility_date": "2026-09-12",
+  "workers_dev": true,
+  "preview_urls": true,
+  "assets": { "directory": "./dist" }
+}

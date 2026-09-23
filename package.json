@@ -8,6 +8,7 @@
     "test": "node --experimental-strip-types --test tests/*.test.mjs",
     "build": "astro build",
     "preview": "astro preview",
+    "deploy:preview": "npm run build && wrangler deploy --config wrangler.preview.jsonc",
     "deploy": "npm run build && wrangler deploy"
   },
   "dependencies": {
