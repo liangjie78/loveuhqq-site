@@ -1,5 +1,5 @@
 ---
-import { photos } from '../data/photos';
+import { getPhotoSummary, photoStatusLabels, photos } from '../data/photos';
 import '../styles/global.css';
 ---
 
@@ -26,10 +26,10 @@ import '../styles/global.css';
       <div class="album-heading">
         <p class="eyebrow">LITTLE MOMENTS</p>
         <h1>更多照片</h1>
-        <p class="section-description">{photos.length > 0 ? '目前展示的是示意图片，真实照片以后再添加。' : '照片待添加。'}</p>
+        <p class="section-description">{getPhotoSummary(photos)}</p>
       </div>
       {photos.length > 0 ? <div class="album-grid">
-        {photos.map((photo, index) => <a class="album-photo" id={'photo-' + (index + 1)} href={photo.src} aria-label={'查看原图：' + photo.title + '（示意图片）'}><img src={photo.src} alt={photo.alt} width="800" height="1000" loading="lazy" decoding="async" /><span>示意图片 · {photo.title}</span></a>)}
+        {photos.map((photo, index) => <a class="album-photo" id={'photo-' + (index + 1)} href={photo.src} aria-label={'查看原图：' + photo.title + '（' + photoStatusLabels[photo.status] + '）'}><img src={photo.src} alt={photo.alt} width="800" height="1000" loading="lazy" decoding="async" /><span>{photoStatusLabels[photo.status]} · {photo.title}</span></a>)}
       </div> : <div class="album-empty"><span aria-hidden="true">♡</span><p>照片待添加</p></div>}
     </main>
   </body>
