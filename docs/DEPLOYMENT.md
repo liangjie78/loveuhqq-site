@@ -23,6 +23,10 @@
 4. 运行项目级 `npm run deploy`（重新 build 后 wrangler deploy），记录返回的版本 ID。只发布这个 Worker。
 5. 核验 Custom Domain 指向正确 Worker，查询 Cloudflare 权威 DNS，并访问 HTTPS：首页须为 200 且正文与本次发布的源码一致，实际 CSS/favicon 必须为 200；不可出现 work1 或 x23-personal-site 页面。
 
+## 预览验收
+
+可见 UI 改动先用 `npm run deploy:preview` 从当前分支构建并手动更新 `loveuhqq-site-preview`，地址为 [临时预览站](https://loveuhqq-site-preview.1756127916.workers.dev/)。它使用 `wrangler.preview.jsonc`，仅绑定 `workers.dev`，与正式 Worker 和 Custom Domain 分离。每次交付需核验公网首页、受影响页面和实际资源，提供网址及截图；预览网址始终显示最后一次上传的内容，不能仅凭 PR 或构建成功声称网址已更新。预览站公开可访问，提交正式发布仍按上节的授权和 `main` 流程执行。
+
 ## 回滚
 
 经用户明确授权后，先用项目级 `wrangler deployments list` 查找本 Worker 的已知良好版本，再按安装版本的 `wrangler rollback --help` 执行针对该版本的回滚；随后重做域名、HTML 和资源验证。需要源码回退时通过新分支和 PR 恢复已知良好内容，由用户手动合并后重新构建部署；不 reset 或 force push。
