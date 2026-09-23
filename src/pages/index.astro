@@ -73,7 +73,7 @@ const chapters = [
             </ol>
           </div>
           <div class="story-visual" data-reveal>
-            <div class="memory-frame"><div class="empty-photo"><svg viewBox="0 0 48 48" fill="none" aria-hidden="true"><rect x="7" y="9" width="34" height="30" rx="4" /><circle cx="31" cy="19" r="3" /><path d="m8 34 10-12 9 10 5-5 8 9" /></svg><p>留给我们的第一张照片</p><span>OUR FIRST MEMORY</span></div><div class="frame-caption"><span>故事，从这里开始。</span><span aria-hidden="true">♡</span></div></div>
+            <div class="memory-frame"><div class="empty-photo"><svg viewBox="0 0 48 48" fill="none" aria-hidden="true"><rect x="7" y="9" width="34" height="30" rx="4" /><circle cx="31" cy="19" r="3" /><path d="m8 34 10-12 9 10 5-5 8 9" /></svg><p>留给我们的第一张照片</p></div><div class="frame-caption"><span>故事，从这里开始。</span><span aria-hidden="true">♡</span></div></div>
             <span class="frame-orbit" aria-hidden="true"></span>
           </div>
         </div>
@@ -86,16 +86,15 @@ const chapters = [
           <div class="photo-grid" data-reveal>
             {photos.map((photo, index) => <a class="photo-card" href={photo.src} data-photo-index={index} aria-label={'查看' + photo.title + '（示意图片）'}><img src={photo.src} alt={photo.alt} width="800" height="1000" loading="lazy" decoding="async" /><span class="photo-badge">示意图片</span><div class="photo-card-caption"><div><span class="photo-number">0{index + 1}</span><h3>{photo.title}</h3></div><span class="photo-expand" aria-hidden="true">↗</span></div></a>)}
           </div>
-          <div class="gallery-caption"><p class="quiet-note">示意相册 · 等待放入我们的照片</p><button class="text-link" type="button" data-open-gallery hidden>翻开相册 <span aria-hidden="true">↗</span></button></div>
+          <div class="gallery-caption"><p class="quiet-note">示意相册 · 等待放入我们的照片</p><div class="gallery-actions"><button class="text-link" type="button" data-open-gallery hidden>翻开相册 <span aria-hidden="true">↗</span></button><a class="text-link" href="/photos/">点击进入更多照片 <span aria-hidden="true">↗</span></a></div></div>
         </div>
         <div class="chapter-bottom"><p><span class="chapter-count">03 / 06</span><span class="bottom-note">LITTLE MOMENTS</span></p><a class="scroll-cue" href="#letter">今天想对你说 <span aria-hidden="true">↓</span></a></div>
       </section>
 
       <section class="chapter message-section" id="letter" aria-labelledby="message-title" tabindex="-1">
         <div class="chapter-inner letter-content" data-reveal>
-          <p class="eyebrow">03 — A LITTLE NOTE</p><h2 id="message-title" class="small-heading">今天想对你说</h2><span class="quote-mark" aria-hidden="true">“</span>
-          <blockquote>把平凡的日子，<br /><span>慢慢写成</span><br class="mobile-break" /><span class="accent">我们的故事。</span></blockquote>
-          <div class="letter-signature"><span aria-hidden="true"></span><p>文案待填写</p><span aria-hidden="true"></span></div>
+          <p class="eyebrow">03 — A LITTLE NOTE</p><h2 id="message-title" class="small-heading">今天想对你说</h2>
+          <div class="letter-placeholder"><span aria-hidden="true">♡</span><p>文案待填写</p></div>
         </div>
         <div class="chapter-bottom"><p><span class="chapter-count">04 / 06</span><span class="bottom-note">A LITTLE NOTE</span></p><a class="scroll-cue" href="#anniversary">期待下一个纪念日 <span aria-hidden="true">↓</span></a></div>
       </section>

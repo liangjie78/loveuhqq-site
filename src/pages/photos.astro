@@ -1,0 +1,36 @@
+---
+import { photos } from '../data/photos';
+import '../styles/global.css';
+---
+
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="description" content="loveuhqq 的照片相册。" />
+    <meta name="color-scheme" content="light" />
+    <meta name="theme-color" content="#f8edf1" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <title>更多照片 · loveuhqq</title>
+  </head>
+  <body class="album-page">
+    <a class="skip-link" href="#album-main">跳到正文</a>
+    <header class="site-header">
+      <div class="header-inner">
+        <a class="wordmark" href="/#home" aria-label="loveuhqq 回到首页"><span class="brand-mark" aria-hidden="true">lq.</span><span>loveuhqq</span></a>
+        <a class="album-return" href="/#photos">← 返回纪念册</a>
+      </div>
+    </header>
+    <main class="album-main" id="album-main">
+      <div class="album-heading">
+        <p class="eyebrow">LITTLE MOMENTS</p>
+        <h1>更多照片</h1>
+        <p class="section-description">{photos.length > 0 ? '目前展示的是示意图片，真实照片以后再添加。' : '照片待添加。'}</p>
+      </div>
+      {photos.length > 0 ? <div class="album-grid">
+        {photos.map((photo, index) => <a class="album-photo" id={'photo-' + (index + 1)} href={photo.src} aria-label={'查看原图：' + photo.title + '（示意图片）'}><img src={photo.src} alt={photo.alt} width="800" height="1000" loading="lazy" decoding="async" /><span>示意图片 · {photo.title}</span></a>)}
+      </div> : <div class="album-empty"><span aria-hidden="true">♡</span><p>照片待添加</p></div>}
+    </main>
+  </body>
+</html>
