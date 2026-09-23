@@ -51,7 +51,7 @@ GitHub 自动部署尚未配置；没有绕过权限或创建额外凭据。GitH
 
 可见 UI 改动完成后，运行 `npm run deploy:preview`，从当前分支构建并更新独立 Worker `loveuhqq-site-preview`。验收地址是 [临时预览站](https://loveuhqq-site-preview.1756127916.workers.dev/)；每次更新后需实际检查首页、受影响页面和资源，并把链接与截图发给用户。此地址公开可访问，始终显示最近一次手动上传的预览版本，不会自动跟随 Git 提交，也不影响正式域名。
 
-本次参考截图：[桌面首页](docs/previews/gallery-home-desktop.png) · [手机相册](docs/previews/gallery-album-mobile.png)。预览配置位于 `wrangler.preview.jsonc`，只有 `workers.dev` 地址，没有正式站点的 Custom Domain 路由。
+本次参考截图：[桌面首页](docs/previews/gallery-home-desktop.png) · [手机首页](docs/previews/headline-home-mobile.png) · [手机相册](docs/previews/gallery-album-mobile.png)。预览配置位于 `wrangler.preview.jsonc`，只有 `workers.dev` 地址，没有正式站点的 Custom Domain 路由。
 
 生产操作、回滚、DNS 边界和已有验证证据见 [部署说明](docs/DEPLOYMENT.md)，视觉约束见 [设计说明](docs/DESIGN.md)。生产部署、Cloudflare 和 DNS 修改都需要当前任务的明确授权。
 
