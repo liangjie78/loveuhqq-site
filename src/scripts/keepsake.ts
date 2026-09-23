@@ -1,5 +1,5 @@
 import { getAnniversaryDay, getNextShanghaiMidnight, getUpcomingAnniversary } from '../lib/anniversary';
-import { photos } from '../data/photos';
+import { photoStatusDescriptions, photoStatusLabels, photos } from '../data/photos';
 
 const counter = document.querySelector<HTMLElement>('[data-anniversary-count]')!;
 const day = document.querySelector<HTMLElement>('[data-anniversary-day]')!;
@@ -91,6 +91,8 @@ if ('IntersectionObserver' in window) {
 const gallery = document.querySelector<HTMLDialogElement>('.photo-dialog')!;
 const galleryImage = gallery.querySelector<HTMLImageElement>('[data-gallery-image]')!;
 const galleryCaption = gallery.querySelector<HTMLElement>('[data-gallery-caption]')!;
+const galleryTitle = gallery.querySelector<HTMLElement>('#gallery-title')!;
+const galleryDescription = gallery.querySelector<HTMLElement>('#gallery-description')!;
 const galleryButton = document.querySelector<HTMLButtonElement>('[data-open-gallery]')!;
 let photoIndex = 0;
 let galleryTrigger: HTMLElement | null = null;
@@ -100,6 +102,8 @@ function showPhoto(index: number) {
   const photo = photos[photoIndex];
   galleryImage.src = photo.src;
   galleryImage.alt = photo.alt;
+  galleryTitle.textContent = photoStatusLabels[photo.status];
+  galleryDescription.textContent = photoStatusDescriptions[photo.status];
   galleryCaption.textContent = photo.title + ' · ' + (photoIndex + 1) + ' / ' + photos.length;
 }
 
