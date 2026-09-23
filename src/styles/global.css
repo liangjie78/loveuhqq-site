@@ -90,7 +90,7 @@ img { display: block; max-width: 100%; }
 .hero { background: radial-gradient(ellipse at 77% 44%, #f3cbdc 0, transparent 43%), radial-gradient(ellipse at 24% 75%, #f4d7df88, transparent 52%), linear-gradient(125deg, #fcf7f7 0%, #f8eaf0 56%, #eee8f4 100%); }
 .hero-layout { display: grid; grid-template-columns: 1fr 1fr; align-items: center; gap: 2rem; }
 .hero-copy .eyebrow { display: flex; align-items: center; gap: .8rem; }
-.hero h1 { margin-top: 1.9rem; font-size: clamp(3.5rem, 6.8vw, 7rem); font-weight: 400; letter-spacing: -.07em; line-height: 1.2; }
+.hero h1 { margin-top: 1.9rem; font-size: clamp(3.5rem, 6.2vw, 6.25rem); font-weight: 400; letter-spacing: -.035em; line-height: 1.24; }
 .hero h1 > span { color: var(--rose); }
 .hero .intro { margin-top: 1.7rem; font-size: clamp(.95rem, 1.3vw, 1.12rem); line-height: 1.9; color: var(--muted); letter-spacing: .035em; }
 .hero .button { margin-top: 2rem; }
