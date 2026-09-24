@@ -21,7 +21,7 @@ const chapters = [
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-    <meta name="description" content={'爱你，何青青。把平凡的日子，慢慢写成我们的故事。始于 ' + startDateLabel + '。'} />
+    <meta name="description" content={'爱你，何青青。日子没什么特别的，但因为有你在，好像也值得记一记。始于 ' + startDateLabel + '。'} />
     <meta name="color-scheme" content="light" />
     <meta name="theme-color" content="#f8edf1" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
@@ -48,7 +48,7 @@ const chapters = [
           <div class="hero-copy" data-reveal>
             <p class="eyebrow"><span class="status-dot" aria-hidden="true"></span>FOR YOU, ALWAYS</p>
             <h1 id="letter-title">爱你，<br /><span>何青青。</span></h1>
-            <p class="intro">把平凡的日子，<br />慢慢写成我们的故事。</p>
+            <p class="intro">日子没什么特别的，<br />但因为有你在，好像也值得记一记。</p>
             <a class="button button-primary" href="#story">往下看我们的故事 <span aria-hidden="true">↗</span></a>
           </div>
           <div class="hero-visual" data-reveal>
@@ -56,21 +56,21 @@ const chapters = [
             <div class="relationship glass-panel">
               <div class="day-counter" data-anniversary-count hidden><p>我们在一起的第</p><p><strong data-anniversary-day></strong><span class="day-unit">天</span></p></div>
               <p class="date">始于 <time datetime={relationshipStartDate}>{startDateLabel}</time></p>
-              <span class="counter-line" aria-hidden="true"></span><p class="counter-note">时光很慢，而我们正好。</p>
+              <span class="counter-line" aria-hidden="true"></span><p class="counter-note">不早不晚，刚好是你。</p>
             </div>
           </div>
         </div>
-        <div class="chapter-bottom"><p><span class="chapter-count">01 / 06</span><span class="bottom-note">平凡的日子里，藏着最珍贵的小小幸福。</span></p><a class="scroll-cue" href="#story">向下，慢慢看 <span aria-hidden="true">↓</span></a></div>
+        <div class="chapter-bottom"><p><span class="chapter-count">01 / 06</span><span class="bottom-note">那些没什么特别的日子，也想记下来。</span></p><a class="scroll-cue" href="#story">往下滑，都是关于你 <span aria-hidden="true">↓</span></a></div>
       </section>
 
       <section class="chapter story-section" id="story" aria-labelledby="story-title" tabindex="-1">
         <div class="chapter-inner split-layout">
           <div class="section-copy" data-reveal>
             <p class="eyebrow">01 — OUR STORY</p><h2 id="story-title">我们的<br /><span class="accent">故事。</span></h2>
-            <p class="section-description">好的故事，总是从平凡的某一天<br class="desktop-break" />悄悄开始。</p>
+            <p class="section-description">其实也没什么惊天动地的开头。<br class="desktop-break" />就是某一天，突然想多看你两眼。</p>
             <ol class="timeline">
-              <li><time datetime={relationshipStartDate}>{startDateLabel}</time><h3>故事开始的那一天</h3><p>把平凡的日子，慢慢写成我们的故事。</p></li>
-              <li class="timeline-next"><span>待续</span><p>下一段故事，等我们一起写。</p></li>
+              <li><time datetime={relationshipStartDate}>{startDateLabel}</time><h3>故事开始的那一天</h3><p>这些日子攒着攒着，就攒成了只属于我们的东西。</p></li>
+              <li class="timeline-next"><span>待续</span><p>还没完。后面的，慢慢来。</p></li>
             </ol>
           </div>
           <div class="story-visual" data-reveal>
@@ -83,7 +83,7 @@ const chapters = [
 
       <section class="chapter photo-section" id="photos" aria-labelledby="photos-title" tabindex="-1">
         <div class="chapter-inner photos-content">
-          <header class="photos-heading" data-reveal><div><p class="eyebrow">02 — LITTLE MOMENTS</p><h2 id="photos-title">一些值得<br /><span class="accent">留下来的瞬间。</span></h2></div><p class="section-description">每一张照片，都是时光<br />送给我们的温柔礼物。</p></header>
+          <header class="photos-heading" data-reveal><div><p class="eyebrow">02 — LITTLE MOMENTS</p><h2 id="photos-title">等我们的照片，<br /><span class="accent">再来挑舍不得删的。</span></h2></div><p class="section-description">这几张是示意图，<br />等我们的照片来了再换。</p></header>
           <div class="photo-grid" data-reveal>
             {featuredPhotos.map((photo, index) => <a class="photo-card" href={photo.src} data-photo-index={index} aria-label={'查看' + photo.title + '（' + photoStatusLabels[photo.status] + '）'}><img src={photo.src} alt={photo.alt} width="800" height="1000" loading="lazy" decoding="async" /><span class="photo-badge">{photoStatusLabels[photo.status]}</span><div class="photo-card-caption"><div><span class="photo-number">0{index + 1}</span><h3>{photo.title}</h3></div><span class="photo-expand" aria-hidden="true">↗</span></div></a>)}
           </div>
@@ -94,26 +94,27 @@ const chapters = [
 
       <section class="chapter message-section" id="letter" aria-labelledby="message-title" tabindex="-1">
         <div class="chapter-inner letter-content" data-reveal>
-          <p class="eyebrow">03 — A LITTLE NOTE</p><h2 id="message-title" class="small-heading">今天想对你说</h2>
-          <div class="letter-placeholder"><span aria-hidden="true">♡</span><p>文案待填写</p></div>
+          <p class="eyebrow">03 — A LITTLE NOTE</p><h2 id="message-title" class="small-heading">今天想对你说</h2><span class="quote-mark" aria-hidden="true">“</span>
+          <blockquote>其实我每天想说的<br /><span>都差不多，就是——</span><br class="mobile-break" /><span class="accent">在干嘛，想你了。</span></blockquote>
+          <div class="letter-signature"><span aria-hidden="true"></span><p>这里本来想写很多，还是当面跟你说吧。</p><span aria-hidden="true"></span></div>
         </div>
         <div class="chapter-bottom"><p><span class="chapter-count">04 / 06</span><span class="bottom-note">A LITTLE NOTE</span></p><a class="scroll-cue" href="#anniversary">期待下一个纪念日 <span aria-hidden="true">↓</span></a></div>
       </section>
 
       <section class="chapter anniversary-section" id="anniversary" aria-labelledby="anniversary-title" tabindex="-1">
         <div class="chapter-inner split-layout">
-          <div class="section-copy" data-reveal><p class="eyebrow">04 — DAYS TO REMEMBER</p><h2 id="anniversary-title"><span data-milestone-heading>值得记住</span><span data-milestone-ending>的日子。</span></h2><p class="section-description">在平凡的日子里，一直爱下去。</p><p class="anniversary-start">始于 <time datetime={relationshipStartDate}>{startDateLabel}</time></p></div>
-          <div class="milestone glass-panel" data-reveal><div class="milestone-top"><p class="milestone-title" data-milestone-title>第 100 天</p><span class="status-dot" aria-hidden="true"></span></div><time class="milestone-date" data-milestone-date datetime={hundredthDayDate}>{hundredthDayLabel}</time><div class="countdown" data-milestone-count hidden><span data-milestone-prefix>还有</span><p><strong data-milestone-days></strong><span class="countdown-unit" data-milestone-suffix>天</span></p></div><p class="quiet-note" data-date-fallback>始于 {startDateLabel}，期待每一个纪念日。</p><div class="milestone-bottom"><span aria-hidden="true">♡</span><p>时光很慢，而我们正好。</p></div></div>
+          <div class="section-copy" data-reveal><p class="eyebrow">04 — DAYS TO REMEMBER</p><h2 id="anniversary-title"><span data-milestone-heading>值得记住</span><span data-milestone-ending>的日子。</span></h2><p class="section-description">不用多特别，就这样一天一天地过下去就行。</p><p class="anniversary-start">始于 <time datetime={relationshipStartDate}>{startDateLabel}</time></p></div>
+          <div class="milestone glass-panel" data-reveal><div class="milestone-top"><p class="milestone-title" data-milestone-title>第 100 天</p><span class="status-dot" aria-hidden="true"></span></div><time class="milestone-date" data-milestone-date datetime={hundredthDayDate}>{hundredthDayLabel}</time><div class="countdown" data-milestone-count hidden><span data-milestone-prefix>还有</span><p><strong data-milestone-days></strong><span class="countdown-unit" data-milestone-suffix>天</span></p></div><p class="quiet-note" data-date-fallback>始于 {startDateLabel}，每个能跟你一起过的日子，都算纪念日。</p><div class="milestone-bottom"><span aria-hidden="true">♡</span><p>和你一起的日子，都算数。</p></div></div>
         </div>
         <div class="chapter-bottom"><p><span class="chapter-count">05 / 06</span><span class="bottom-note">DAYS TO REMEMBER</span></p><a class="scroll-cue" href="#future">写给未来 <span aria-hidden="true">↓</span></a></div>
       </section>
 
       <section class="chapter future-section" id="future" aria-labelledby="future-title" tabindex="-1">
         <div class="chapter-inner future-content">
-          <div class="future-copy" data-reveal><p class="eyebrow">05 — TO BE CONTINUED</p><h2 id="future-title">写给未来。<br /><span class="accent">未完待续……</span></h2><p class="section-description">愿未来的我们，依然温柔相爱。</p><a class="button button-secondary" href="#home">回到故事的开始 <span aria-hidden="true">↑</span></a></div>
+          <div class="future-copy" data-reveal><p class="eyebrow">05 — TO BE CONTINUED</p><h2 id="future-title">写给未来。<br /><span class="accent">未完待续……</span></h2><p class="section-description">后面的事，谁也说不准。但我想跟你一起看看。</p><a class="button button-secondary" href="#home">回到第一眼 <span aria-hidden="true">↑</span></a></div>
           <div class="future-letter" data-reveal><img src="/images/envelope.webp" alt="" width="800" height="1000" loading="lazy" decoding="async" aria-hidden="true" /><div class="future-caption"><p class="pill-label">信件待写</p><h3>写给第 100 天的我们</h3><p class="date">纪念日 <time datetime={hundredthDayDate}>{hundredthDayLabel}</time></p></div></div>
         </div>
-        <footer class="site-footer"><a class="wordmark" href="#home" aria-label="loveuhqq 回到首页">loveuhqq<span class="footer-heart" aria-hidden="true">♡</span></a><p>把平凡的日子，慢慢写成我们的故事。</p><a class="footer-top" href="#home">回到顶部 <span aria-hidden="true">↑</span></a><span class="chapter-count">06 / 06</span></footer>
+        <footer class="site-footer"><a class="wordmark" href="#home" aria-label="loveuhqq 回到首页">loveuhqq<span class="footer-heart" aria-hidden="true">♡</span></a><p>这些日子，一起慢慢记住。</p><a class="footer-top" href="#home">回到顶部 <span aria-hidden="true">↑</span></a><span class="chapter-count">06 / 06</span></footer>
       </section>
     </main>
 
