@@ -32,5 +32,6 @@ import '../styles/global.css';
         {photos.map((photo, index) => <a class="album-photo" id={'photo-' + (index + 1)} href={photo.src} aria-label={'查看原图：' + photo.title + '（' + photoStatusLabels[photo.status] + '）'}><img src={photo.src} alt={photo.alt} width="800" height="1000" loading="lazy" decoding="async" /><span>{photoStatusLabels[photo.status]} · {photo.title}</span></a>)}
       </div> : <div class="album-empty"><span aria-hidden="true">♡</span><p>照片待添加</p></div>}
     </main>
+    <script src="../scripts/micro-interactions.ts"></script>
   </body>
 </html>

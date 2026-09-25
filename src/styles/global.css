@@ -95,7 +95,16 @@ img { display: block; max-width: 100%; }
 .hero .intro { margin-top: 1.7rem; font-size: clamp(.95rem, 1.3vw, 1.12rem); line-height: 1.9; color: var(--muted); letter-spacing: .035em; }
 .hero .button { margin-top: 2rem; }
 .hero-visual { height: min(37rem, 65dvh); min-height: 25rem; display: flex; flex-direction: column; align-items: center; justify-content: center; }
-.paper-heart { width: clamp(17rem, 29vw, 23rem); height: auto; flex: none; }
+.paper-heart-tilt { flex: none; transform: perspective(800px) rotateX(var(--tilt-x, 0deg)) rotateY(var(--tilt-y, 0deg)); transition: transform 260ms var(--ease); }
+.paper-heart { width: clamp(17rem, 29vw, 23rem); height: auto; animation: heart-breathe 4.6s ease-in-out infinite; }
+@keyframes heart-breathe {
+  0%, 100% { transform: translateY(0) scale(1); filter: drop-shadow(0 8px 12px #d98ca833); }
+  50% { transform: translateY(-6px) scale(1.02); filter: drop-shadow(0 13px 17px #d98ca855); }
+}
+.floating-heart { position: fixed; z-index: 1000; pointer-events: none; color: var(--heart-color); font: 1.25rem Georgia, serif; line-height: 1; transform: translate(-50%, -50%); animation: heart-float 900ms ease-out forwards; }
+@keyframes heart-float {
+  to { opacity: 0; transform: translate(calc(-50% + var(--drift-x)), -66px) rotate(var(--heart-rotation)); }
+}
 .relationship { position: relative; z-index: 1; width: min(65%, 18rem); margin-top: -1.25rem; padding: 1rem 1.4rem; border-radius: 1.4rem; text-align: center; }
 .day-counter > p:first-child { color: var(--muted); font-size: .75rem; letter-spacing: .08em; }
 .day-counter > p:last-child { display: flex; align-items: baseline; justify-content: center; gap: .55rem; margin-top: .1rem; }
