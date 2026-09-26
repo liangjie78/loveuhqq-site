@@ -16,7 +16,7 @@ function refreshDates() {
   counter.hidden = anniversaryDay < 1;
   const upcoming = getUpcomingAnniversary(now);
   document.querySelector<HTMLElement>('[data-milestone-heading]')!.textContent = '下一个';
-  document.querySelector<HTMLElement>('[data-milestone-ending]')!.textContent = '值得期待的日子。';
+  document.querySelector<HTMLElement>('[data-milestone-ending]')!.textContent = '时间节点。';
   milestoneTitle.textContent = upcoming.title;
   milestoneDate.dateTime = upcoming.date;
   milestoneDate.textContent = upcoming.date.replaceAll('-', '.');
