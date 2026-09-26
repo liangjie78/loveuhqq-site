@@ -51,11 +51,13 @@
 
 - `src/pages/index.astro`：内容和页面结构。
 - `src/pages/photos.astro`：独立相册页。
+- `src/pages/404.astro`：柔粉毛玻璃 404 错误页。
 - `src/components/PassphraseGate.astro`：柔粉毛玻璃暗号门禁组件。
 - `src/styles/global.css`：排版、响应式、暗号门禁和动效。
 - `src/scripts/keepsake.ts`：日期刷新、导航和相册。
 - `src/scripts/passphrase-gate.ts`：暗号门禁控制逻辑与焦点捕获。
 - `src/data/photos.ts`、`public/images/`：相册数据与本地素材。
+- `public/robots.txt`：搜索引擎防收录规则。
 - `public/_headers`：静态资源的浏览器安全响应头。
 - `src/lib/anniversary.ts`、`tests/anniversary.test.mjs`：日期计算与边界测试。
 - `src/lib/passphrase.ts`、`tests/passphrase.test.mjs`：暗号哈希校验与单元测试。

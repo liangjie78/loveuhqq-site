@@ -1,0 +1,3 @@
+# loveuhqq — 私人纪念网站，不需要搜索引擎收录
+User-agent: *
+Disallow: /
