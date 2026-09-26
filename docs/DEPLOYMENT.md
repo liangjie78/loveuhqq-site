@@ -66,4 +66,13 @@
 - 真实线上 Chrome 在 1440×900 和 390×844 下均 HTTP 200，主标题、实时相恋第 84 天、起始日期和信封正常显示；页面无水平溢出、脚本错误或失败资源。线上检查未模拟时间；其他浏览器及真机尚未验证。
 - 权威服务器 `arya.ns.cloudflare.com` 返回 A：`172.67.166.139`、`104.21.65.200`；Custom Domain API 确认目标为本 Worker 的 production 环境，未修改 DNS 或其他站点。
 
+## 全屏纪念册与微动效发布（2026-09-26，Asia/Shanghai）
+
+- 用户明确授权生产部署后，从已合并 PR #7~#15 的干净 `main` 提交 `bd1a87754b5df636eb2c34960309e530965d4b53` 执行发布；发布前已通过 `npm run deploy:preview` 部署至独立预览环境 `loveuhqq-site-preview` 检验。
+- 12 项日期与里程碑单元测试全部通过，Astro 静态构建成功。
+- 项目级 Wrangler 部署至 `loveuhqq-site`，绑定正式 Custom Domain `loveuhqq.x23.shop`。生产版本 ID：`3a7ec481-b831-42ed-9a4d-6ce62b9f8b5d`，Cloudflare Deployments 确认流量 100%。
+- 权威 DNS `arya.ns.cloudflare.com` 解析正常。
+- 线上正式站 `https://loveuhqq.x23.shop/`、`/photos/`、`/_astro/global.CAHae9LS.css` 与 `/favicon.svg` 均返回 HTTPS 200。
+- 正文包含完整的六屏章节结构（首页、故事、照片、心里话、纪念日、未来）、纸质爱心倾斜与漂浮微交互、实时相恋天数与第 100 天倒计时。
+
 参考：[Cloudflare Static Assets](https://developers.cloudflare.com/workers/static-assets/)。
