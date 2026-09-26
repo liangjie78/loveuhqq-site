@@ -87,6 +87,13 @@
 - 用户明确授权合并 PR #19 并执行生产部署。合并提交 `6f4769c`，18 项单元测试全部通过。
 - 采用项目级 Wrangler 部署至 `loveuhqq-site`，绑定正式 Custom Domain `loveuhqq.x23.shop`。生产版本 ID：`ed3f3ef9-b937-4535-998e-211099293a16`，Cloudflare Deployments 确认流量 100%。
 - 权威 DNS 解析正常，首页 `https://loveuhqq.x23.shop` 及 `/photos/` 均返回 HTTPS 200。
-- 线上正式站全站文案重构为极简克制、备忘录记录风格：门禁更新为“访问验证 / 输入起始日期（如 0701）以继续浏览 / 进入”，心里话更新为“记录生活，慢慢往前走”，去除多余煽情与爱心符号。
+## 站点加固、404 与元数据正式上线（2026-09-26，Asia/Shanghai）
+
+- 用户明确授权合并 PR #21 并执行生产部署。合并提交 `4c0ad0b`，18 项单元测试全部通过。
+- 采用项目级 Wrangler 部署至 `loveuhqq-site`，绑定正式 Custom Domain `loveuhqq.x23.shop`。生产版本 ID：`7b4a9754-cb38-47f0-829b-1f68c1a5044a`，Cloudflare Deployments 确认流量 100%。
+- 权威 DNS 解析正常，首页 `https://loveuhqq.x23.shop/`、`/photos/` 均返回 HTTPS 200。
+- 新增 `public/robots.txt`，设置 `Disallow: /` 保护私人纪念册隐私，线上验证 `GET /robots.txt` 返回 200 及规则内容。
+- 新增柔粉毛玻璃 404 错误页及 Cloudflare `not_found_handling: "404-page"` 配置，线上验证任意不存在路径返回 HTTP 404 及统一毛玻璃页面。
+- 升级安全头 HSTS 为 `max-age=31536000; includeSubDomains`（1 年），全站补充 Open Graph 社交分享元标签。
 
 参考：[Cloudflare Static Assets](https://developers.cloudflare.com/workers/static-assets/)。
