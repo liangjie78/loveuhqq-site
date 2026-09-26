@@ -1,5 +1,6 @@
 ---
 import { getPhotoSummary, photoStatusLabels, photos } from '../data/photos';
+import PassphraseGate from '../components/PassphraseGate.astro';
 import '../styles/global.css';
 ---
 
@@ -13,6 +14,14 @@ import '../styles/global.css';
     <meta name="theme-color" content="#f8edf1" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <title>更多照片 · loveuhqq</title>
+    <script is:inline>
+      try {
+        const k = 'loveuhqq_auth';
+        if (localStorage.getItem(k) !== 'unlocked' && sessionStorage.getItem(k) !== 'unlocked') {
+          document.documentElement.classList.add('is-locked');
+        }
+      } catch (e) {}
+    </script>
   </head>
   <body class="album-page">
     <a class="skip-link" href="#album-main">跳到正文</a>
@@ -32,6 +41,7 @@ import '../styles/global.css';
         {photos.map((photo, index) => <a class="album-photo" id={'photo-' + (index + 1)} href={photo.src} aria-label={'查看原图：' + photo.title + '（' + photoStatusLabels[photo.status] + '）'}><img src={photo.src} alt={photo.alt} width="800" height="1000" loading="lazy" decoding="async" /><span>{photoStatusLabels[photo.status]} · {photo.title}</span></a>)}
       </div> : <div class="album-empty"><span aria-hidden="true">♡</span><p>照片待添加</p></div>}
     </main>
+    <PassphraseGate />
     <script src="../scripts/micro-interactions.ts"></script>
   </body>
 </html>

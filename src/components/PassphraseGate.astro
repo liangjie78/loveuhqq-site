@@ -1,0 +1,40 @@
+---
+---
+<div class="passphrase-backdrop" id="passphrase-gate">
+  <div
+    class="passphrase-card glass-panel"
+    id="passphrase-card"
+    role="dialog"
+    aria-modal="true"
+    aria-labelledby="gate-title"
+    aria-describedby="gate-desc"
+  >
+    <div class="passphrase-heart" aria-hidden="true">♡</div>
+    <p class="eyebrow">FOR YOU, ALWAYS</p>
+    <h2 id="gate-title">属于我们的暗号</h2>
+    <p id="gate-desc" class="passphrase-tip">输入纪念日（如 0701）或专属暗号开启</p>
+
+    <form class="passphrase-form" id="passphrase-form" autocomplete="off">
+      <div class="passphrase-input-wrap">
+        <input
+          type="password"
+          id="passphrase-input"
+          class="passphrase-input"
+          placeholder="输入纪念日或暗号..."
+          required
+          autocomplete="current-password"
+          aria-label="纪念暗号"
+        />
+        <button type="submit" class="passphrase-submit button button-primary">
+          <span>开启 ♡</span>
+        </button>
+      </div>
+      <p class="passphrase-error" id="passphrase-error" role="alert" hidden>好像不对哦，再想一想 ♡</p>
+      <label class="passphrase-remember">
+        <input type="checkbox" id="passphrase-remember" checked />
+        <span>记住这台设备（下次免输入）</span>
+      </label>
+    </form>
+  </div>
+</div>
+<script src="../scripts/passphrase-gate.ts"></script>

@@ -1,6 +1,7 @@
 ---
 import { relationshipStartDate, hundredthDayDate } from '../lib/anniversary';
 import { getPhotoSummary, photoStatusLabels, photos } from '../data/photos';
+import PassphraseGate from '../components/PassphraseGate.astro';
 import '../styles/global.css';
 
 const startDateLabel = relationshipStartDate.replaceAll('-', '.');
@@ -26,6 +27,14 @@ const chapters = [
     <meta name="theme-color" content="#f8edf1" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <title>爱你，何青青。 · loveuhqq</title>
+    <script is:inline>
+      try {
+        const k = 'loveuhqq_auth';
+        if (localStorage.getItem(k) !== 'unlocked' && sessionStorage.getItem(k) !== 'unlocked') {
+          document.documentElement.classList.add('is-locked');
+        }
+      } catch (e) {}
+    </script>
   </head>
   <body>
     <a class="skip-link" href="#home">跳到正文</a>
@@ -120,7 +129,13 @@ const chapters = [
           <div class="future-copy" data-reveal><p class="eyebrow">05 — TO BE CONTINUED</p><h2 id="future-title">写给未来。<br /><span class="accent">未完待续……</span></h2><p class="section-description">后面的事，谁也说不准。但我想跟你一起看看。</p><a class="button button-secondary" href="#home">回到第一眼 <span aria-hidden="true">↑</span></a></div>
           <div class="future-letter" data-reveal><img src="/images/envelope.webp" alt="" width="800" height="1000" loading="lazy" decoding="async" aria-hidden="true" /><div class="future-caption"><p class="pill-label">信件待写</p><h3>写给第 100 天的我们</h3><p class="date">纪念日 <time datetime={hundredthDayDate}>{hundredthDayLabel}</time></p></div></div>
         </div>
-        <footer class="site-footer"><a class="wordmark" href="#home" aria-label="loveuhqq 回到首页">loveuhqq<span class="footer-heart" aria-hidden="true">♡</span></a><p>这些日子，一起慢慢记住。</p><a class="footer-top" href="#home">回到顶部 <span aria-hidden="true">↑</span></a><span class="chapter-count">06 / 06</span></footer>
+        <footer class="site-footer">
+          <a class="wordmark" href="#home" aria-label="loveuhqq 回到首页">loveuhqq<span class="footer-heart" aria-hidden="true">♡</span></a>
+          <p>这些日子，一起慢慢记住。</p>
+          <button type="button" class="lock-toggle" data-lock-site aria-label="锁定纪念册">锁定</button>
+          <a class="footer-top" href="#home">回到顶部 <span aria-hidden="true">↑</span></a>
+          <span class="chapter-count">06 / 06</span>
+        </footer>
       </section>
     </main>
 
@@ -129,6 +144,7 @@ const chapters = [
       <div class="dialog-body"><img data-gallery-image alt="" width="800" height="1000" /><p id="gallery-description">这是用于预览版式的示意图片，之后可替换为真实照片。</p></div>
       <div class="dialog-footer"><button class="icon-button" type="button" data-gallery-previous aria-label="上一张图片">←</button><p data-gallery-caption aria-live="polite" aria-atomic="true"></p><button class="icon-button" type="button" data-gallery-next aria-label="下一张图片">→</button></div>
     </dialog>
+    <PassphraseGate />
     <script src="../scripts/keepsake.ts"></script>
     <script src="../scripts/micro-interactions.ts"></script>
   </body>
