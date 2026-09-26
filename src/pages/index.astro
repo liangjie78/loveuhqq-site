@@ -52,7 +52,7 @@ const chapters = [
             <a class="button button-primary" href="#story">往下看我们的故事 <span aria-hidden="true">↗</span></a>
           </div>
           <div class="hero-visual" data-reveal>
-            <img class="paper-heart" src="/images/paper-heart.webp" alt="" width="900" height="900" decoding="async" />
+            <div class="paper-heart-tilt"><img class="paper-heart" src="/images/paper-heart.webp" alt="" width="900" height="900" decoding="async" /></div>
             <div class="relationship glass-panel">
               <div class="day-counter" data-anniversary-count hidden><p>我们在一起的第</p><p><strong data-anniversary-day></strong><span class="day-unit">天</span></p></div>
               <p class="date">始于 <time datetime={relationshipStartDate}>{startDateLabel}</time></p>
@@ -124,5 +124,6 @@ const chapters = [
       <div class="dialog-footer"><button class="icon-button" type="button" data-gallery-previous aria-label="上一张图片">←</button><p data-gallery-caption aria-live="polite" aria-atomic="true"></p><button class="icon-button" type="button" data-gallery-next aria-label="下一张图片">→</button></div>
     </dialog>
     <script src="../scripts/keepsake.ts"></script>
+    <script src="../scripts/micro-interactions.ts"></script>
   </body>
 </html>
