@@ -168,8 +168,11 @@ img { display: block; max-width: 100%; }
 .album-photo span { display: block; padding: 1rem; font-size: .9rem; }
 
 .message-section { background: radial-gradient(ellipse at 10% 84%, #f6d6e25c, transparent 42%), radial-gradient(ellipse at 83% 15%, #d9cce850, transparent 40%), #fcf9fb; }
-.letter-content { text-align: center; }
-.small-heading { margin-top: 1rem; font-size: 1rem; font-weight: 400; color: var(--muted); }
+.letter-content { display: grid; grid-template-columns: minmax(0, .8fr) minmax(0, 1.2fr); align-items: center; gap: clamp(3rem, 6vw, 6rem); }
+.letter-heading h2 { margin-top: 1.25rem; font-size: clamp(2.6rem, 4vw, 3.8rem); font-weight: 400; line-height: 1.3; letter-spacing: .03em; text-wrap: balance; }
+.quote-mark { display: block; height: 3.5rem; color: #c08ca3; font: 6rem/.9 Georgia, serif; }
+.letter-body blockquote { font-size: clamp(1.75rem, 2.75vw, 2.65rem); font-weight: 400; line-height: 1.55; letter-spacing: .025em; }
+.letter-signature { width: fit-content; max-width: 100%; margin-top: 2.5rem; padding-top: 1rem; border-top: 1px solid #b992a661; color: var(--muted); font-size: .9rem; line-height: 1.8; }
 .letter-placeholder { min-height: clamp(12rem, 32dvh, 18rem); margin-top: 1.5rem; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1rem; color: var(--muted); }
 .letter-placeholder > span { font-size: 3rem; line-height: 1; color: #d7b3c3; }
 .letter-placeholder p { font-size: .9rem; }
@@ -303,6 +306,11 @@ img { display: block; max-width: 100%; }
   .gallery-actions { justify-content: space-between; gap: .5rem; }
   .gallery-caption .quiet-note { font-size: .75rem; }
   .text-link { font-size: .78rem; gap: .5rem; flex-shrink: 0; }
+  .letter-content { grid-template-columns: 1fr; gap: 1.75rem; }
+  .letter-heading h2 { margin-top: .65rem; font-size: clamp(2rem, 9vw, 2.8rem); }
+  .quote-mark { height: 2.5rem; font-size: 4.5rem; }
+  .letter-body blockquote { font-size: clamp(1.5rem, 6vw, 2rem); }
+  .letter-signature { margin-top: 1.75rem; font-size: .8rem; }
   .letter-placeholder { min-height: 12rem; }
   .album-main { padding-block: calc(var(--header-height) + 3rem) 2rem; }
   .album-page { --header-height: 4rem; }
@@ -364,6 +372,10 @@ img { display: block; max-width: 100%; }
   .anniversary-start { margin-top: 1rem; }
   .future-letter img { height: 33dvh; min-height: 0; }
   .future-copy .button { margin-top: 1rem; }
+  .letter-content { gap: 1.5rem; }
+  .letter-heading h2 { font-size: 2.5rem; }
+  .letter-body blockquote { font-size: 1.8rem; }
+  .letter-signature { margin-top: 1rem; }
   .letter-placeholder { min-height: 8rem; margin-top: .5rem; }
 }
 @media (max-width: 700px) and (max-height: 700px) {
@@ -390,6 +402,11 @@ img { display: block; max-width: 100%; }
   .photos-heading { margin-bottom: .8rem; }
   .photos-heading h2 { font-size: 1.8rem; margin-top: .6rem; }
   .gallery-caption { margin-top: .3rem; }
+  .letter-content { gap: .75rem; }
+  .letter-heading h2 { font-size: 1.9rem; }
+  .quote-mark { height: 1.5rem; font-size: 3rem; }
+  .letter-body blockquote { font-size: 1.3rem; }
+  .letter-signature { margin-top: .5rem; padding-top: .5rem; }
   .milestone { padding: 1.15rem; }
   .anniversary-start { display: none; }
   .countdown { margin-block: .5rem; }
@@ -434,7 +451,11 @@ img { display: block; max-width: 100%; }
   .countdown { margin-block: .4rem; }
   .countdown strong { font-size: 3.5rem; }
   .milestone-bottom { padding-top: .5rem; }
-  .small-heading { margin-top: .5rem; font-size: .8rem; }
+  .letter-content { gap: 1.5rem; }
+  .letter-heading h2 { margin-top: .5rem; font-size: 2rem; }
+  .quote-mark { height: 2rem; font-size: 3.5rem; }
+  .letter-body blockquote { font-size: 1.5rem; }
+  .letter-signature { margin-top: 1rem; padding-top: .5rem; font-size: .75rem; }
   .letter-placeholder { min-height: 7rem; margin-top: 0; }
   .future-letter { display: flex; flex-direction: column; gap: 0; }
   .future-letter img { height: 27dvh; }
