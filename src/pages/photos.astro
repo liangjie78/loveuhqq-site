@@ -13,7 +13,7 @@ import '../styles/global.css';
     <meta name="color-scheme" content="light" />
     <meta name="theme-color" content="#f8edf1" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
-    <title>更多照片 · loveuhqq</title>
+    <title>照片相册 · loveuhqq</title>
     <script is:inline>
       try {
         const k = 'loveuhqq_auth';
@@ -28,18 +28,18 @@ import '../styles/global.css';
     <header class="site-header">
       <div class="header-inner">
         <a class="wordmark" href="/#home" aria-label="loveuhqq 回到首页"><span class="brand-mark" aria-hidden="true">lq.</span><span>loveuhqq</span></a>
-        <a class="album-return" href="/#photos">← 返回纪念册</a>
+        <a class="album-return" href="/#photos">← 返回</a>
       </div>
     </header>
     <main class="album-main" id="album-main">
       <div class="album-heading">
-        <p class="eyebrow">LITTLE MOMENTS</p>
-        <h1>更多照片</h1>
+        <p class="eyebrow">PHOTOS</p>
+        <h1>照片相册</h1>
         <p class="section-description">{getPhotoSummary(photos)}</p>
       </div>
       {photos.length > 0 ? <div class="album-grid">
         {photos.map((photo, index) => <a class="album-photo" id={'photo-' + (index + 1)} href={photo.src} aria-label={'查看原图：' + photo.title + '（' + photoStatusLabels[photo.status] + '）'}><img src={photo.src} alt={photo.alt} width="800" height="1000" loading="lazy" decoding="async" /><span>{photoStatusLabels[photo.status]} · {photo.title}</span></a>)}
-      </div> : <div class="album-empty"><span aria-hidden="true">♡</span><p>照片待添加</p></div>}
+      </div> : <div class="album-empty"><p>照片待添加</p></div>}
     </main>
     <PassphraseGate />
     <script src="../scripts/micro-interactions.ts"></script>
