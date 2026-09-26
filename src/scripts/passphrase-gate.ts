@@ -40,14 +40,14 @@ if (gate && card && form && input && errorMsg && remember) {
       if (reducedMotion.matches) {
         document.documentElement.classList.remove('is-locked');
         gate.hidden = true;
-        document.querySelector<HTMLElement>('main, #letter-title, #album-main')?.focus();
+        (document.querySelector<HTMLElement>('#album-main') ?? document.querySelector<HTMLElement>('main'))?.focus();
       } else {
         card.classList.add('is-unlocking');
         window.setTimeout(() => {
           document.documentElement.classList.remove('is-locked');
           gate.hidden = true;
           card.classList.remove('is-unlocking');
-          document.querySelector<HTMLElement>('main, #letter-title, #album-main')?.focus();
+          (document.querySelector<HTMLElement>('#album-main') ?? document.querySelector<HTMLElement>('main'))?.focus();
         }, 300);
       }
     } else {
