@@ -75,4 +75,11 @@
 - 线上正式站 `https://loveuhqq.x23.shop/`、`/photos/`、`/_astro/global.CAHae9LS.css` 与 `/favicon.svg` 均返回 HTTPS 200。
 - 正文包含完整的六屏章节结构（首页、故事、照片、心里话、纪念日、未来）、纸质爱心倾斜与漂浮微交互、实时相恋天数与第 100 天倒计时。
 
+## 柔粉毛玻璃暗号门禁正式上线（2026-09-26，Asia/Shanghai）
+
+- 用户明确授权合并 PR #16 与 PR #17 并执行生产部署。合并提交 `a23bb5f`，构建前验证 18 项单元测试全部通过。
+- 采用项目级 Wrangler 部署至 `loveuhqq-site`，绑定正式 Custom Domain `loveuhqq.x23.shop`。生产版本 ID：`0ebd5703-135e-4357-b55e-5f5a55e4e5a3`，Cloudflare Deployments 确认流量 100%。
+- 权威 DNS 解析正常，首页 `https://loveuhqq.x23.shop`、`/photos/`、暗号门禁独立 JS 模块 `/_astro/PassphraseGate.astro_astro_type_script_index_0_lang.D1fjZHIY.js` 及样式表 `/_astro/global.aU2QPjIt.css` 均返回 HTTPS 200。
+- 线上正式站默认呈现居中柔粉毛玻璃暗号门禁与高斯模糊遮罩；输入双方专属暗号（如 `0701` 或 `20260701`）可平滑解锁；支持“记住这台设备”免密回访；页脚包含“锁定”按钮支持随时重新上锁保护。
+
 参考：[Cloudflare Static Assets](https://developers.cloudflare.com/workers/static-assets/)。
