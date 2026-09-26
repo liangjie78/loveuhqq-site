@@ -209,6 +209,8 @@ img { display: block; max-width: 100%; }
 .footer-heart { color: var(--rose); font-size: 1.3rem; }
 .site-footer > p { font-size: .75rem; }
 .footer-top { display: flex; align-items: center; gap: 1rem; min-height: 2.75rem; font-size: .75rem; }
+.lock-toggle { display: inline-flex; align-items: center; min-height: 2.75rem; font-size: .75rem; color: var(--muted); transition: color 160ms; }
+.lock-toggle:hover { color: var(--rose); }
 .site-footer .chapter-count { display: none; }
 
 .gallery-open, .gallery-open body { overflow: hidden; }
@@ -469,6 +471,146 @@ img { display: block; max-width: 100%; }
   .site-footer > p { display: none; }
   .bottom-note { display: none; }
 }
+
+/* Passphrase Gate */
+html.is-locked body {
+  overflow: hidden;
+  height: 100vh;
+  height: 100dvh;
+}
+html.is-locked main,
+html.is-locked .site-header,
+html.is-locked .chapter-nav {
+  filter: blur(14px);
+  pointer-events: none;
+  user-select: none;
+  -webkit-user-select: none;
+}
+.passphrase-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  display: grid;
+  place-items: center;
+  padding: 1.5rem;
+  background: rgba(252, 248, 250, 0.65);
+  -webkit-backdrop-filter: blur(18px);
+  backdrop-filter: blur(18px);
+}
+.passphrase-card {
+  width: 100%;
+  max-width: 25rem;
+  padding: 2.2rem 2rem;
+  border-radius: 1.5rem;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.65rem;
+  box-shadow: 0 30px 80px -20px rgba(131, 82, 108, 0.25), inset 0 1px 0 rgba(255, 255, 255, 0.9);
+}
+.passphrase-heart {
+  font-size: 2rem;
+  color: var(--rose);
+  animation: heart-pulse 2.8s ease-in-out infinite;
+}
+@keyframes heart-pulse {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.15); }
+}
+.passphrase-card h2 {
+  font-size: 1.6rem;
+  font-weight: 500;
+  letter-spacing: 0.04em;
+  color: var(--ink);
+  margin-top: 0.2rem;
+}
+.passphrase-tip {
+  font-size: 0.85rem;
+  color: var(--muted);
+  line-height: 1.6;
+  margin-bottom: 0.5rem;
+}
+.passphrase-form {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 0.8rem;
+  align-items: center;
+}
+.passphrase-input-wrap {
+  width: 100%;
+  display: flex;
+  gap: 0.5rem;
+}
+.passphrase-input {
+  flex: 1;
+  min-width: 0;
+  min-height: 3.1rem;
+  padding: 0.6rem 1rem;
+  border-radius: 99px;
+  border: 1px solid rgba(87, 52, 74, 0.2);
+  background: rgba(255, 255, 255, 0.85);
+  font-size: 0.9rem;
+  color: var(--ink);
+  text-align: center;
+  letter-spacing: 0.08em;
+  transition: border-color 160ms, box-shadow 160ms;
+}
+.passphrase-input:focus {
+  outline: none;
+  border-color: var(--rose);
+  box-shadow: 0 0 0 3px rgba(163, 71, 104, 0.15);
+}
+.passphrase-input[aria-invalid="true"] {
+  border-color: #e11d48;
+}
+.passphrase-submit {
+  padding: 0.6rem 1.3rem;
+  min-height: 3.1rem;
+  font-size: 0.85rem;
+  white-space: nowrap;
+  flex: none;
+}
+.passphrase-error {
+  font-size: 0.8rem;
+  color: #e11d48;
+  margin: 0;
+}
+.passphrase-remember {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.75rem;
+  color: var(--muted);
+  cursor: pointer;
+  user-select: none;
+  margin-top: 0.2rem;
+}
+.passphrase-remember input[type="checkbox"] {
+  accent-color: var(--rose);
+  cursor: pointer;
+  width: 0.9rem;
+  height: 0.9rem;
+}
+.passphrase-card.is-unlocking {
+  animation: card-unlock 300ms cubic-bezier(.22, 1, .36, 1) forwards;
+}
+@keyframes card-unlock {
+  to {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+}
+.passphrase-card.is-shaking {
+  animation: gentle-shake 380ms ease;
+}
+@keyframes gentle-shake {
+  0%, 100% { transform: translateX(0); }
+  20%, 60% { transform: translateX(-6px); }
+  40%, 80% { transform: translateX(6px); }
+}
+
 @media (prefers-reduced-motion: reduce) {
   :root { scroll-behavior: auto; }
   *, *::before, *::after { animation: none !important; transition: none !important; }
