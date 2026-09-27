@@ -8,7 +8,7 @@ if (heartArea && heartTilt) {
   let pointerX = 0;
   let pointerY = 0;
 
-  heartArea.addEventListener('mousemove', (event) => {
+  const handleMouseMove = (event: MouseEvent) => {
     if (!finePointer.matches || reducedMotion.matches) return;
     pointerX = event.clientX;
     pointerY = event.clientY;
@@ -21,7 +21,7 @@ if (heartArea && heartTilt) {
       heartTilt.style.setProperty('--tilt-x', `${(-y * 4).toFixed(2)}deg`);
       heartTilt.style.setProperty('--tilt-y', `${(x * 4).toFixed(2)}deg`);
     });
-  });
+  };
 
   const resetTilt = () => {
     cancelAnimationFrame(frame);
@@ -29,17 +29,29 @@ if (heartArea && heartTilt) {
     heartTilt.style.removeProperty('--tilt-x');
     heartTilt.style.removeProperty('--tilt-y');
   };
-  heartArea.addEventListener('mouseleave', resetTilt);
+
+  // 使用 passive listener 提升滚动性能
+  heartArea.addEventListener('mousemove', handleMouseMove, { passive: true });
+  heartArea.addEventListener('mouseleave', resetTilt, { passive: true });
   reducedMotion.addEventListener('change', resetTilt);
   finePointer.addEventListener('change', resetTilt);
 }
 
 const heartColors = ['#f472b6', '#fb7185', '#fda4af'];
 
+// 使用事件委托和节流优化点击特效
+let lastHeartTime = 0;
+const HEART_THROTTLE = 100; // 限制100ms内只能触发一次
+
 document.addEventListener('click', (event) => {
   if (reducedMotion.matches || event.detail === 0) return;
+
+  const now = Date.now();
+  if (now - lastHeartTime < HEART_THROTTLE) return;
+  lastHeartTime = now;
+
   const target = event.target;
-  if (target instanceof Element && (target.closest('input, textarea, select') || (target instanceof HTMLElement && target.isContentEditable))) return;
+  if (target instanceof Element && (target.closest('input, textarea, select, button, a') || (target instanceof HTMLElement && target.isContentEditable))) return;
 
   const heart = document.createElement('span');
   heart.className = 'floating-heart';
@@ -58,4 +70,4 @@ document.addEventListener('click', (event) => {
   const fallback = window.setTimeout(cleanup, 1000);
   heart.addEventListener('animationend', cleanup, { once: true });
   (document.querySelector('dialog[open]') ?? document.body).append(heart);
-});
+}, { passive: true });

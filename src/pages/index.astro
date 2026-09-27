@@ -25,14 +25,47 @@ const chapters = [
     <meta name="description" content={'爱你，何青青。日子没什么特别的，但因为有你在，好像也值得记一记。始于 ' + startDateLabel + '。'} />
     <meta name="color-scheme" content="light" />
     <meta name="theme-color" content="#f8edf1" />
+
+    <!-- Open Graph / Facebook -->
     <meta property="og:title" content="爱你，何青青。" />
     <meta property="og:description" content={'日子没什么特别的，但因为有你在，好像也值得记一记。始于 ' + startDateLabel + '。'} />
     <meta property="og:type" content="website" />
     <meta property="og:url" content="https://loveuhqq.x23.shop/" />
     <meta property="og:image" content="https://loveuhqq.x23.shop/images/paper-heart.webp" />
     <meta property="og:locale" content="zh_CN" />
+
+    <!-- Twitter Card -->
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="爱你，何青青。" />
+    <meta name="twitter:description" content={'日子没什么特别的，但因为有你在，好像也值得记一记。始于 ' + startDateLabel + '。'} />
+    <meta name="twitter:image" content="https://loveuhqq.x23.shop/images/paper-heart.webp" />
+
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="manifest" href="/manifest.json" />
+    <link rel="sitemap" type="application/xml" href="/sitemap.xml" />
+
+    <!-- 预加载关键资源 -->
+    <link rel="preload" href="/images/paper-heart.webp" as="image" type="image/webp" fetchpriority="high" />
+    <link rel="dns-prefetch" href="https://loveuhqq.x23.shop" />
+
     <title>爱你，何青青。 · loveuhqq</title>
+
+    <!-- 结构化数据 (JSON-LD) -->
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@type": "WebSite",
+        "name": "loveuhqq",
+        "description": "日子没什么特别的，但因为有你在，好像也值得记一记。",
+        "url": "https://loveuhqq.x23.shop/",
+        "inLanguage": "zh-CN",
+        "datePublished": "2026-07-01",
+        "author": {
+          "@type": "Person",
+          "name": "loveuhqq"
+        }
+      }
+    </script>
     <script is:inline>
       try {
         const k = 'loveuhqq_auth';
@@ -67,7 +100,7 @@ const chapters = [
             <a class="button button-primary" href="#story">查看记录 <span aria-hidden="true">↗</span></a>
           </div>
           <div class="hero-visual" data-reveal>
-            <div class="paper-heart-tilt"><img class="paper-heart" src="/images/paper-heart.webp" alt="" width="900" height="900" decoding="async" /></div>
+            <div class="paper-heart-tilt"><img class="paper-heart" src="/images/paper-heart.webp" alt="" width="900" height="900" decoding="async" fetchpriority="high" /></div>
             <div class="relationship glass-panel">
               <div class="day-counter" data-anniversary-count hidden><p>走过的第</p><p><strong data-anniversary-day></strong><span class="day-unit">天</span></p></div>
               <p class="date">始于 <time datetime={relationshipStartDate}>{startDateLabel}</time></p>
@@ -133,7 +166,7 @@ const chapters = [
       <section class="chapter future-section" id="future" aria-labelledby="future-title" tabindex="-1">
         <div class="chapter-inner future-content">
           <div class="future-copy" data-reveal><p class="eyebrow">05 — FUTURE</p><h2 id="future-title">往后。<br /><span class="accent">未完待续。</span></h2><p class="section-description">时间向前，留给以后的记录。</p><a class="button button-secondary" href="#home">回到顶部 <span aria-hidden="true">↑</span></a></div>
-          <div class="future-letter" data-reveal><img src="/images/envelope.webp" alt="" width="800" height="1000" loading="lazy" decoding="async" aria-hidden="true" /><div class="future-caption"><p class="pill-label">待写</p><h3>第 100 天备忘</h3><p class="date">纪念日 <time datetime={hundredthDayDate}>{hundredthDayLabel}</time></p></div></div>
+          <div class="future-letter" data-reveal><img src="/images/envelope.webp" alt="" width="800" height="1000" loading="lazy" decoding="async" fetchpriority="low" aria-hidden="true" /><div class="future-caption"><p class="pill-label">待写</p><h3>第 100 天备忘</h3><p class="date">纪念日 <time datetime={hundredthDayDate}>{hundredthDayLabel}</time></p></div></div>
         </div>
         <footer class="site-footer">
           <a class="wordmark" href="#home" aria-label="loveuhqq 回到首页">loveuhqq</a>

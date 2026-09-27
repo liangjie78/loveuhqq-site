@@ -32,9 +32,9 @@ function refreshDates() {
 refreshDates();
 document.addEventListener('visibilitychange', () => {
   if (document.visibilityState === 'visible') refreshDates();
-});
-window.addEventListener('pageshow', refreshDates);
-window.addEventListener('pagehide', () => window.clearTimeout(midnightTimer));
+}, { passive: true });
+window.addEventListener('pageshow', refreshDates, { passive: true });
+window.addEventListener('pagehide', () => window.clearTimeout(midnightTimer), { passive: true });
 
 const menuToggle = document.querySelector<HTMLButtonElement>('.menu-toggle')!;
 const navigation = document.querySelector<HTMLElement>('#site-nav')!;
@@ -57,13 +57,16 @@ document.addEventListener('keydown', (event) => {
     menuToggle.focus();
   }
 });
+
+// 使用事件委托优化
 document.addEventListener('click', (event) => {
   if (!(event.target as Element).closest('.site-header')) setMenu(false);
-});
+}, { passive: true });
 
 document.addEventListener('focusin', (event) => {
   if (!(event.target as Element).closest('.site-header')) setMenu(false);
-});
+}, { passive: true });
+
 window.matchMedia('(max-width: 700px)').addEventListener('change', () => setMenu(false));
 
 const chapters = [...document.querySelectorAll<HTMLElement>('.chapter')];
@@ -126,18 +129,25 @@ galleryButton.addEventListener('click', () => openGallery(0, galleryButton));
 gallery.querySelector('.close-gallery')!.addEventListener('click', () => gallery.close());
 gallery.querySelector('[data-gallery-previous]')!.addEventListener('click', () => showPhoto(photoIndex - 1));
 gallery.querySelector('[data-gallery-next]')!.addEventListener('click', () => showPhoto(photoIndex + 1));
+
+// 键盘导航优化
 gallery.addEventListener('keydown', (event) => {
-  if (event.key === 'ArrowLeft' || event.key === 'ArrowRight') {
+  if (event.key === 'ArrowLeft') {
     event.preventDefault();
-    showPhoto(photoIndex + (event.key === 'ArrowLeft' ? -1 : 1));
+    showPhoto(photoIndex - 1);
+  } else if (event.key === 'ArrowRight') {
+    event.preventDefault();
+    showPhoto(photoIndex + 1);
   }
 });
+
 gallery.addEventListener('click', (event) => {
   if (event.target === gallery) {
     const bounds = gallery.getBoundingClientRect();
     if (event.clientX < bounds.left || event.clientX > bounds.right || event.clientY < bounds.top || event.clientY > bounds.bottom) gallery.close();
   }
 });
+
 gallery.addEventListener('close', () => {
   document.documentElement.classList.remove('gallery-open');
   galleryTrigger?.focus({ preventScroll: true });

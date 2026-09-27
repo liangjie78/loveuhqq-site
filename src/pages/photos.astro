@@ -12,14 +12,37 @@ import '../styles/global.css';
     <meta name="description" content="loveuhqq 的照片相册。" />
     <meta name="color-scheme" content="light" />
     <meta name="theme-color" content="#f8edf1" />
+
+    <!-- Open Graph -->
     <meta property="og:title" content="照片相册 · loveuhqq" />
     <meta property="og:description" content="loveuhqq 的照片相册。" />
     <meta property="og:type" content="website" />
     <meta property="og:url" content="https://loveuhqq.x23.shop/photos/" />
     <meta property="og:image" content="https://loveuhqq.x23.shop/images/paper-heart.webp" />
     <meta property="og:locale" content="zh_CN" />
+
+    <!-- Twitter Card -->
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="照片相册 · loveuhqq" />
+    <meta name="twitter:description" content="loveuhqq 的照片相册。" />
+
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="manifest" href="/manifest.json" />
+    <link rel="canonical" href="https://loveuhqq.x23.shop/photos/" />
+
     <title>照片相册 · loveuhqq</title>
+
+    <!-- 结构化数据 -->
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@type": "ImageGallery",
+        "name": "照片相册",
+        "description": "loveuhqq 的照片相册",
+        "url": "https://loveuhqq.x23.shop/photos/",
+        "inLanguage": "zh-CN"
+      }
+    </script>
     <script is:inline>
       try {
         const k = 'loveuhqq_auth';

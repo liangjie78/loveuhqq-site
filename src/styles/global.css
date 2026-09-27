@@ -1,5 +1,12 @@
 @charset "UTF-8";
 
+/* 优化字体加载 */
+@supports (font-display: swap) {
+  * {
+    font-display: swap;
+  }
+}
+
 :root {
   color-scheme: light;
   --paper: #fcfafb;
@@ -19,7 +26,18 @@
   -webkit-text-size-adjust: 100%;
   text-size-adjust: 100%;
 }
-* { box-sizing: border-box; }
+
+/* 优化渲染性能 */
+* {
+  box-sizing: border-box;
+}
+
+/* 使用 content-visibility 优化长列表渲染 */
+.chapter {
+  content-visibility: auto;
+  contain-intrinsic-size: auto 100vh;
+}
+
 body, h1, h2, h3, p, blockquote, ol { margin: 0; }
 body { min-width: 0; }
 button, a { -webkit-tap-highlight-color: transparent; }
