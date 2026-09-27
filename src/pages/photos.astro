@@ -1,76 +1,44 @@
 ---
+import Page from '../layouts/Page.astro';
+import SiteHeader from '../components/SiteHeader.astro';
+import Lightbox from '../components/Lightbox.astro';
 import { getPhotoSummary, photoStatusLabels, photos } from '../data/photos';
-import PassphraseGate from '../components/PassphraseGate.astro';
-import '../styles/global.css';
 ---
 
-<!doctype html>
-<html lang="zh-CN">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-    <meta name="description" content="loveuhqq 的照片相册。" />
-    <meta name="color-scheme" content="light" />
-    <meta name="theme-color" content="#f8edf1" />
-
-    <!-- Open Graph -->
-    <meta property="og:title" content="照片相册 · loveuhqq" />
-    <meta property="og:description" content="loveuhqq 的照片相册。" />
-    <meta property="og:type" content="website" />
-    <meta property="og:url" content="https://loveuhqq.x23.shop/photos/" />
-    <meta property="og:image" content="https://loveuhqq.x23.shop/images/paper-heart.webp" />
-    <meta property="og:locale" content="zh_CN" />
-
-    <!-- Twitter Card -->
-    <meta name="twitter:card" content="summary_large_image" />
-    <meta name="twitter:title" content="照片相册 · loveuhqq" />
-    <meta name="twitter:description" content="loveuhqq 的照片相册。" />
-
-    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
-    <link rel="manifest" href="/manifest.json" />
-    <link rel="canonical" href="https://loveuhqq.x23.shop/photos/" />
-
-    <title>照片相册 · loveuhqq</title>
-
-    <!-- 结构化数据 -->
-    <script type="application/ld+json">
-      {
-        "@context": "https://schema.org",
-        "@type": "ImageGallery",
-        "name": "照片相册",
-        "description": "loveuhqq 的照片相册",
-        "url": "https://loveuhqq.x23.shop/photos/",
-        "inLanguage": "zh-CN"
-      }
-    </script>
-    <script is:inline>
-      try {
-        const k = 'loveuhqq_auth';
-        if (localStorage.getItem(k) !== 'unlocked' && sessionStorage.getItem(k) !== 'unlocked') {
-          document.documentElement.classList.add('is-locked');
-        }
-      } catch (e) {}
-    </script>
-  </head>
-  <body class="album-page">
-    <a class="skip-link" href="#album-main">跳到正文</a>
-    <header class="site-header">
-      <div class="header-inner">
-        <a class="wordmark" href="/#home" aria-label="loveuhqq 回到首页"><span class="brand-mark" aria-hidden="true">lq.</span><span>loveuhqq</span></a>
-        <a class="album-return" href="/#photos">← 返回</a>
-      </div>
+<Page title="相册 · loveuhqq" description="loveuhqq 的相册。" path="/photos/" bodyClass="album-page">
+  <SiteHeader />
+  <main class="album" id="main" tabindex="-1">
+    <header class="album-head" data-reveal>
+      <h1>相册</h1>
+      <p>{getPhotoSummary(photos)}</p>
     </header>
-    <main class="album-main" id="album-main">
-      <div class="album-heading">
-        <p class="eyebrow">PHOTOS</p>
-        <h1>照片相册</h1>
-        <p class="section-description">{getPhotoSummary(photos)}</p>
+    <div class="album-wall" data-reveal>
+      {photos.map((photo, index) => (
+        <a
+          class="polaroid"
+          href={photo.src}
+          data-photo-index={index}
+          aria-label={`${photo.title}（${photoStatusLabels[photo.status]}），查看大图`}
+        >
+          <span class:list={['tape', index % 3 === 1 && 'tape-pink']} aria-hidden="true"></span>
+          <img src={photo.src} alt={photo.alt} width="800" height="1000" loading="lazy" decoding="async" />
+          <span class="polaroid-caption">
+            <span class="polaroid-title">{photo.title}</span>
+            <span class="polaroid-tag">{photoStatusLabels[photo.status]}</span>
+          </span>
+        </a>
+      ))}
+      <div class="polaroid polaroid-empty" aria-hidden="true">
+        <span class="polaroid-slot"><span>留给下一张</span></span>
+        <span class="polaroid-caption"><span class="polaroid-title">&nbsp;</span></span>
       </div>
-      {photos.length > 0 ? <div class="album-grid">
-        {photos.map((photo, index) => <a class="album-photo" id={'photo-' + (index + 1)} href={photo.src} aria-label={'查看原图：' + photo.title + '（' + photoStatusLabels[photo.status] + '）'}><img src={photo.src} alt={photo.alt} width="800" height="1000" loading="lazy" decoding="async" /><span>{photoStatusLabels[photo.status]} · {photo.title}</span></a>)}
-      </div> : <div class="album-empty"><p>照片待添加</p></div>}
-    </main>
-    <PassphraseGate />
-    <script src="../scripts/micro-interactions.ts"></script>
-  </body>
-</html>
+    </div>
+  </main>
+  <footer class="site-footer site-footer-small">
+    <div class="footer-meta">
+      <a class="text-button" href="/#photos"><span aria-hidden="true">←</span> 回到日记</a>
+      <button class="text-button" type="button" data-lock-site>上锁</button>
+    </div>
+  </footer>
+  <Lightbox />
+</Page>

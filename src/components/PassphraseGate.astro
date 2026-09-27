@@ -1,38 +1,40 @@
 ---
+import Postmark from './Postmark.astro';
 ---
-<div class="passphrase-backdrop" id="passphrase-gate">
-  <div
-    class="passphrase-card glass-panel"
-    id="passphrase-card"
-    role="dialog"
-    aria-modal="true"
-    aria-labelledby="gate-title"
-    aria-describedby="gate-desc"
-  >
-    <p class="eyebrow">MEMO</p>
-    <h2 id="gate-title">访问验证</h2>
-    <p id="gate-desc" class="passphrase-tip">输入起始日期（如 0701）以继续浏览</p>
 
-    <form class="passphrase-form" id="passphrase-form" autocomplete="off">
-      <div class="passphrase-input-wrap">
+<div class="gate" data-gate role="dialog" aria-modal="true" aria-labelledby="gate-title" aria-describedby="gate-hint">
+  <div class="gate-card">
+    <Postmark id="gate-mark" class="gate-postmark" />
+    <h2 class="gate-title" id="gate-title">我们，是从哪天开始的？</h2>
+    <p class="gate-hint" id="gate-hint">月和日，四位数字</p>
+    <form class="gate-form" data-gate-form novalidate>
+      <label class="sr-only" for="gate-input">开始的日子，月和日共四位数字</label>
+      <div class="gate-slots">
         <input
-          type="password"
-          id="passphrase-input"
-          class="passphrase-input"
-          placeholder="输入日期..."
-          required
-          autocomplete="current-password"
-          aria-label="访问暗号"
+          class="gate-input"
+          id="gate-input"
+          data-gate-input
+          type="text"
+          inputmode="numeric"
+          pattern="[0-9]*"
+          maxlength="4"
+          autocomplete="off"
+          autocorrect="off"
+          autocapitalize="off"
+          spellcheck="false"
+          enterkeyhint="go"
         />
-        <button type="submit" class="passphrase-submit button button-primary">
-          <span>进入</span>
-        </button>
+        <span class="gate-group" data-label="月" aria-hidden="true"><span class="gate-slot" data-slot></span><span class="gate-slot" data-slot></span></span>
+        <span class="gate-group" data-label="日" aria-hidden="true"><span class="gate-slot" data-slot></span><span class="gate-slot" data-slot></span></span>
       </div>
-      <p class="passphrase-error" id="passphrase-error" role="alert" hidden>输入不正确，请重试</p>
-      <label class="passphrase-remember">
-        <input type="checkbox" id="passphrase-remember" checked />
-        <span>记住此设备</span>
-      </label>
+      <p class="gate-error" data-gate-error role="alert"></p>
+      <div class="gate-actions">
+        <label class="gate-remember">
+          <input type="checkbox" data-gate-remember checked />
+          <span>记住这台设备</span>
+        </label>
+        <button class="seal-button" type="submit" aria-label="打开"><span aria-hidden="true">开</span></button>
+      </div>
     </form>
   </div>
 </div>

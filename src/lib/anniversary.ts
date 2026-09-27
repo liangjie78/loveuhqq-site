@@ -156,3 +156,78 @@ export function getUpcomingAnniversary(now: Date): UpcomingAnniversary {
     ),
   };
 }
+
+export interface CalendarDay {
+  /** Shanghai calendar date as YYYY-MM-DD. */
+  date: string;
+  /** Day of the month, 1-31. */
+  dayOfMonth: number;
+  /** Relationship day; the start date is day 1. */
+  day: number;
+}
+
+export interface CalendarMonth {
+  year: number;
+  /** Calendar month, 1-12. */
+  month: number;
+  days: CalendarDay[];
+}
+
+/**
+ * Returns the relationship year that the Shanghai calendar date of `now`
+ * falls in. Each anniversary closes its year: year 1 runs from the start
+ * date through the first anniversary, year 2 from the next day through the
+ * second anniversary. Dates before the start belong to year 1.
+ */
+export function getRelationshipYear(now: Date): number {
+  const currentCalendarTimestamp = getShanghaiCalendarTimestamp(
+    getValidTimestamp(now),
+  );
+  const startYear = relationshipStartCalendarDate.getUTCFullYear();
+  const currentYear = new Date(currentCalendarTimestamp).getUTCFullYear();
+  let year = Math.max(1, currentYear - startYear);
+
+  if (currentCalendarTimestamp > getAnnualAnniversaryTimestamp(startYear + year)) {
+    year += 1;
+  }
+
+  return year;
+}
+
+/**
+ * Lists every calendar day of relationship year `year`, grouped by calendar
+ * month in order, ending with the anniversary that closes the year.
+ */
+export function getRelationshipYearMonths(year: number): CalendarMonth[] {
+  if (!Number.isInteger(year) || year < 1) {
+    throw new RangeError('year must be a positive integer');
+  }
+
+  const startYear = relationshipStartCalendarDate.getUTCFullYear();
+  const firstTimestamp =
+    year === 1
+      ? relationshipStartTimestamp
+      : getAnnualAnniversaryTimestamp(startYear + year - 1) + DAY_MS;
+  const lastTimestamp = getAnnualAnniversaryTimestamp(startYear + year);
+  const months: CalendarMonth[] = [];
+
+  for (let timestamp = firstTimestamp; timestamp <= lastTimestamp; timestamp += DAY_MS) {
+    const calendarDate = new Date(timestamp);
+    const calendarYear = calendarDate.getUTCFullYear();
+    const month = calendarDate.getUTCMonth() + 1;
+    let current = months[months.length - 1];
+
+    if (!current || current.year !== calendarYear || current.month !== month) {
+      current = { year: calendarYear, month, days: [] };
+      months.push(current);
+    }
+
+    current.days.push({
+      date: formatCalendarDate(timestamp),
+      dayOfMonth: calendarDate.getUTCDate(),
+      day: Math.round((timestamp - relationshipStartTimestamp) / DAY_MS) + 1,
+    });
+  }
+
+  return months;
+}

@@ -12,20 +12,15 @@ export const photoStatusLabels: Record<PhotoStatus, string> = {
   real: '真实照片',
 };
 
-export const photoStatusDescriptions: Record<PhotoStatus, string> = {
-  illustrative: '这是用于预览版式的示意图片，之后可替换为真实照片。',
-  real: '这是真实照片。',
-};
-
 export function getPhotoSummary(items: readonly Photo[]) {
-  if (items.length === 0) return '照片待添加。';
+  if (items.length === 0) return '还没有照片。';
 
-  const counts = items.reduce((total, photo) => {
-    total[photo.status] += 1;
-    return total;
-  }, { illustrative: 0, real: 0 });
+  const real = items.filter((photo) => photo.status === 'real').length;
+  const illustrative = items.length - real;
 
-  return `共 ${items.length} 张照片，其中${photoStatusLabels.illustrative} ${counts.illustrative} 张、${photoStatusLabels.real} ${counts.real} 张。`;
+  if (real === 0) return `这 ${illustrative} 张都是示意图，我们的照片会一张张换上来。`;
+  if (illustrative === 0) return `${real} 张照片。`;
+  return `${real} 张我们的照片，${illustrative} 张示意图。`;
 }
 
 export const photos: Photo[] = [
