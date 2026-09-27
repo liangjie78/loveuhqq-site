@@ -89,4 +89,13 @@
 - 权威 DNS 解析正常，首页 `https://loveuhqq.x23.shop` 及 `/photos/` 均返回 HTTPS 200。
 - 线上正式站全站文案重构为极简克制、备忘录记录风格：门禁更新为“访问验证 / 输入起始日期（如 0701）以继续浏览 / 进入”，心里话更新为“记录生活，慢慢往前走”，去除多余煽情与爱心符号。
 
+## 纸上手账改版正式上线（2026-09-28，Asia/Shanghai）
+
+- 用户明确授权清理过时文件、合并 PR #23 并执行生产部署。合并前 GitHub CI 通过，并在干净检出中复现 `npm ci`、23 项单元测试与构建。合并提交 `3f94245028f000fe1693c537cab033f207fd826f`，构建时工作树干净且与 `origin/main` 一致。
+- 部署前线上版本为 `7b4a9754-cb38-47f0-829b-1f68c1a5044a`，可作回滚目标。项目级 Wrangler 部署至 `loveuhqq-site`，绑定正式 Custom Domain `loveuhqq.x23.shop`；生产版本 ID：`d46c6db3-38cf-45a1-b5a1-0283e8069f5e`，Deployments 确认流量 100%。发布前已在 `loveuhqq-site-preview`（版本 `29ba5043-bc44-4f8f-9ad6-f34f7a4d4dbb`）预览验收。
+- 本机 DNS 被本地代理以 fake-IP（`198.18.0.0/15`）应答，改用 Cloudflare DNS-over-HTTPS 核对：A `104.21.65.200`、`172.67.166.139`，AAAA 两条，NS 仍为 `arya`/`darl.ns.cloudflare.com`，与此前记录一致，未修改 DNS。
+- 正式站首页、`/photos/`、`/favicon.svg`、`/manifest.json`、`/robots.txt` 与图片均为 HTTPS 200；首页 HTML 去除 Cloudflare 注入脚本后与 `dist/index.html` 逐字节一致，CSS、favicon 与抽查的 woff2 字体文件与 `dist` 一致。正文包含“一天，记一格。”“我们，是从哪天开始的？”“写给第 100 天”，旧文案已移除，未出现其他站点内容；`blogtext.x23.shop` 未受影响。
+- 真实 Chrome 在 1440×900 与 390×844 下访问正式站：门禁正常显示，思源宋体在站点 CSP 下正常加载，计数正确，无横向溢出。控制台中 Cloudflare 自动注入的 Web Analytics 脚本 `static.cloudflareinsights.com/beacon.min.js` 被站点 CSP 拦截，此为既有情况，页面功能不受影响；如需统计需另行调整 CSP 或关闭注入。
+- 同时清理了已失效的优化报告、旧版截图、`public/sitemap.xml` 与无对应文件的 `/sw.js` 响应头规则。
+
 参考：[Cloudflare Static Assets](https://developers.cloudflare.com/workers/static-assets/)。
