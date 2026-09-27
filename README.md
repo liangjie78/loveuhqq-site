@@ -4,22 +4,20 @@
 
 # loveuhqq
 
-一本写给何青青的全屏纪念册，把平凡的日子，慢慢写成我们的故事。
+一本写给何青青的纸上手账：日子没什么特别的，记一记。
 
 ## 当前源码
 
 - 正式网址：[loveuhqq.x23.shop](https://loveuhqq.x23.shop)
 - 唯一正式源码：[liangjie78/loveuhqq-site](https://github.com/liangjie78/loveuhqq-site)（Private）
-- 页面结构：首页、故事、照片、心里话、纪念日、未来共六屏；文档根元素使用原生 `scroll-snap-type: y mandatory`，沿用滚轮、触屏和键盘滚动，页脚位于最后一屏。
-- 视觉与交互：柔粉与淡紫渐变、系统无衬线字体、大标题和毛玻璃卡片；固定页眉及桌面侧边导航显示当前章节，支持手机菜单、原生相册弹窗和减少动态效果偏好。
+- 页面结构：封面、日子、照片、心里话、信、页脚，自然连续滚动；另有相册页 `/photos/` 和 404 页。
+- 视觉与交互：暖色纸面、蜡封红、思源宋体竖排标题；纸心与邮戳、按月排列的“一天一格”日历、胶带拍立得、横线信纸和可点的信封。支持拍立得灯箱（键盘与滑动）、日历点选读数、门禁日期格和减少动态效果偏好。详见 [设计说明](docs/DESIGN.md)。
 - 纪念时间：从 2026-07-01 开始，当天算第 1 天，按北京时间自动更新；JavaScript 不可用时保留文案和起始日期。
 - 下一纪念日：第 100 天之后转向下一周年，纪念日当天显示“今天”，跨日和返回页面时自动刷新。
-- 内容状态：相册为明确标注的 AI 示意照片，真实故事、每日一句和未来信等待填写；没有自动解锁的信件或照片上传后台。
+- 内容状态：相册为明确标注的 AI 示意照片；值得标记的日子（`src/data/moments.ts`）为空，写给第 100 天的信标为“待写”；没有自动解锁的信件或照片上传后台。
 - 技术边界：Astro + TypeScript + 普通 CSS，默认静态生成；没有后端、数据库或 UI 框架。
 
-界面截图：[桌面](docs/previews/keepsake-desktop.png) · [手机](docs/previews/keepsake-mobile.png)。截图用于展示源码界面，日期计数表示截图时的状态；实际页面按访问当天更新。顶部项目标识插画不作为当前页面截图。
-
-叙事与视觉参考：[Apple iPhone Air](https://www.apple.com/iphone-air/) · [DJI Mini 4 Pro](https://www.dji.com/mini-4-pro)。仅借鉴章节叙事与画面层级，滚动按本项目要求使用原生吸附。上述内容描述当前源码，不能据此判断正式网址已更新。
+界面截图：[桌面封面](docs/previews/journal-desktop.webp) · [桌面日历](docs/previews/journal-days-desktop.webp) · [手机封面](docs/previews/journal-mobile.webp) · [手机日历](docs/previews/journal-days-mobile.webp) · [门禁](docs/previews/journal-gate-mobile.webp)。截图用于展示源码界面，日期计数表示截图时的状态；实际页面按访问当天更新。顶部项目标识插画不作为当前页面截图。上述内容描述当前源码，不能据此判断正式网址已更新。
 
 ## 本地开发
 
@@ -51,7 +49,7 @@ GitHub 自动部署尚未配置；没有绕过权限或创建额外凭据。GitH
 
 可见 UI 改动完成后，运行 `npm run deploy:preview`，从当前分支构建并更新独立 Worker `loveuhqq-site-preview`。验收地址是 [临时预览站](https://loveuhqq-site-preview.1756127916.workers.dev/)；每次更新后需实际检查首页、受影响页面和资源，并把链接与截图发给用户。此地址公开可访问，始终显示最近一次手动上传的预览版本，不会自动跟随 Git 提交，也不影响正式域名。
 
-本次参考截图：[桌面首页](docs/previews/gallery-home-desktop.png) · [手机首页](docs/previews/headline-home-mobile.png) · [手机相册](docs/previews/gallery-album-mobile.png)。预览配置位于 `wrangler.preview.jsonc`，只有 `workers.dev` 地址，没有正式站点的 Custom Domain 路由。
+预览配置位于 `wrangler.preview.jsonc`，只有 `workers.dev` 地址，没有正式站点的 Custom Domain 路由。
 
 生产操作、回滚、DNS 边界和已有验证证据见 [部署说明](docs/DEPLOYMENT.md)，视觉约束见 [设计说明](docs/DESIGN.md)。生产部署、Cloudflare 和 DNS 修改都需要当前任务的明确授权。
 
@@ -65,8 +63,8 @@ GitHub 自动部署尚未配置；没有绕过权限或创建额外凭据。GitH
 | [`public/favicon.svg`](public/favicon.svg) | 页面 favicon |
 | [`docs/DEPLOYMENT.md`](docs/DEPLOYMENT.md) | 发布、核验和回滚边界 |
 | [`src/lib/anniversary.ts`](src/lib/anniversary.ts) | 起始日期、北京时间天数与跨日计算 |
-| [`docs/DESIGN.md`](docs/DESIGN.md) | 六屏纪念册的视觉、滚动与交互约定 |
+| [`docs/DESIGN.md`](docs/DESIGN.md) | 纸上手账的视觉、布局与交互约定 |
 
 ## 生产状态说明
 
-当前采用手动发布，合并 PR 不会自动更新正式网站。本次六屏改版的源码和截图不构成生产已更新的证明，正式网站版本须以对应部署记录及域名、正文、资源核验为准。既往 V2 工作记录见 [PR #6](https://github.com/liangjie78/loveuhqq-site/pull/6)，已有部署证据保留在 [部署说明](docs/DEPLOYMENT.md) 中。
+当前采用手动发布，合并 PR 不会自动更新正式网站。本次手账改版的源码和截图不构成生产已更新的证明，正式网站版本须以对应部署记录及域名、正文、资源核验为准。既往 V2 工作记录见 [PR #6](https://github.com/liangjie78/loveuhqq-site/pull/6)，已有部署证据保留在 [部署说明](docs/DEPLOYMENT.md) 中。

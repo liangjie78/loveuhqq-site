@@ -19,7 +19,3 @@
 # Manifest 缓存 7 天
 /manifest.json
   Cache-Control: public, max-age=604800
-
-# Service Worker 不缓存
-/sw.js
-  Cache-Control: no-cache, no-store, must-revalidate

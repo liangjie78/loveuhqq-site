@@ -1,0 +1,34 @@
+---
+interface Props {
+  /** The home page shows in-page links; other pages link back to it. */
+  home?: boolean;
+}
+
+const { home = false } = Astro.props;
+const links = [
+  { href: '#days', label: '日子' },
+  { href: '#photos', label: '照片' },
+  { href: '#note', label: '心里话' },
+  { href: '#letter', label: '信' },
+];
+---
+
+<header class:list={['site-header', !home && 'is-solid']} data-header>
+  <a class="wordmark" href={home ? '#top' : '/'}>loveuhqq<span class="wordmark-heart" aria-hidden="true"></span></a>
+  {
+    home ? (
+      <>
+        <nav class="site-nav" aria-label="页内导航">
+          {links.map(({ href, label }) => <a href={href}>{label}</a>)}
+        </nav>
+        <p class="header-day" data-header-day hidden>
+          第 <span data-day-count /> 天
+        </p>
+      </>
+    ) : (
+      <a class="back-link" href="/#photos">
+        <span aria-hidden="true">←</span> 回到日记
+      </a>
+    )
+  }
+</header>

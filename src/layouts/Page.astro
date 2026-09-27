@@ -1,0 +1,70 @@
+---
+import '@fontsource/noto-serif-sc/400.css';
+import '../styles/global.css';
+import PassphraseGate from '../components/PassphraseGate.astro';
+
+interface Props {
+  title: string;
+  description: string;
+  path: string;
+  bodyClass?: string;
+}
+
+const { title, description, path, bodyClass } = Astro.props;
+const url = new URL(path, Astro.site).href;
+const image = new URL('/images/paper-heart.webp', Astro.site).href;
+---
+
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title>{title}</title>
+    <meta name="description" content={description} />
+    <meta name="robots" content="noindex, nofollow" />
+    <meta name="color-scheme" content="light" />
+    <meta name="theme-color" content="#f5eee4" />
+    <link rel="canonical" href={url} />
+    <meta property="og:type" content="website" />
+    <meta property="og:locale" content="zh_CN" />
+    <meta property="og:title" content={title} />
+    <meta property="og:description" content={description} />
+    <meta property="og:url" content={url} />
+    <meta property="og:image" content={image} />
+    <meta name="twitter:card" content="summary" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="manifest" href="/manifest.json" />
+    <script is:inline>
+      (function () {
+        var root = document.documentElement;
+        root.classList.add('has-js');
+        try {
+          var key = 'loveuhqq_auth';
+          if (localStorage.getItem(key) !== 'unlocked' && sessionStorage.getItem(key) !== 'unlocked') root.classList.add('is-locked');
+        } catch (error) {
+          root.classList.add('is-locked');
+        }
+        // Hold the opening until the serif has loaded, so the title never swaps fonts mid-way.
+        if (document.fonts && document.fonts.load) {
+          root.classList.add('fonts-pending');
+          var ready = function () {
+            if (!root.classList.contains('fonts-pending')) return;
+            root.classList.remove('fonts-pending');
+            document.dispatchEvent(new Event('fonts:ready'));
+          };
+          setTimeout(ready, 1500);
+          document.addEventListener('DOMContentLoaded', function () {
+            document.fonts.load('400 1em "Noto Serif SC"', '爱你，何青青。第天').then(ready, ready);
+          });
+        }
+      })();
+    </script>
+  </head>
+  <body class={bodyClass}>
+    <a class="skip-link" href="#main">跳到正文</a>
+    <slot />
+    <PassphraseGate />
+    <script src="../scripts/reveal.ts"></script>
+  </body>
+</html>

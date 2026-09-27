@@ -1,11 +1,11 @@
 {
   "name": "爱你，何青青 - loveuhqq",
   "short_name": "loveuhqq",
-  "description": "日子没什么特别的，但因为有你在，好像也值得记一记。",
+  "description": "日子没什么特别的，记一记。",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#fcfafb",
-  "theme_color": "#f8edf1",
+  "background_color": "#f5eee4",
+  "theme_color": "#f5eee4",
   "orientation": "portrait",
   "icons": [
     {
@@ -15,6 +15,9 @@
       "purpose": "any maskable"
     }
   ],
-  "categories": ["lifestyle", "personalization"],
+  "categories": [
+    "lifestyle",
+    "personalization"
+  ],
   "lang": "zh-CN"
 }

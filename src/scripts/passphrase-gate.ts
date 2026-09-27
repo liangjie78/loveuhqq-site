@@ -1,88 +1,112 @@
 import { clearPassphraseUnlock, isPassphraseUnlocked, savePassphraseUnlock, verifyPassphrase } from '../lib/passphrase';
 
-const gate = document.querySelector<HTMLElement>('#passphrase-gate');
-const card = document.querySelector<HTMLElement>('#passphrase-card');
-const form = document.querySelector<HTMLFormElement>('#passphrase-form');
-const input = document.querySelector<HTMLInputElement>('#passphrase-input');
-const errorMsg = document.querySelector<HTMLElement>('#passphrase-error');
-const remember = document.querySelector<HTMLInputElement>('#passphrase-remember');
+const root = document.documentElement;
+const gate = document.querySelector<HTMLElement>('[data-gate]');
+const slotRow = gate?.querySelector<HTMLElement>('.gate-slots');
+const form = gate?.querySelector<HTMLFormElement>('[data-gate-form]');
+const input = gate?.querySelector<HTMLInputElement>('[data-gate-input]');
+const error = gate?.querySelector<HTMLElement>('[data-gate-error]');
+const remember = gate?.querySelector<HTMLInputElement>('[data-gate-remember]');
+const slots = gate ? [...gate.querySelectorAll<HTMLElement>('[data-slot]')] : [];
+const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
+const CODE_LENGTH = 4;
 
-document.querySelectorAll<HTMLElement>('[data-lock-site]').forEach((btn) => {
-  btn.addEventListener('click', (event) => {
-    event.preventDefault();
+document.querySelectorAll<HTMLElement>('[data-lock-site]').forEach((button) => {
+  button.addEventListener('click', () => {
     clearPassphraseUnlock();
+    window.scrollTo(0, 0);
     window.location.reload();
   });
 });
 
-if (gate && card && form && input && errorMsg && remember) {
-  const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
+/** Everything outside the gate is inert while it is shown. */
+function setPageInert(inert: boolean) {
+  for (const element of document.body.children) {
+    if (element !== gate && element instanceof HTMLElement) element.inert = inert;
+  }
+}
+
+if (gate && slotRow && form && input && error && remember) {
+  let checking = false;
+  let clearTimer: number | undefined;
+
+  const renderSlots = () => {
+    const focused = document.activeElement === input;
+    slots.forEach((slot, index) => {
+      slot.textContent = input.value[index] ?? '';
+      slot.classList.toggle('is-filled', index < input.value.length);
+      slot.classList.toggle('is-active', focused && index === Math.min(input.value.length, CODE_LENGTH - 1));
+    });
+    form.classList.toggle('is-complete', input.value.length === CODE_LENGTH);
+  };
+
+  const unlock = () => {
+    savePassphraseUnlock(remember.checked);
+    setPageInert(false);
+    root.classList.remove('is-locked');
+    document.dispatchEvent(new CustomEvent('gate:open'));
+    document.querySelector<HTMLElement>('#main')?.focus({ preventScroll: true });
+
+    if (reducedMotion.matches) return;
+    gate.classList.add('is-leaving');
+    window.setTimeout(() => gate.classList.remove('is-leaving'), 900);
+  };
+
+  const reject = () => {
+    error.textContent = '好像不对，再想想。';
+    input.setAttribute('aria-invalid', 'true');
+    slotRow.classList.remove('is-shaking');
+    void slotRow.offsetWidth;
+    slotRow.classList.add('is-shaking');
+    window.clearTimeout(clearTimer);
+    clearTimer = window.setTimeout(() => {
+      input.value = '';
+      renderSlots();
+    }, 650);
+  };
 
   if (isPassphraseUnlocked()) {
-    document.documentElement.classList.remove('is-locked');
-    gate.hidden = true;
+    root.classList.remove('is-locked');
   } else {
-    document.documentElement.classList.add('is-locked');
-    gate.hidden = false;
-    window.setTimeout(() => input.focus(), 50);
+    root.classList.add('is-locked');
+    setPageInert(true);
+    window.setTimeout(() => input.focus({ preventScroll: true }), 80);
   }
+
+  input.addEventListener('input', () => {
+    window.clearTimeout(clearTimer);
+    input.value = input.value.replace(/\D/g, '').slice(0, CODE_LENGTH);
+    input.removeAttribute('aria-invalid');
+    error.textContent = '';
+    renderSlots();
+    if (input.value.length === CODE_LENGTH) form.requestSubmit();
+  });
+  input.addEventListener('focus', renderSlots);
+  input.addEventListener('blur', renderSlots);
+  // Keep the caret at the end so the slots always mirror the typed order.
+  input.addEventListener('select', () => {
+    const end = input.value.length;
+    if (input.selectionStart !== end) input.setSelectionRange(end, end);
+  });
 
   form.addEventListener('submit', async (event) => {
     event.preventDefault();
-    const value = input.value;
-    const isValid = await verifyPassphrase(value);
-
-    if (isValid) {
-      errorMsg.hidden = true;
-      input.removeAttribute('aria-invalid');
-      savePassphraseUnlock(remember.checked);
-
-      if (reducedMotion.matches) {
-        document.documentElement.classList.remove('is-locked');
-        gate.hidden = true;
-        (document.querySelector<HTMLElement>('#album-main') ?? document.querySelector<HTMLElement>('main'))?.focus();
-      } else {
-        card.classList.add('is-unlocking');
-        window.setTimeout(() => {
-          document.documentElement.classList.remove('is-locked');
-          gate.hidden = true;
-          card.classList.remove('is-unlocking');
-          (document.querySelector<HTMLElement>('#album-main') ?? document.querySelector<HTMLElement>('main'))?.focus();
-        }, 300);
-      }
-    } else {
-      errorMsg.hidden = false;
-      input.setAttribute('aria-invalid', 'true');
-      card.classList.remove('is-shaking');
-      // Trigger reflow to restart shake animation
-      void card.offsetWidth;
-      card.classList.add('is-shaking');
-      input.select();
+    if (checking) return;
+    if (input.value.length < CODE_LENGTH) {
+      error.textContent = '还差几位数字。';
+      input.focus();
+      return;
     }
+    checking = true;
+    const valid = await verifyPassphrase(input.value);
+    checking = false;
+    if (valid) unlock();
+    else reject();
   });
 
-  card.addEventListener('animationend', (event) => {
-    if (event.animationName === 'gentle-shake') {
-      card.classList.remove('is-shaking');
-    }
+  slotRow.addEventListener('animationend', (event) => {
+    if (event.target === slotRow) slotRow.classList.remove('is-shaking');
   });
 
-  // Focus trap inside gate dialog while locked
-  gate.addEventListener('keydown', (event) => {
-    if (event.key !== 'Tab') return;
-    const focusables = card.querySelectorAll<HTMLElement>(
-      'input:not([disabled]), button:not([disabled]), a[href]'
-    );
-    if (focusables.length === 0) return;
-    const first = focusables[0];
-    const last = focusables[focusables.length - 1];
-
-    if (event.shiftKey && document.activeElement === first) {
-      event.preventDefault();
-      last.focus();
-    } else if (!event.shiftKey && document.activeElement === last) {
-      event.preventDefault();
-      first.focus();
-    }
-  });
+  renderSlots();
 }

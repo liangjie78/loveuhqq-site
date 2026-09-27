@@ -1,46 +1,17 @@
 ---
-import '../styles/global.css';
-import PassphraseGate from '../components/PassphraseGate.astro';
+import Page from '../layouts/Page.astro';
+import SiteHeader from '../components/SiteHeader.astro';
 ---
 
-<!doctype html>
-<html lang="zh-CN">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-    <meta name="description" content="页面未找到 — loveuhqq" />
-    <meta name="color-scheme" content="light" />
-    <meta name="theme-color" content="#f8edf1" />
-    <meta name="robots" content="noindex" />
-    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
-    <title>页面未找到 · loveuhqq</title>
-    <script is:inline>
-      try {
-        const k = 'loveuhqq_auth';
-        if (localStorage.getItem(k) !== 'unlocked' && sessionStorage.getItem(k) !== 'unlocked') {
-          document.documentElement.classList.add('is-locked');
-        }
-      } catch (e) {}
-    </script>
-  </head>
-  <body>
-    <header class="site-header">
-      <div class="header-inner">
-        <a class="wordmark" href="/" aria-label="loveuhqq 回到首页"><span class="brand-mark" aria-hidden="true">lq.</span><span>loveuhqq</span></a>
-      </div>
-    </header>
-    <main class="chapter" id="not-found" style="text-align:center;">
-      <div class="chapter-inner" style="display:flex;flex-direction:column;align-items:center;gap:1.5rem;">
-        <p class="eyebrow">404</p>
-        <h1 style="font-size:clamp(2.5rem,6vw,4.5rem);font-weight:400;letter-spacing:.03em;line-height:1.3;">页面未找到</h1>
-        <p class="section-description" style="margin-top:0;">这个地址好像不存在，回首页看看？</p>
-        <a class="button button-primary" href="/">回到首页 <span aria-hidden="true">↗</span></a>
-      </div>
-      <div class="chapter-bottom">
-        <p><span class="chapter-count">404</span></p>
-      </div>
-    </main>
-    <PassphraseGate />
-    <script src="../scripts/micro-interactions.ts"></script>
-  </body>
-</html>
+<Page title="这一页不见了 · loveuhqq" description="这一页不见了。" path="/404" bodyClass="lost-page">
+  <SiteHeader />
+  <main class="lost" id="main" tabindex="-1">
+    <div class="sheet lost-sheet" data-reveal>
+      <span class="tape tape-pink" aria-hidden="true"></span>
+      <p class="lost-code">404</p>
+      <h1>这一页，好像被撕掉了。</h1>
+      <p>地址可能写错了，回日记里看看吧。</p>
+      <a class="pill-link" href="/">回到日记 <span aria-hidden="true">→</span></a>
+    </div>
+  </main>
+</Page>
