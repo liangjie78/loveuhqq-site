@@ -98,4 +98,12 @@
 - 真实 Chrome 在 1440×900 与 390×844 下访问正式站：门禁正常显示，思源宋体在站点 CSP 下正常加载，计数正确，无横向溢出。控制台中 Cloudflare 自动注入的 Web Analytics 脚本 `static.cloudflareinsights.com/beacon.min.js` 被站点 CSP 拦截，此为既有情况，页面功能不受影响；如需统计需另行调整 CSP 或关闭注入。
 - 同时清理了已失效的优化报告、旧版截图、`public/sitemap.xml` 与无对应文件的 `/sw.js` 响应头规则。
 
+## 纪念日登记与响应头修正上线（2026-09-28，Asia/Shanghai）
+
+- 用户在 GitHub 合并 PR #25 与 PR #26（CI 均通过）后明确授权生产部署。从 `main` 提交 `074d37e70f8f975a214a5bc87c2b9fc8401ca0e3` 发布，工作树干净且与 `origin/main` 一致；`npm ci`、24 项单元测试与构建通过。
+- 部署前线上版本为 `d46c6db3-38cf-45a1-b5a1-0283e8069f5e`，可作回滚目标。项目级 Wrangler 部署至 `loveuhqq-site`，Custom Domain `loveuhqq.x23.shop`；生产版本 ID：`aa2d63e8-7d28-4169-be76-36be24358f16`，Deployments 确认流量 100%。
+- 首页、`/photos/`、`/favicon.svg`、`/manifest.json`、`/robots.txt` 均为 HTTPS 200；首页 HTML 与 `dist/index.html` 逐字节一致，抽查 CSS 哈希一致；线上脚本包含“通过游戏认识”“抖音火花 100 天”“恋爱 100 天纪念”，日历第 68 天与第 100 天带圆点。
+- 响应头：HTML 为 `public, max-age=0, must-revalidate, no-transform`；`/_assets/*` 为 `public, max-age=31536000, immutable`，`/images/*` 为 `public, max-age=2592000, immutable`，`/manifest.json` 为 `public, max-age=604800`，不再与全站值拼接。
+- Web Analytics 在 Cloudflare 按整个 `x23.shop` zone 开启，免费套餐无法按主机名排除，因此未修改 Cloudflare 设置，改由 `no-transform` 阻止注入：本站 HTML 已不含 `cloudflareinsights` 脚本，真实浏览器控制台无错误、无失败资源、无横向溢出；`blogtext.x23.shop` 仍 HTTP 200 且照常注入统计。
+
 参考：[Cloudflare Static Assets](https://developers.cloudflare.com/workers/static-assets/)。
