@@ -6,7 +6,8 @@ export interface Moment {
 }
 
 /**
- * Days worth marking on the calendar, beyond day 100 and the anniversaries.
+ * Days worth marking on the calendar. Day 100 and anniversaries are already hearts;
+ * list one here only when it should also carry its own confirmed title.
  * Only add dates and titles that have been confirmed.
  */
 export const moments: Moment[] = [
