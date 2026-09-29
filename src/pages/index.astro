@@ -3,14 +3,13 @@ import Page from '../layouts/Page.astro';
 import SiteHeader from '../components/SiteHeader.astro';
 import Postmark from '../components/Postmark.astro';
 import Lightbox from '../components/Lightbox.astro';
-import { getRelationshipYearMonths, hundredthDayDate, relationshipStartDate } from '../lib/anniversary';
-import { photoStatusLabels, photos } from '../data/photos';
+import { dotted, getRelationshipYearMonths, hundredthDayDate, monthNames, relationshipStartDate } from '../lib/anniversary';
+import { photos } from '../data/photos';
 import { momentTitles } from '../data/moments';
+import PolaroidCard from '../components/PolaroidCard.astro';
 
-const dotted = (date: string) => date.replaceAll('-', '.');
 const startLabel = dotted(relationshipStartDate);
 const hundredthLabel = dotted(hundredthDayDate);
-const monthNames = ['一月', '二月', '三月', '四月', '五月', '六月', '七月', '八月', '九月', '十月', '十一月', '十二月'];
 const months = getRelationshipYearMonths(1);
 const lastDay = months.at(-1)!.days.at(-1)!;
 const featured = photos.slice(0, 3);
@@ -122,19 +121,7 @@ let inkIndex = 0;
         </header>
         <div class="polaroids" data-reveal>
           {featured.map((photo, index) => (
-            <a
-              class="polaroid"
-              href={photo.src}
-              data-photo-index={index}
-              aria-label={`${photo.title}（${photoStatusLabels[photo.status]}），查看大图`}
-            >
-              <span class:list={['tape', index === 1 && 'tape-pink']} aria-hidden="true"></span>
-              <img src={photo.src} alt={photo.alt} width="800" height="1000" loading="lazy" decoding="async" />
-              <span class="polaroid-caption">
-                <span class="polaroid-title">{photo.title}</span>
-                <span class="polaroid-tag">{photoStatusLabels[photo.status]}</span>
-              </span>
-            </a>
+            <PolaroidCard photo={photo} index={index} pink={index === 1} />
           ))}
         </div>
         <p class="photos-more" data-reveal><a class="text-link" href="/photos/">翻开整本相册<span aria-hidden="true">→</span></a></p>

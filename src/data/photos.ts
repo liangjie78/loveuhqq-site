@@ -12,6 +12,11 @@ export const photoStatusLabels: Record<PhotoStatus, string> = {
   real: '真实照片',
 };
 
+/** One spoken form for every polaroid link, in the templates and the lightbox. */
+export function photoAriaLabel(photo: Photo) {
+  return `${photo.title}（${photoStatusLabels[photo.status]}），查看大图`;
+}
+
 export function getPhotoSummary(items: readonly Photo[]) {
   if (items.length === 0) return '还没有照片。';
 

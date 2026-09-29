@@ -4,6 +4,12 @@ const DAY_MS = 24 * 60 * 60 * 1000;
 /** The first calendar day of the relationship in Asia/Shanghai. */
 export const relationshipStartDate = '2026-07-01';
 
+/** Shared by the Astro templates and the client scripts, so keep one copy. */
+export const monthNames = ['一月', '二月', '三月', '四月', '五月', '六月', '七月', '八月', '九月', '十月', '十一月', '十二月'];
+
+/** Renders a YYYY-MM-DD date the way the journal prints it: 2026.07.01. */
+export const dotted = (date: string) => date.replaceAll('-', '.');
+
 const relationshipStartTimestamp = Date.parse(
   `${relationshipStartDate}T00:00:00Z`,
 );
@@ -68,12 +74,7 @@ export const hundredthDayDate = formatCalendarDate(
  */
 export function getAnniversaryDay(now: Date): number {
   const timestamp = getValidTimestamp(now);
-  const shanghaiDate = getShanghaiCalendarDate(timestamp);
-  const calendarDateTimestamp = Date.UTC(
-    shanghaiDate.getUTCFullYear(),
-    shanghaiDate.getUTCMonth(),
-    shanghaiDate.getUTCDate(),
-  );
+  const calendarDateTimestamp = getShanghaiCalendarTimestamp(timestamp);
 
   return (
     Math.floor(

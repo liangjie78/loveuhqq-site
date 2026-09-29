@@ -2,6 +2,7 @@ node_modules/
 dist/
 .astro/
 .wrangler/
+.zcode/
 .env
 .env.*
 !.env.example
