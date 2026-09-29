@@ -22,6 +22,7 @@ const image = new URL('/images/paper-heart.webp', Astro.site).href;
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
     <title>{title}</title>
     <meta name="description" content={description} />
+    <!-- Private site: noindex is deliberate (robots.txt matches); OG tags only feed chat-app share previews. -->
     <meta name="robots" content="noindex, nofollow" />
     <meta name="color-scheme" content="light" />
     <meta name="theme-color" content="#f5eee4" />
@@ -32,6 +33,7 @@ const image = new URL('/images/paper-heart.webp', Astro.site).href;
     <meta property="og:description" content={description} />
     <meta property="og:url" content={url} />
     <meta property="og:image" content={image} />
+    <meta property="og:image:alt" content="贴着胶带的纸做的心" />
     <meta name="twitter:card" content="summary" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <link rel="manifest" href="/manifest.json" />
