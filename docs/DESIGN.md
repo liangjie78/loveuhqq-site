@@ -28,10 +28,10 @@
 
 ## 视觉
 
-- **颜色**（`src/styles/global.css` 的 `:root`）：纸面 `#f5eee4`，贴纸/卡片 `#fffcf7`，墨色 `#2a1f1b`，辅助文字 `#76645b`，蜡封红 `#b0474f` 及两档浅红。固定浅色，系统深色偏好不改变配色。纸面叠一层极淡的 SVG 噪点作纸纹。
-- **字体**：标题、数字、引文用思源宋体（`@fontsource/noto-serif-sc`，只打包 400 字重的 woff2 分片，按 unicode-range 只下载页面用到的字），正文和界面小字用系统无衬线字体。不请求任何外部字体服务。
+- **颜色**（`src/styles/global.css` 的 `:root`）：纸面 `#f5eee4`，贴纸/卡片 `#fffcf7`，墨色 `#2a1f1b`，辅助文字 `#76645b`，蜡封红 `#b0474f` 及浅红、深红、日历三档手涂红等派生；墨色透明度仅保留 `--line`/`--line-strong`/`--line-stronger` 三档。固定浅色，系统深色偏好不改变配色。纸面叠一层极淡的 SVG 噪点作纸纹。新增颜色一律进 `:root` 令牌，不在规则里写死。
+- **字体**：标题、数字、引文用思源宋体 400，正文和界面小字用系统无衬线字体，不请求任何外部字体服务。宋体以单个按站点用字生成的子集 woff2（约 73KB，`src/assets/fonts/`）随 CSS 分发并预加载，取代按 unicode-range 切片的整套字库。新增可见文案后必须运行 `npm run subset:font` 重新生成子集并提交；`tests/font-subset.test.mjs` 会在字符集不一致时让测试失败。
 - **实物感**：胶带（半透明、锯齿边，米色或粉色）、拍立得白边、信纸横线与页边线、带墨色斑驳的邮戳（SVG 滤镜）、“待写”橡皮章、蜡封按钮。阴影用多层柔和纸影，不用大面积模糊。
-- 纸心、信封是本地透明 WebP；信封用 `object-fit` 裁掉上下透明留白。所有图片声明固有尺寸，首屏纸心直接加载，其余懒加载。
+- 纸心、信封是本地透明 WebP；信封素材预裁成显示比例（`envelope-620.webp`，800×620），不再靠 `object-fit` 裁切。所有图片声明固有尺寸，首屏纸心直接加载，其余懒加载。替换图片必须换新文件名（30 天 immutable 缓存）。
 
 ## 布局与响应式
 
@@ -45,7 +45,7 @@
 
 - **开场**：标题逐字“落墨”（由模糊到清晰），副题淡入，纸心轻轻落下，邮戳最后“盖”上去，天数从 0 数到今天。开场等门禁解锁、且宋体加载完成（最多等 1.5 秒）后才开始，避免标题中途换字体。
 - 各区块首次进入视口时淡入上移；日历进入视口时，走过的格子按顺序依次涂色（总时长约 1 秒，与天数无关）；信纸上的字从左到右“写”出来。
-- 指针悬停或点按格子，下方读数显示该日日期、第几天、距今还有几天（及周年名、故事标题）；点格子以外的地方回到“今天”。
+- 指针悬停或点按格子，下方读数显示该日日期、第几天、距今还有几天（及周年名、故事标题）；点格子以外的地方回到“今天”。日历网格是一个键盘落点：方向键逐日移动（上下约一个月）、Home/End 跳到首末、Esc 回到今天，读数同步更新。
 - 点纸心会跳一下并飘出几颗小心；桌面指针在纸心上移动时轻微倾斜。点信封会晃动并弹出提示。
 - 拍立得悬停时摆正并抬起；点击打开原生 `dialog` 灯箱，支持左右方向键、手机左右滑动、Esc、关闭按钮和点遮罩关闭，关闭后焦点回到原来的照片。修饰键点击保留浏览器原图行为。
 - 页内导航随滚动用小红点标出当前区块（`aria-current="location"`）。
@@ -62,17 +62,17 @@
 - 竖排标题整体带 `aria-label`，逐字的装饰 span 对辅助技术隐藏；装饰图、邮戳、胶带不参与读取。
 - 减少动态效果偏好下关闭全部动画与过渡、平滑滚动，开场内容直接可见，计数直接显示结果。
 - 无 JavaScript 时不显示门禁、不隐藏任何正文；开场 CSS 动画照常播放。
-- 焦点样式统一为蜡封红描边，所有可点目标不小于 44px（日历格子除外，它的信息同时在统计与读数中以文字给出）。
+- 焦点样式统一为蜡封红描边，所有可点目标不小于 44px（日历格子除外：整张网格是一个键盘落点，方向键翻看后由读数以文字播报该日信息）。
 
 ## 修改位置
 
-- `src/pages/index.astro`、`src/pages/photos.astro`、`src/pages/404.astro`：页面结构。
-- `src/layouts/Page.astro`：共用的 head、门禁预判脚本、字体加载等待。
-- `src/components/`：`SiteHeader`（页眉）、`Postmark`（邮戳 SVG）、`PassphraseGate`（门禁）、`Lightbox`（灯箱）。
-- `src/styles/global.css`：全部样式与动效。
-- `src/scripts/journal.ts`：首页日期、日历、计数、页眉状态、纸心与信封；`gallery.ts`：灯箱；`reveal.ts`：滚动淡入；`passphrase-gate.ts`：门禁。
-- `src/lib/anniversary.ts`（含恋爱年份与按月日历）、`tests/anniversary.test.mjs`、`tests/calendar.test.mjs`：日期计算与测试。
+- `src/pages/index.astro`、`src/pages/photos.astro`、`src/pages/404.astro`：页面结构；两页的拍立得卡片由 `src/components/PolaroidCard.astro` 共用。
+- `src/layouts/Page.astro`：共用的 head、门禁预判脚本、字体子集预载与加载等待。
+- `src/components/`：`SiteHeader`（页眉）、`Postmark`（邮戳 SVG）、`PassphraseGate`（门禁）、`Lightbox`（灯箱）、`PolaroidCard`（拍立得）。
+- `src/styles/global.css`：全部样式与动效，颜色集中在 `:root` 令牌。
+- `src/scripts/journal.ts`：首页日期、日历（含键盘翻看）、计数、页眉状态、纸心与信封；`gallery.ts`：灯箱；`reveal.ts`：滚动淡入；`passphrase-gate.ts`：门禁。
+- `src/lib/anniversary.ts`（含恋爱年份、按月日历与共享的日期格式、月份名）、`tests/anniversary.test.mjs`、`tests/calendar.test.mjs`：日期计算与测试。
 - `src/data/photos.ts`、`src/data/moments.ts`、`public/images/`：照片、值得标记的日子与本地素材。
-- `astro.config.mjs`：去掉 fontsource 的 woff 备份、禁止字体内联（CSP 只允许同源字体）。
+- `scripts/subset-font.mjs`、`src/assets/fonts/`、`tests/font-subset.test.mjs`：宋体子集的生成、产物与字符集守卫；`astro.config.mjs` 禁止字体内联（CSP 只允许同源字体）。
 
 验收需实际构建，并用真实浏览器检查桌面与手机视口的封面、日历横竖两种排布、照片与灯箱、信纸、信封提示、门禁输错/输对、跨日显示、无脚本回退和减少动态效果偏好。单元测试不能替代视觉与输入验收；验证结果单独记录，不由本设计约定推定通过。

@@ -3,9 +3,8 @@
   X-Content-Type-Options: nosniff
   X-Frame-Options: DENY
   Referrer-Policy: strict-origin-when-cross-origin
-  Permissions-Policy: camera=(), microphone=(), geolocation=(), interest-cohort=()
+  Permissions-Policy: camera=(), microphone=(), geolocation=()
   Strict-Transport-Security: max-age=63072000; includeSubDomains; preload
-  X-XSS-Protection: 1; mode=block
   # no-transform 让 Cloudflare 不向页面注入 Web Analytics 脚本（该脚本会被 CSP 拦截）；x23.shop 的统计按整个 zone 开启，这里只影响本站
   Cache-Control: public, max-age=0, must-revalidate, no-transform
 

@@ -11,7 +11,7 @@
 - 正式网址：[loveuhqq.x23.shop](https://loveuhqq.x23.shop)
 - 唯一正式源码：[liangjie78/loveuhqq-site](https://github.com/liangjie78/loveuhqq-site)（Private）
 - 页面结构：封面、日子、照片、心里话、信、页脚，自然连续滚动；另有相册页 `/photos/` 和 404 页。
-- 视觉与交互：暖色纸面、蜡封红、思源宋体竖排标题；纸心与邮戳、按月排列的“一天一格”日历、胶带拍立得、横线信纸和可点的信封。支持拍立得灯箱（键盘与滑动）、日历点选读数、门禁日期格和减少动态效果偏好。详见 [设计说明](docs/DESIGN.md)。
+- 视觉与交互：暖色纸面、蜡封红、思源宋体竖排标题；纸心与邮戳、按月排列的“一天一格”日历、胶带拍立得、横线信纸和可点的信封。支持拍立得灯箱（键盘与滑动）、日历点选与方向键翻看读数、门禁日期格和减少动态效果偏好。详见 [设计说明](docs/DESIGN.md)。
 - 纪念时间：从 2026-07-01 开始，当天算第 1 天，按北京时间自动更新；JavaScript 不可用时保留文案和起始日期。
 - 下一纪念日：第 100 天之后转向下一周年，纪念日当天显示“今天”，跨日和返回页面时自动刷新。
 - 内容状态：相册为明确标注的 AI 示意照片；值得标记的日子（`src/data/moments.ts`）已登记 3 个用户确认的日子，写给第 100 天的信标为“待写”；没有自动解锁的信件或照片上传后台。
@@ -30,6 +30,8 @@ npm test
 npm run build
 npm run preview
 ```
+
+新增可见文案后运行 `npm run subset:font` 重新生成宋体子集并连同字符清单一起提交，否则 `tests/font-subset.test.mjs` 会失败、页面会回退到系统字体。
 
 构建输出在 `dist/`，不提交到 Git。当前页面入口是 [`src/pages/index.astro`](src/pages/index.astro)，样式入口是 [`src/styles/global.css`](src/styles/global.css)。
 
@@ -63,6 +65,7 @@ GitHub 自动部署尚未配置；没有绕过权限或创建额外凭据。GitH
 | [`public/favicon.svg`](public/favicon.svg) | 页面 favicon |
 | [`docs/DEPLOYMENT.md`](docs/DEPLOYMENT.md) | 发布、核验和回滚边界 |
 | [`src/lib/anniversary.ts`](src/lib/anniversary.ts) | 起始日期、北京时间天数与跨日计算 |
+| [`scripts/subset-font.mjs`](scripts/subset-font.mjs) | 按站点用字生成思源宋体子集（`npm run subset:font`） |
 | [`docs/DESIGN.md`](docs/DESIGN.md) | 纸上手账的视觉、布局与交互约定 |
 
 ## 生产状态说明

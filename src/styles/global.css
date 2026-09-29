@@ -3,6 +3,16 @@
  * Warm paper, wax-seal red, Song-style serif, and things taped onto the page.
  */
 
+/* One subset file for every serif glyph the site uses; regenerate with
+   `npm run subset:font` after adding copy (tests/font-subset.test.mjs enforces it). */
+@font-face {
+  font-family: "Noto Serif SC";
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url("../assets/fonts/noto-serif-sc-400-subset.woff2") format("woff2");
+}
+
 :root {
   color-scheme: light;
 
@@ -19,6 +29,17 @@
   --rose-3: #dd9496;
   --blush: #f1d6d2;
   --empty: rgb(42 31 27 / .075);
+  /* The hand-coloured calendar tones (data-tone 1-3) and the seal's sheen/depth. */
+  --rose-tone-1: #c55d63;
+  --rose-tone-2: #d4817f;
+  --rose-tone-3: #bd5159;
+  --rose-sheen: #d0707a;
+  --rose-deep: #8c2f38;
+  --ink-soft: #45352f;
+  --paper-bright: #fbf4ec;
+  --backdrop: rgb(34 24 20 / .86);
+  --line-strong: rgb(42 31 27 / .2);
+  --line-stronger: rgb(42 31 27 / .32);
 
   --serif: "Noto Serif SC", "Songti SC", "STSong", "Source Han Serif SC", serif;
   --sans: -apple-system, BlinkMacSystemFont, "PingFang SC", "Hiragino Sans GB", "Segoe UI", "Microsoft YaHei", "Noto Sans SC", sans-serif;
@@ -146,7 +167,7 @@ html.has-dialog, html.has-dialog body { overflow: hidden; }
   min-height: 2.75rem;
   color: var(--muted);
   text-decoration: underline;
-  text-decoration-color: rgb(42 31 27 / .2);
+  text-decoration-color: var(--line-strong);
   text-underline-offset: .32em;
   transition: color .2s;
 }
@@ -165,7 +186,7 @@ html.has-dialog, html.has-dialog body { overflow: hidden; }
   background: var(--ink);
   transition: background-color .2s, translate .3s var(--ease-out);
 }
-.pill-link:hover { background: #45352f; translate: 0 -2px; }
+.pill-link:hover { background: var(--ink-soft); translate: 0 -2px; }
 
 .stamp {
   display: inline-flex;
@@ -481,9 +502,9 @@ html.fonts-pending .intro { animation-play-state: paused; }
 }
 .year-cells > span:hover { scale: 1.3; }
 .year-cells > .is-past { background: var(--rose-2); }
-.year-cells > .is-past[data-tone="1"] { background: #c55d63; }
-.year-cells > .is-past[data-tone="2"] { background: #d4817f; }
-.year-cells > .is-past[data-tone="3"] { background: #bd5159; }
+.year-cells > .is-past[data-tone="1"] { background: var(--rose-tone-1); }
+.year-cells > .is-past[data-tone="2"] { background: var(--rose-tone-2); }
+.year-cells > .is-past[data-tone="3"] { background: var(--rose-tone-3); }
 .year-cells > .is-today {
   background: var(--rose);
   box-shadow: 0 0 0 2px var(--sheet), 0 0 0 3.5px var(--rose);
@@ -699,8 +720,6 @@ a.polaroid:hover, a.polaroid:focus-visible { rotate: 0deg; translate: 0 -8px; bo
 .envelope img {
   width: 100%;
   aspect-ratio: 800 / 620;
-  object-fit: cover;
-  object-position: 50% 52%;
   filter: drop-shadow(0 22px 24px rgb(90 55 40 / .15)) drop-shadow(0 3px 4px rgb(90 55 40 / .1));
 }
 .envelope:hover { rotate: -3deg; translate: 0 -5px; }
@@ -769,7 +788,7 @@ a.polaroid:hover, a.polaroid:focus-visible { rotate: 0deg; translate: 0 -8px; bo
   background: transparent;
 }
 .lightbox[open] { display: grid; place-items: center; }
-.lightbox::backdrop { background: rgb(34 24 20 / .86); }
+.lightbox::backdrop { background: var(--backdrop); }
 .lightbox[open]::backdrop { animation: fade .35s ease both; }
 
 .lightbox-print {
@@ -798,7 +817,7 @@ a.polaroid:hover, a.polaroid:focus-visible { rotate: 0deg; translate: 0 -8px; bo
   width: 3rem;
   height: 3rem;
   border-radius: 50%;
-  color: #fbf4ec;
+  color: var(--paper-bright);
   background: rgb(255 255 255 / .1);
   transition: background-color .2s;
 }
@@ -877,7 +896,7 @@ html.is-locked .gate, .gate.is-leaving { display: grid; }
   place-items: center;
   width: 3rem;
   height: 3.9rem;
-  border-bottom: 1.5px solid rgb(42 31 27 / .22);
+  border-bottom: 1.5px solid var(--line-strong);
   font: 400 2.3rem/1 var(--serif);
   font-variant-numeric: lining-nums;
   color: var(--ink);
@@ -913,7 +932,7 @@ html.is-locked .gate, .gate.is-leaving { display: grid; }
   width: 1.05rem;
   height: 1.05rem;
   margin: 0;
-  border: 1.5px solid rgb(42 31 27 / .32);
+  border: 1.5px solid var(--line-stronger);
   border-radius: 4px;
   background: var(--sheet);
   appearance: none;
@@ -938,8 +957,8 @@ html.is-locked .gate, .gate.is-leaving { display: grid; }
   height: 3.75rem;
   border-radius: 48% 52% 50% 50% / 52% 47% 53% 48%;
   font: 400 1.35rem/1 var(--serif);
-  color: #fbeae6;
-  background: radial-gradient(circle at 34% 28%, #d0707a, var(--rose) 52%, #8c2f38);
+  color: var(--paper-bright);
+  background: radial-gradient(circle at 34% 28%, var(--rose-sheen), var(--rose) 52%, var(--rose-deep));
   box-shadow: inset 0 0 0 5px rgb(255 255 255 / .07), inset 0 -3px 6px rgb(60 10 15 / .25), 0 8px 16px -6px rgb(140 47 56 / .55);
   opacity: .5;
   transition: opacity .3s, scale .3s var(--ease-out), rotate .3s var(--ease-out);
@@ -963,7 +982,7 @@ html.is-locked .gate, .gate.is-leaving { display: grid; }
 .album-wall .polaroid:nth-child(even) { translate: 0 1.5rem; }
 .album-wall a.polaroid:nth-child(even):hover { translate: 0 calc(1.5rem - 8px); }
 
-.polaroid-empty { background: transparent; box-shadow: none; outline: 1.5px dashed rgb(42 31 27 / .18); outline-offset: -1px; }
+.polaroid-empty { background: transparent; box-shadow: none; outline: 1.5px dashed var(--line-strong); outline-offset: -1px; }
 .polaroid-slot { display: grid; place-items: center; aspect-ratio: 4 / 5; font: 400 1rem var(--serif); letter-spacing: .2em; color: var(--faint); }
 
 /* ---------- Lost page ---------- */

@@ -1,5 +1,5 @@
 ---
-import { relationshipStartDate } from '../lib/anniversary';
+import { dotted, relationshipStartDate } from '../lib/anniversary';
 
 interface Props {
   /** Prefix for the SVG ids, unique per page. */
@@ -8,7 +8,7 @@ interface Props {
 }
 
 const { id, class: className } = Astro.props;
-const date = relationshipStartDate.replaceAll('-', '.');
+const date = dotted(relationshipStartDate);
 ---
 
 <svg class:list={['postmark', className]} viewBox="0 0 236 124" aria-hidden="true" focusable="false">
