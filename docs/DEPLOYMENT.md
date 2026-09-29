@@ -108,11 +108,11 @@
 
 ## 全面优化正式上线（2026-09-29，Asia/Shanghai）
 
-- 用户明确授权合并 PR #28 并执行生产部署。squash 合并提交 `056aac568375463a38d78e83364a813f9699d91f`，GitHub CI 通过，干净 `main` 上复现 `npm ci`、26 项单元测试与 `npm run build`。发布前已在 `loveuhqq-site-preview`（版本 `dd330a5f`）完成桌面与手机视口预览验收。
-- 部署前线上版本为 `df82a3ac-d1ab-47ef-8485-0fb7c9b189c4`，可作回滚目标。项目级 Wrangler 4.131.1 部署至 `loveuhqq-site`，绑定正式 Custom Domain `loveuhqq.x23.shop`；生产版本 ID：`01432fb3-3f03-4dc0-9467-f6e0fe4787fb`。
+- 用户明确授权合并 PR #28 并执行生产部署。首次发布后发现 PR #28 漏带任务分支的最后一个提交（点选格子后网格保持焦点），补走 PR #30 合并并重新部署；两次均为用户授权的发布流程。最终源码为 `main` 提交 `414787e`（含 #28 squash 合并 `056aac5`），GitHub CI 通过，干净 `main` 上复现 `npm ci`、26 项单元测试与 `npm run build`。发布前已在 `loveuhqq-site-preview`（版本 `dd330a5f`）完成桌面与手机视口预览验收。
+- 部署前线上版本为 `df82a3ac-d1ab-47ef-8485-0fb7c9b189c4`，可作回滚目标。项目级 Wrangler 4.131.1 部署至 `loveuhqq-site`，绑定正式 Custom Domain `loveuhqq.x23.shop`；最终生产版本 ID：`1dd6ce15-2448-4c81-a017-baaf40c32d3d`（其前一趟为 `01432fb3-3f03-4dc0-9467-f6e0fe4787fb`）。
 - Cloudflare DoH 核对权威 A 记录 `172.67.166.139`、`104.21.65.200`，与既往一致，未修改 DNS。
 - 正式站首页、`/photos/`、`/manifest.json`、`/robots.txt` 均为 200，未登记路径正确返回 404；首页 HTML 与 `dist/index.html` 逐字节一致，`no-transform` 阻止注入的效果保持稳定。
-- 新 CSS `/_assets/SiteHeader.BzlaFNZg.css`（31,009 字节，原阻塞 CSS 123,941 字节）与单文件字体 `/_assets/noto-serif-sc-400-subset.CmzFHmQv.woff2`（74,976 字节，替代原约 3.5MB 分片）SHA-256 与 `dist` 一致；`/images/envelope-620.webp` 200，旧 `envelope.webp` 正确返回 404。
+- 新 CSS `/_assets/SiteHeader.BzlaFNZg.css`（31,009 字节，原阻塞 CSS 123,941 字节）与单文件字体 `/_assets/noto-serif-sc-400-subset.CmzFHmQv.woff2`（74,976 字节，替代原约 3.5MB 分片）SHA-256 与 `dist` 一致；脚本 `/_assets/index.astro_astro_type_script_index_0_lang.Dkz5szMk.js` 哈希一致；`/images/envelope-620.webp` 200，旧 `envelope.webp` 正确返回 404。
 - 响应头符合本轮改动：无 `X-XSS-Protection`、`Permissions-Policy` 不再含 `interest-cohort`、`Cache-Control` 保留 `no-transform`、HSTS 不变。
 - 真实 Chrome 1440×900 访问正式站：门禁输码解锁、封面开场（纸心、邮戳、第 91 天）与思源宋体子集渲染正常；`blogtext.x23.shop` 未受影响。
 
