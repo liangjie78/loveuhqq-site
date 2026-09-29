@@ -140,7 +140,9 @@ if (grid) {
     if (event.pointerType === 'mouse') release();
   });
   grid.addEventListener('click', (event) => {
-    if (!pick(event.target)) release();
+    // Keep the grid as the keyboard owner after a pick, so arrows work right away.
+    if (pick(event.target)) grid.focus({ preventScroll: true });
+    else release();
   });
   document.addEventListener('click', (event) => {
     if (pickedCell && !grid.contains(event.target as Node)) release();
