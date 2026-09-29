@@ -70,7 +70,7 @@ let inkIndex = 0;
             <span><b>第一天</b><time data-year-first>{startLabel}</time></span>
             <span><b data-year-label>一周年</b><time data-year-last>{dotted(lastDay.date)}</time></span>
           </div>
-          <div class="year-grid" data-year-grid role="img" aria-label={`第一年的日历，从 ${startLabel} 到 ${dotted(lastDay.date)}`} style={`--months:${months.length}`}>
+          <div class="year-grid" data-year-grid role="group" tabindex="0" aria-label={`第一年的日历，从 ${startLabel} 到 ${dotted(lastDay.date)}，可用方向键翻看`} style={`--months:${months.length}`}>
             {months.map((month) => (
               <div class="year-row">
                 <span class="year-month">{monthNames[month.month - 1]}</span>

@@ -56,6 +56,7 @@ function buildGrid(months: CalendarMonth[], year: number) {
     for (const day of month.days) {
       const cell = document.createElement('span');
       cell.dataset.day = String(day.day);
+      if (day.day === hundredthDay) cell.classList.add('is-hundred');
       if (day.day === lastDay.day) cell.classList.add('is-anniversary');
       if (momentTitles.has(day.date)) cell.classList.add('is-moment');
       cells.append(cell);
@@ -64,7 +65,7 @@ function buildGrid(months: CalendarMonth[], year: number) {
     return row;
   }));
   const first = months[0].days[0];
-  grid.setAttribute('aria-label', `${yearLabel(year)}的日历，从 ${dotted(first.date)} 到 ${dotted(lastDay.date)}`);
+  grid.setAttribute('aria-label', `${yearLabel(year)}的日历，从 ${dotted(first.date)} 到 ${dotted(lastDay.date)}，可用方向键翻看`);
   $('[data-year-first]')!.textContent = dotted(first.date);
   $('[data-year-last]')!.textContent = dotted(lastDay.date);
   $('[data-year-label]')!.textContent = anniversaryLabel(year);
@@ -143,6 +144,30 @@ if (grid) {
   });
   document.addEventListener('click', (event) => {
     if (pickedCell && !grid.contains(event.target as Node)) release();
+  });
+
+  // Keyboard days: the grid is one tab stop, arrows walk the cells.
+  const move = (target: number) => {
+    const days = [...cellDates.keys()];
+    const clamped = Math.min(Math.max(...days), Math.max(Math.min(...days), target));
+    const cell = grid.querySelector<HTMLElement>(`[data-day="${clamped}"]`);
+    if (!cell) return;
+    pick(cell);
+    cell.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+  };
+  grid.addEventListener('keydown', (event) => {
+    const current = pickedCell?.dataset.day !== undefined ? Number(pickedCell.dataset.day) : today;
+    switch (event.key) {
+      case 'ArrowLeft': move(current - 1); break;
+      case 'ArrowRight': move(current + 1); break;
+      case 'ArrowUp': move(current - 31); break;
+      case 'ArrowDown': move(current + 31); break;
+      case 'Home': move(Math.min(...cellDates.keys())); break;
+      case 'End': move(Math.max(...cellDates.keys())); break;
+      case 'Escape': release(); break;
+      default: return;
+    }
+    event.preventDefault();
   });
 }
 
