@@ -1,7 +1,7 @@
 ---
-import '@fontsource/noto-serif-sc/400.css';
 import '../styles/global.css';
 import PassphraseGate from '../components/PassphraseGate.astro';
+import fontUrl from '../assets/fonts/noto-serif-sc-400-subset.woff2?url';
 
 interface Props {
   title: string;
@@ -35,6 +35,7 @@ const image = new URL('/images/paper-heart.webp', Astro.site).href;
     <meta name="twitter:card" content="summary" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <link rel="manifest" href="/manifest.json" />
+    <link rel="preload" href={fontUrl} as="font" type="font/woff2" crossorigin />
     <script is:inline>
       (function () {
         var root = document.documentElement;
@@ -55,7 +56,7 @@ const image = new URL('/images/paper-heart.webp', Astro.site).href;
           };
           setTimeout(ready, 1500);
           document.addEventListener('DOMContentLoaded', function () {
-            document.fonts.load('400 1em "Noto Serif SC"', '爱你，何青青。第天').then(ready, ready);
+            document.fonts.load('400 1em "Noto Serif SC"').then(ready, ready);
           });
         }
       })();

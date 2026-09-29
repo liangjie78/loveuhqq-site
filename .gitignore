@@ -3,6 +3,7 @@ dist/
 .astro/
 .wrangler/
 .zcode/
+.fontcache/
 .env
 .env.*
 !.env.example

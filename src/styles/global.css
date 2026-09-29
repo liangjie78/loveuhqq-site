@@ -3,6 +3,16 @@
  * Warm paper, wax-seal red, Song-style serif, and things taped onto the page.
  */
 
+/* One subset file for every serif glyph the site uses; regenerate with
+   `npm run subset:font` after adding copy (tests/font-subset.test.mjs enforces it). */
+@font-face {
+  font-family: "Noto Serif SC";
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url("../assets/fonts/noto-serif-sc-400-subset.woff2") format("woff2");
+}
+
 :root {
   color-scheme: light;
 
