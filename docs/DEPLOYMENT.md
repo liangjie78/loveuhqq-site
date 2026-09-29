@@ -106,4 +106,14 @@
 - 响应头：HTML 为 `public, max-age=0, must-revalidate, no-transform`；`/_assets/*` 为 `public, max-age=31536000, immutable`，`/images/*` 为 `public, max-age=2592000, immutable`，`/manifest.json` 为 `public, max-age=604800`，不再与全站值拼接。
 - Web Analytics 在 Cloudflare 按整个 `x23.shop` zone 开启，免费套餐无法按主机名排除，因此未修改 Cloudflare 设置，改由 `no-transform` 阻止注入：本站 HTML 已不含 `cloudflareinsights` 脚本，真实浏览器控制台无错误、无失败资源、无横向溢出；`blogtext.x23.shop` 仍 HTTP 200 且照常注入统计。
 
+## 全面优化正式上线（2026-09-29，Asia/Shanghai）
+
+- 用户明确授权合并 PR #28 并执行生产部署。squash 合并提交 `056aac568375463a38d78e83364a813f9699d91f`，GitHub CI 通过，干净 `main` 上复现 `npm ci`、26 项单元测试与 `npm run build`。发布前已在 `loveuhqq-site-preview`（版本 `dd330a5f`）完成桌面与手机视口预览验收。
+- 部署前线上版本为 `df82a3ac-d1ab-47ef-8485-0fb7c9b189c4`，可作回滚目标。项目级 Wrangler 4.131.1 部署至 `loveuhqq-site`，绑定正式 Custom Domain `loveuhqq.x23.shop`；生产版本 ID：`01432fb3-3f03-4dc0-9467-f6e0fe4787fb`。
+- Cloudflare DoH 核对权威 A 记录 `172.67.166.139`、`104.21.65.200`，与既往一致，未修改 DNS。
+- 正式站首页、`/photos/`、`/manifest.json`、`/robots.txt` 均为 200，未登记路径正确返回 404；首页 HTML 与 `dist/index.html` 逐字节一致，`no-transform` 阻止注入的效果保持稳定。
+- 新 CSS `/_assets/SiteHeader.BzlaFNZg.css`（31,009 字节，原阻塞 CSS 123,941 字节）与单文件字体 `/_assets/noto-serif-sc-400-subset.CmzFHmQv.woff2`（74,976 字节，替代原约 3.5MB 分片）SHA-256 与 `dist` 一致；`/images/envelope-620.webp` 200，旧 `envelope.webp` 正确返回 404。
+- 响应头符合本轮改动：无 `X-XSS-Protection`、`Permissions-Policy` 不再含 `interest-cohort`、`Cache-Control` 保留 `no-transform`、HSTS 不变。
+- 真实 Chrome 1440×900 访问正式站：门禁输码解锁、封面开场（纸心、邮戳、第 91 天）与思源宋体子集渲染正常；`blogtext.x23.shop` 未受影响。
+
 参考：[Cloudflare Static Assets](https://developers.cloudflare.com/workers/static-assets/)。
