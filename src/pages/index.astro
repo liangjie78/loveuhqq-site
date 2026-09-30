@@ -70,7 +70,12 @@ let inkIndex = 0;
             <span><b>第一天</b><time data-year-first>{startLabel}</time></span>
             <span><b data-year-label>一周年</b><time data-year-last>{dotted(lastDay.date)}</time></span>
           </div>
-          <div class="year-grid" data-year-grid role="group" tabindex="0" aria-label={`第一年的日历，从 ${startLabel} 到 ${dotted(lastDay.date)}，可用方向键翻看`} style={`--months:${months.length}`}>
+          <p class="year-hint" id="year-hint" data-needs-js>点一格，看看那一天。也可以用方向键翻看。</p>
+          <div class="year-feedback">
+            <p class="year-readout" data-year-readout aria-live="polite">{startLabel} — {dotted(lastDay.date)}</p>
+            <button class="text-button year-today" type="button" data-return-today data-needs-js disabled>回到今天</button>
+          </div>
+          <div class="year-grid" data-year-grid role="group" tabindex="0" aria-describedby="year-hint" aria-label={`第一年的日历，从 ${startLabel} 到 ${dotted(lastDay.date)}，可用方向键翻看`} style={`--months:${months.length}`}>
             {months.map((month) => (
               <div class="year-row">
                 <span class="year-month">{monthNames[month.month - 1]}</span>
@@ -89,7 +94,6 @@ let inkIndex = 0;
               </div>
             ))}
           </div>
-          <p class="year-readout" data-year-readout aria-live="polite">{startLabel} — {dotted(lastDay.date)}</p>
           <ul class="year-legend" aria-hidden="true">
             <li><i class="is-past"></i>走过的日子</li>
             <li><i></i>还没到的日子</li>

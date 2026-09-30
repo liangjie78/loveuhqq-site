@@ -33,6 +33,8 @@ function spokenDate(date: string, currentYear: number) {
 
 const grid = $('[data-year-grid]');
 const readout = $('[data-year-readout]');
+const returnToday = $<HTMLButtonElement>('[data-return-today]');
+const verticalCalendar = window.matchMedia('(max-width: 640px)');
 const cellDates = new Map<number, string>();
 let renderedYear = 1;
 let anniversaryDay = 0;
@@ -98,6 +100,7 @@ function showReadout(day = today) {
   if (!readout) return;
   readout.textContent = cellDates.has(day) ? describeCell(day) : `从 ${dotted(cellDates.get(1) ?? '')} 开始`;
   readout.classList.toggle('is-picked', day !== today);
+  if (returnToday) returnToday.disabled = day === today;
 }
 
 function paintGrid() {
@@ -118,6 +121,7 @@ function paintGrid() {
 }
 
 if (grid) {
+  let pinned = false;
   const pick = (target: EventTarget | null) => {
     const cell = target instanceof Element ? target.closest<HTMLElement>('[data-day]') : null;
     if (!cell) return false;
@@ -128,20 +132,28 @@ if (grid) {
     return true;
   };
   const release = () => {
+    pinned = false;
     pickedCell?.classList.remove('is-picked');
     pickedCell = null;
     showReadout();
   };
+  returnToday?.addEventListener('click', () => {
+    release();
+    grid.focus({ preventScroll: true });
+  });
 
   grid.addEventListener('pointerover', (event) => {
-    if (event.pointerType === 'mouse') pick(event.target);
+    if (event.pointerType === 'mouse' && !pinned) pick(event.target);
   });
   grid.addEventListener('pointerleave', (event) => {
-    if (event.pointerType === 'mouse') release();
+    if (event.pointerType === 'mouse' && !pinned) release();
   });
   grid.addEventListener('click', (event) => {
     // Keep the grid as the keyboard owner after a pick, so arrows work right away.
-    if (pick(event.target)) grid.focus({ preventScroll: true });
+    if (pick(event.target)) {
+      pinned = true;
+      grid.focus({ preventScroll: true });
+    }
     else release();
   });
   document.addEventListener('click', (event) => {
@@ -154,16 +166,19 @@ if (grid) {
     const clamped = Math.min(Math.max(...days), Math.max(Math.min(...days), target));
     const cell = grid.querySelector<HTMLElement>(`[data-day="${clamped}"]`);
     if (!cell) return;
+    pinned = true;
     pick(cell);
     cell.scrollIntoView({ block: 'nearest', inline: 'nearest' });
   };
   grid.addEventListener('keydown', (event) => {
     const current = pickedCell?.dataset.day !== undefined ? Number(pickedCell.dataset.day) : today;
+    const across = verticalCalendar.matches ? 31 : 1;
+    const down = verticalCalendar.matches ? 1 : 31;
     switch (event.key) {
-      case 'ArrowLeft': move(current - 1); break;
-      case 'ArrowRight': move(current + 1); break;
-      case 'ArrowUp': move(current - 31); break;
-      case 'ArrowDown': move(current + 31); break;
+      case 'ArrowLeft': move(current - across); break;
+      case 'ArrowRight': move(current + across); break;
+      case 'ArrowUp': move(current - down); break;
+      case 'ArrowDown': move(current + down); break;
       case 'Home': move(Math.min(...cellDates.keys())); break;
       case 'End': move(Math.max(...cellDates.keys())); break;
       case 'Escape': release(); break;
