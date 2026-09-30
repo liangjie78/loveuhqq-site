@@ -41,6 +41,7 @@ let anniversaryDay = 0;
 let today = 0;
 let todayDate = '';
 let pickedCell: HTMLElement | null = null;
+let pinned = false;
 
 function buildGrid(months: CalendarMonth[], year: number) {
   if (!grid) return;
@@ -77,7 +78,11 @@ function buildGrid(months: CalendarMonth[], year: number) {
 
 function prepareYear(year: number) {
   const months = getRelationshipYearMonths(year);
-  if (year !== renderedYear) buildGrid(months, year);
+  if (year !== renderedYear) {
+    pickedCell = null;
+    pinned = false;
+    buildGrid(months, year);
+  }
   renderedYear = year;
   cellDates.clear();
   for (const month of months) for (const day of month.days) cellDates.set(day.day, day.date);
@@ -121,7 +126,6 @@ function paintGrid() {
 }
 
 if (grid) {
-  let pinned = false;
   const pick = (target: EventTarget | null) => {
     const cell = target instanceof Element ? target.closest<HTMLElement>('[data-day]') : null;
     if (!cell) return false;
@@ -221,7 +225,7 @@ function refreshDates() {
   $('[data-year-total]')!.textContent = String(cellDates.size);
 
   paintGrid();
-  if (!pickedCell) showReadout();
+  showReadout(pickedCell ? Number(pickedCell.dataset.day) : today);
 
   window.clearTimeout(midnightTimer);
   midnightTimer = window.setTimeout(refreshDates, getNextShanghaiMidnight(now).getTime() - now.getTime() + 100);
