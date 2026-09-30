@@ -256,6 +256,7 @@ html.has-dialog, html.has-dialog body { overflow: hidden; }
   padding: 0 .7rem;
   font-size: .9rem;
   letter-spacing: .08em;
+  white-space: nowrap;
   color: var(--muted);
   transition: color .2s;
 }
@@ -468,7 +469,8 @@ html.fonts-pending .intro { animation-play-state: paused; }
 .year .tape-corner { top: .2rem; left: -1.5rem; width: 6.25rem; rotate: -38deg; }
 
 .year-ends,
-.year-readout,
+.year-hint,
+.year-feedback,
 .year-legend { padding-left: 3.5rem; }
 
 .year-ends {
@@ -482,6 +484,20 @@ html.fonts-pending .intro { animation-play-state: paused; }
 }
 .year-ends b { margin-right: .6em; font: 400 .92rem var(--serif); color: var(--ink-2); }
 .year-ends time { font-variant-numeric: tabular-nums; }
+.year-hint { font-size: .78rem; color: var(--muted); }
+.year-feedback {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: .5rem 1rem;
+  min-height: 4rem;
+  margin-bottom: 1rem;
+  background: var(--sheet);
+  border-bottom: 1px solid var(--line);
+}
+.year-today { flex: none; font-size: .78rem; }
+.year-today:disabled { color: var(--faint); cursor: default; text-decoration: none; }
+.year-today:not(:disabled):hover { color: var(--rose); }
 
 .year-grid { display: grid; gap: clamp(.28rem, .55vw, .45rem); }
 .year-row { display: grid; grid-template-columns: 3.5rem minmax(0, 1fr); align-items: center; }
@@ -547,7 +563,6 @@ html.fonts-pending .intro { animation-play-state: paused; }
 
 .year-readout {
   min-height: 1.7em;
-  margin-top: 1.6rem;
   font: 400 1.05rem/1.7 var(--serif);
   letter-spacing: .04em;
   color: var(--ink-2);
@@ -559,7 +574,7 @@ html.fonts-pending .intro { animation-play-state: paused; }
   display: flex;
   flex-wrap: wrap;
   gap: .4rem 1.4rem;
-  margin-top: .75rem;
+  margin-top: 1.25rem;
   list-style: none;
   font-size: .76rem;
   color: var(--muted);
@@ -792,6 +807,7 @@ a.polaroid:hover, a.polaroid:focus-visible { rotate: 0deg; translate: 0 -8px; bo
 .lightbox[open]::backdrop { animation: fade .35s ease both; }
 
 .lightbox-print {
+  container-type: inline-size;
   width: min(100%, 34rem, calc((100svh - 13rem) * .8 + 1.6rem));
   padding: .8rem .8rem 0;
   background: var(--sheet);
@@ -809,6 +825,10 @@ a.polaroid:hover, a.polaroid:focus-visible { rotate: 0deg; translate: 0 -8px; bo
 }
 .lightbox-title { font: 400 1.1rem/1.4 var(--serif); letter-spacing: .04em; }
 .lightbox-meta { flex: none; font-size: .75rem; letter-spacing: .06em; color: var(--muted); font-variant-numeric: tabular-nums; }
+@container (max-width: 20rem) {
+  .lightbox-print figcaption { flex-direction: column; align-items: flex-start; gap: .25rem; }
+  .lightbox-title { font-size: 1rem; }
+}
 
 .lightbox-button {
   position: fixed;
@@ -1122,8 +1142,9 @@ html.is-locked .gate, .gate.is-leaving { display: grid; }
 
   .year { padding: 2rem .9rem 1.25rem; }
   .year .tape-corner { top: -.35rem; left: -1rem; width: 4.75rem; }
-  .year-ends, .year-readout, .year-legend { padding-left: 0; }
+  .year-ends, .year-hint, .year-feedback, .year-legend { padding-left: 0; }
   .year-ends { margin-bottom: 1rem; }
+  .year-feedback { position: sticky; top: calc(var(--header) + env(safe-area-inset-top)); z-index: 3; padding-block: .5rem; }
   .year-grid {
     grid-template-columns: repeat(var(--months), minmax(0, 1fr));
     align-items: start;
@@ -1134,15 +1155,27 @@ html.is-locked .gate, .gate.is-leaving { display: grid; }
   .year-cells { grid-template-columns: none; grid-template-rows: repeat(31, auto); width: 100%; justify-items: center; gap: 3px; }
   .year-cells > :first-child { grid-column-start: auto; grid-row-start: var(--start); }
   .year-cells > span { width: min(100%, 1.05rem); }
-  .year-readout { font-size: 1rem; text-align: center; }
+  .year-readout { font-size: .9rem; }
   .year-legend { justify-content: center; }
 
   .days-stats { gap: 1rem 1.25rem; }
   .stat dt { font-size: .8rem; }
 }
 
+/* Short landscape viewports keep the print and controls in separate spaces. */
+@media (max-height: 520px) and (min-aspect-ratio: 1/1) {
+  .lightbox { padding: calc(1rem + env(safe-area-inset-top)) calc(5rem + env(safe-area-inset-right)) calc(1rem + env(safe-area-inset-bottom)) calc(5rem + env(safe-area-inset-left)); }
+  .lightbox-print { width: min(100%, 34rem, calc((100dvh - 7rem - env(safe-area-inset-top) - env(safe-area-inset-bottom)) * .8 + 1.6rem)); rotate: 0deg; }
+  .lightbox-print figcaption { padding: .5rem .2rem .65rem; }
+  .lightbox-prev, .lightbox-next { top: 50%; bottom: auto; translate: 0 -50%; }
+  .lightbox-prev { left: calc(1rem + env(safe-area-inset-left)); }
+  .lightbox-next { right: calc(1rem + env(safe-area-inset-right)); }
+}
+
 @media (max-width: 380px) {
-  .site-nav a { padding: 0 .4rem; }
+  .site-header { gap: .5rem; padding-inline: max(1rem, env(safe-area-inset-left)) max(1rem, env(safe-area-inset-right)); }
+  .wordmark { flex: none; font-size: 1rem; }
+  .site-nav a { min-width: 2.75rem; padding: 0 .25rem; font-size: .8rem; letter-spacing: .04em; }
   .gate-slots { gap: 1.25rem; }
   .gate-slot { width: 2.6rem; }
 }
