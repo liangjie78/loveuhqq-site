@@ -3,27 +3,55 @@
     <header class="future-intro" data-reveal>
       <h2 id="future-title">还有些小事，<br />想一起做。</h2>
       <p>想到一件就写下来。<br />不用着急，一件一件来。</p>
-      <button class="draw-button" type="button" data-wish-draw data-needs-js><span aria-hidden="true">✳</span> 从清单里抽一件</button>
-      <p class="draw-result" data-wish-result role="status" data-needs-js></p>
+      <button class="draw-button" type="button" data-wish-draw data-needs-js hidden><span aria-hidden="true">✳</span> 从清单里抽一件</button>
+      <p class="draw-result" data-wish-result role="status" data-needs-js hidden></p>
     </header>
     <div class="future-paper" data-reveal>
       <span class="tape tape-corner" aria-hidden="true"></span>
-      <div class="future-paper-head"><h3>往后的小清单</h3><span data-wish-count data-needs-js>还空着</span></div>
-      <p class="wish-empty" data-wish-empty>第一件，留给我们自己写。</p>
-      <ul class="wish-list" data-wish-list></ul>
-      <form class="wish-form" data-wish-form data-needs-js>
-        <label class="sr-only" for="wish-text">想一起做的小事</label>
-        <input id="wish-text" type="text" maxlength="120" required placeholder="写下一件想一起做的事" autocomplete="off" />
-        <button class="pencil-button" type="submit">记上</button>
-      </form>
-      <noscript><p class="paper-local">开启 JavaScript 后，可以写清单。</p></noscript>
+      <div class="future-paper-head"><h3>往后的小清单</h3><span data-wish-count data-needs-js hidden>还空着</span></div>
+      <div class="notebook-guest" data-wish-guest>
+        <p>解锁后，翻看我们的记录</p>
+        <button class="pencil-button" type="button" data-open-login data-needs-js>解锁手账</button>
+      </div>
+      <div class="notebook-loading" data-wish-loading hidden>
+        <p data-wish-loading-status role="status">正在打开云端手账…</p>
+        <button class="text-button" type="button" data-wish-retry hidden>重新连接</button>
+      </div>
+      <div data-wish-private hidden>
+        <p class="wish-empty" data-wish-empty>第一件，留给我们自己写。</p>
+        <ul class="wish-list" data-wish-list></ul>
+        <form class="wish-form" data-wish-form>
+          <label class="sr-only" for="wish-text">想一起做的小事</label>
+          <input id="wish-text" type="text" maxlength="120" required placeholder="写下一件想一起做的事" autocomplete="off" />
+          <button class="pencil-button" type="submit">记上</button>
+        </form>
+        <p class="notebook-status" data-wish-status role="status"></p>
+        <button class="text-button" type="button" data-wish-refresh hidden>刷新查看</button>
+        <button class="text-button" type="button" data-wish-undo hidden>撤销刚才的移除</button>
+      </div>
+      <noscript><p class="paper-local">开启 JavaScript 后，可以解锁共同手账。</p></noscript>
     </div>
-    <div class="notebook-tools" data-needs-js>
-      <p>这些记录只留在这台设备，不会同步给对方。清理浏览器前，记得带走一份。</p>
-      <div class="paper-actions"><button class="text-button" type="button" data-notebook-export>带走手账 ↓</button><button class="text-button" type="button" data-notebook-import>放回备份 ↑</button></div>
+    <div class="notebook-tools" data-wish-private hidden>
+      <p>登录后，日记和清单会保存在云端。导入旧手账时，原来的设备记录会保留。</p>
+      <div class="paper-actions">
+        <button class="text-button" type="button" data-notebook-export>带走手账 ↓</button>
+        <button class="text-button" type="button" data-notebook-import>从备份放回 ↑</button>
+        <button class="text-button" type="button" data-notebook-local-import>导入这台设备的旧手账</button>
+      </div>
       <input type="file" accept="application/json,.json" data-notebook-file hidden aria-label="选择手账备份" />
       <p class="notebook-status" data-notebook-status role="status"></p>
-      <button class="text-button" type="button" data-notebook-undo hidden>撤销刚才的移除</button>
     </div>
   </div>
 </section>
+
+<dialog class="notebook-import-dialog" data-import-dialog aria-labelledby="notebook-import-title">
+  <form method="dialog" data-import-form>
+    <h2 id="notebook-import-title">有些记录的日期或编号相同</h2>
+    <p>逐条选择保留云端内容，或用备份里的内容替换。</p>
+    <div data-import-conflicts></div>
+    <div class="paper-actions notebook-import-actions">
+      <button class="text-button" type="button" data-import-cancel>先不导入</button>
+      <button class="pencil-button" type="submit" data-import-confirm>按选择导入</button>
+    </div>
+  </form>
+</dialog>

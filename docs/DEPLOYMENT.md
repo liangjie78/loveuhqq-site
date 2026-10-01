@@ -12,7 +12,9 @@
 - Custom Domain：`loveuhqq.x23.shop`
 - Zone：`x23.shop`
 - 账户：由 `wrangler.jsonc` 中 account_id 明确指定，部署前用项目级 `wrangler whoami` 核对。
-- 静态产物：`dist/`，无需 Worker 后端入口或 Astro 服务端 adapter。
+- 页面产物：`dist/`；`worker/index.ts` 处理 `/api/*`，其余请求仍由 Static Assets 提供，无需 Astro 服务端 adapter。
+- 数据：生产使用单独的 `loveuhqq-notebook` D1；预览使用 `loveuhqq-notebook-preview`，禁止共用数据库。
+- 编辑权限：Worker secret `EDITOR_PASSWORD_HASH` 保存带随机盐的 PBKDF2 验证值，随机会话的哈希保存在 D1；浏览器 Cookie 使用 HttpOnly、Secure、SameSite=Strict。改密使旧会话失效。
 - DNS 与 HTTPS 由 Cloudflare Custom Domain 管理；不手工替换其他 DNS 记录。
 
 ## 正常发布
@@ -20,12 +22,28 @@
 1. 开发按仓库流程使用 feature/fix/chore 分支或 worktree；完成必要验证后，可自主 commit、push 和创建/更新 PR。默认分支保持 PR-first，不直接 push main；PR 合并、历史改写、tag、force push 与生产部署需明确授权。
 2. 取得本次生产部署授权，核验干净 main 与 origin/main 的提交一致。确认账号、目标 Worker、Custom Domain 无异常；已有其他资源占用目标时停止报告。
 3. 根据当前环境满足依赖的 Node.js 引擎要求，运行 `npm ci`、`npm run build`，检查 dist 中 HTML、CSS 和 favicon。
-4. 运行项目级 `npm run deploy`（重新 build 后 wrangler deploy），记录返回的版本 ID。只发布这个 Worker。
+4. 首次启用云端手账时，先按下节配置独立生产数据库和密码。运行项目级 `npm run deploy`（检查生产数据库绑定、重新 build 后 wrangler deploy），记录返回的版本 ID。只发布这个 Worker。
 5. 核验 Custom Domain 指向正确 Worker，查询 Cloudflare 权威 DNS，并访问 HTTPS：首页须为 200 且正文与本次发布的源码一致，实际 CSS/favicon 必须为 200；不可出现 work1 或 x23-personal-site 页面。
 
 ## 预览验收
 
 可见 UI 改动先用 `npm run deploy:preview` 从当前分支构建并手动更新 `loveuhqq-site-preview`，地址为 [临时预览站](https://loveuhqq-site-preview.1756127916.workers.dev/)。它使用 `wrangler.preview.jsonc`，仅绑定 `workers.dev`，与正式 Worker 和 Custom Domain 分离。每次交付需核验公网首页、受影响页面和实际资源，提供网址及截图；预览网址始终显示最后一次上传的内容，不能仅凭 PR 或构建成功声称网址已更新。预览站公开可访问，提交正式发布仍按上节的授权和 `main` 流程执行。
+
+共享手账预览使用独立 D1，首次执行 `npx wrangler d1 migrations apply DB --remote --config wrangler.preview.jsonc`，然后在交互式终端运行 `npm run password:preview` 设置密码。API 与私密正文禁止缓存；未知 `/api/*` 返回 JSON 404，不能落入静态页面。预览仅使用合成测试内容，至少验收两次独立登录、同步、同时修改冲突、访客拒绝、退出撤销和断网草稿保留。
+
+## 首次生产启用共同手账
+
+以下步骤均在用户明确授权正式上线后执行。当前生产配置没有 D1 绑定，`npm run deploy` 会阻止未配置数据库或误绑预览数据库的发布。
+
+1. 用项目 Wrangler 创建 `loveuhqq-notebook`，把返回的真实 ID 作为 `DB` 绑定加入 `wrangler.jsonc` 的 `d1_databases`，不得填写预览 ID；提交配置并按 PR 流程交付。
+2. 执行 `npx wrangler d1 migrations apply DB --remote --config wrangler.jsonc`，核验迁移完成。只操作上述生产数据库。
+3. 用户在交互式终端运行 `npm run password:production`，隐藏输入 12–128 个字符的共同密码并确认。助手只把验证值通过 stdin 交给项目 Wrangler；不落盘、不回显密码。该操作会更新生产 Worker secret，必须纳入当次上线授权。
+4. 从已批准合并的干净 main 执行 `npm test`、`npm run check:worker`、`npm run deploy`。分别核验 `/api/session`、访客读取 `/api/notebook` 的 401 和登录后的增改、完成、移除、同步。
+5. 两台旧设备先导出 JSON 备份，再各自解锁并导入。重叠记录逐条比较选择；原本机记录不会删除。真实数据只导入正式站，不导入预览。
+
+换密码会使所有旧登录状态失效。记住设备的会话最长 30 天，未勾选时 12 小时；退出会撤销该会话。客户端草稿是设备暂存，不等于云端已保存。
+
+升级迁移前先用项目 Wrangler 导出目标 D1 数据库，保存到仓库之外的用户指定安全位置；导出文件包含私密正文，不提交到 Git。回滚 Worker 不会回滚 D1 数据，不能对已有数据的库重复执行破坏性初始化。
 
 ## 回滚
 

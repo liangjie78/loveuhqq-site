@@ -8,9 +8,13 @@
     "test": "node --experimental-strip-types --test tests/*.test.mjs",
     "subset:font": "node scripts/subset-font.mjs",
     "build": "astro build",
+    "check:worker": "tsc -p tsconfig.worker.json",
+    "check:frontend": "tsc -p tsconfig.frontend.json",
+    "password:preview": "node scripts/set-editor-password.mjs --config wrangler.preview.jsonc",
+    "password:production": "node scripts/set-editor-password.mjs --config wrangler.jsonc",
     "preview": "astro preview",
     "deploy:preview": "npm run build && wrangler deploy --config wrangler.preview.jsonc",
-    "deploy": "npm run build && wrangler deploy"
+    "deploy": "node scripts/check-production-config.mjs && npm run build && wrangler deploy"
   },
   "dependencies": {
     "astro": "7.3.2"
