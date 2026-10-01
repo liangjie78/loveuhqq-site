@@ -170,17 +170,21 @@ if (grid) {
     pinned = false;
     pickedCell?.classList.remove('is-picked');
     pickedCell = null;
-    // "回到今天" also walks back from a year the reader was only browsing.
-    if (viewYear !== currentYear) {
-      viewYear = currentYear;
-      prepareYear(viewYear);
-      paintGrid();
-      updateYearStats();
-    }
+    showReadout();
+  };
+  /** Only the explicit "回到今天" control leaves the year the reader is browsing. */
+  const backToToday = () => {
+    release();
+    if (viewYear === currentYear) return;
+    viewYear = currentYear;
+    prepareYear(viewYear);
+    paintGrid();
+    updateYearStats();
+    updateYearNav();
     showReadout();
   };
   returnToday?.addEventListener('click', () => {
-    release();
+    backToToday();
     grid.focus({ preventScroll: true });
   });
 

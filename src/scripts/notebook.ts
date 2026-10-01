@@ -161,8 +161,10 @@ for (const trigger of [undoButton, noteUndoButton]) trigger.addEventListener('cl
   const done = Boolean(undo && commit(undo, '已放回。'));
   if (done) { undo = null; undoButton.hidden = true; noteUndoButton.hidden = true; }
   if (trigger === noteUndoButton) {
-    // Either outcome belongs next to the note, not only in the far-away backup status.
+    // Show it next to the note and clear the far-away region, so only one
+    // role="status" carries the message and it is announced once.
     $('[data-note-status]').textContent = done ? '已放回。' : status.textContent;
+    status.textContent = '';
     if (done) $('[data-note-edit]').focus();
   } else if (done) $('#wish-text').focus();
 });
