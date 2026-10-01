@@ -53,6 +53,9 @@ let touchPointerId: number | null = null;
 let touchStartX = 0;
 let touchStartY = 0;
 let touchCell: HTMLElement | null = null;
+let touchPriorCell: HTMLElement | null = null;
+let touchPriorPinned = false;
+let ignoreTouchClick = false;
 let writtenDates = new Set<string>();
 document.addEventListener('notebook:changed', (event) => {
   writtenDates = new Set((event as CustomEvent<string[]>).detail);
@@ -201,9 +204,14 @@ if (grid) {
     if (event.pointerType === 'mouse' && !pinned) release();
   });
   grid.addEventListener('pointerdown', (event) => {
+    ignoreTouchClick = false;
     if (event.pointerType !== 'touch' || touchPointerId !== null) return;
+    const cell = event.target instanceof Element ? event.target.closest<HTMLElement>('[data-day]') : null;
+    if (!cell || !grid.contains(cell)) return;
+    touchPriorCell = pickedCell;
+    touchPriorPinned = pinned;
     pinned = false;
-    if (!pick(event.target)) return;
+    pick(cell);
     touchPointerId = event.pointerId;
     touchStartX = event.clientX;
     touchStartY = event.clientY;
@@ -227,10 +235,21 @@ if (grid) {
     if (commit && finalCell && grid.contains(finalCell)) touchCell = finalCell;
     if (grid.hasPointerCapture(event.pointerId)) grid.releasePointerCapture(event.pointerId);
     const selectedCell = touchCell;
+    const previousCell = touchPriorCell;
+    const wasPinned = touchPriorPinned;
     touchPointerId = null;
     touchCell = null;
-    if (!commit) { release(); return; }
-    if (!selectedCell || !grid.contains(selectedCell)) return;
+    touchPriorCell = null;
+    touchPriorPinned = false;
+    ignoreTouchClick = true;
+    if (!commit || !selectedCell || !grid.contains(selectedCell)) {
+      pickedCell?.classList.remove('is-picked');
+      pickedCell = wasPinned && previousCell && grid.contains(previousCell) ? previousCell : null;
+      pinned = pickedCell !== null;
+      pickedCell?.classList.add('is-picked');
+      showReadout(pickedCell ? Number(pickedCell.dataset.day) : today);
+      return;
+    }
     pinned = true;
     pick(selectedCell, true);
     grid.focus({ preventScroll: true });
@@ -239,6 +258,12 @@ if (grid) {
   grid.addEventListener('pointerup', (event) => finishTouch(event, true));
   grid.addEventListener('pointercancel', (event) => finishTouch(event, false));
   grid.addEventListener('click', (event) => {
+    // pointerup already commits touch selection; its compatibility click targets the captured grid.
+    if (ignoreTouchClick && event.detail > 0) {
+      ignoreTouchClick = false;
+      return;
+    }
+    ignoreTouchClick = false;
     // Keep the grid as the keyboard owner after a pick, so arrows work right away.
     if (pick(event.target, true)) {
       pinned = true;
