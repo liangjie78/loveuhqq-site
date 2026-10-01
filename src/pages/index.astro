@@ -77,9 +77,10 @@ let inkIndex = 0;
             <button class="text-button year-step" type="button" data-year-prev>← 上一年</button>
             <button class="text-button year-step" type="button" data-year-next>下一年 →</button>
           </div>
-          <p class="year-hint" id="year-hint" data-needs-js>点一格，翻到那一天的背面。也可以用方向键翻看。</p>
+          <p class="year-hint" id="year-hint" data-needs-js>点一格，翻到那一天的背面。手机上可以左右轻扫，也可以用方向键翻看。</p>
           <div class="year-feedback">
             <p class="year-readout" data-year-readout aria-live="polite">{startLabel} — {dotted(lastDay.date)}</p>
+            <button class="text-button year-note-jump" type="button" data-note-jump hidden>翻看这天 ↓</button>
             <button class="text-button year-today" type="button" data-return-today data-needs-js disabled>回到今天</button>
           </div>
           <div class="year-grid" data-year-grid role="group" tabindex="0" aria-describedby="year-hint" aria-label={`第一年的日历，从 ${startLabel} 到 ${dotted(lastDay.date)}，可用方向键翻看`} style={`--months:${months.length}`}>

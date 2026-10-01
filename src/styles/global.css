@@ -508,6 +508,8 @@ html.fonts-pending .intro { animation-play-state: paused; }
 .year-today { flex: none; font-size: .78rem; }
 .year-today:disabled { color: var(--faint); cursor: default; text-decoration: none; }
 .year-today:not(:disabled):hover { color: var(--rose); }
+.year-note-jump { flex: none; font-size: .78rem; color: var(--rose); }
+.year-note-jump:hover { color: var(--ink); }
 
 .year-grid { display: grid; gap: clamp(.28rem, .55vw, .45rem); }
 .year-row { display: grid; grid-template-columns: 3.5rem minmax(0, 1fr); align-items: center; }
@@ -1138,6 +1140,7 @@ html.is-locked .gate, .gate.is-leaving { display: grid; }
   .year-ends, .year-hint, .year-feedback, .year-legend { padding-left: 0; }
   .year-ends { margin-bottom: 1rem; }
   .year-feedback { position: sticky; top: calc(var(--header) + env(safe-area-inset-top)); z-index: 3; padding-block: .5rem; }
+  .year-grid { touch-action: pan-y; }
   .year-grid {
     grid-template-columns: repeat(var(--months), minmax(0, 1fr));
     align-items: start;
