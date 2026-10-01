@@ -1,0 +1,30 @@
+---
+import { dotted, relationshipStartDate } from '../lib/anniversary';
+import { moments } from '../data/moments';
+
+const entries = new Map(moments.map(({ date, title }) => [date, title]));
+entries.set(relationshipStartDate, entries.get(relationshipStartDate) ?? '第一天');
+const timeline = [...entries]
+  .map(([date, title]) => ({ date, title }))
+  .sort((left, right) => left.date.localeCompare(right.date));
+---
+
+<section class="moment-archive" aria-labelledby="moments-title">
+  <header class="moment-archive-head">
+    <h3 id="moments-title">记下的日子</h3>
+  </header>
+  <ol class="moment-archive-list">
+    {timeline.map(({ date, title }) => (
+      <li class="memory-ticket">
+        <time data-moment-date datetime={date}>{dotted(date)}</time>
+        <p>{title}</p>
+        <span data-moment-upcoming hidden>还没到</span>
+      </li>
+    ))}
+  </ol>
+  <div class="moment-image-action" data-needs-js>
+    <button class="text-button" type="button" data-moment-image>保存这些日子为图片 ↓</button>
+    <span>PNG 图片，可直接打开</span>
+    <p role="status" data-moment-image-status></p>
+  </div>
+</section>
