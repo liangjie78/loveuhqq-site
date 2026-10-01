@@ -84,8 +84,8 @@ async function login(request: Request, db: D1Database, credential: string): Prom
     RETURNING attempts`).bind(await digest(`login:${client}`), now + windowMs, now, now, now).first();
   if (!limit) return json({ error: '尝试次数过多，请 15 分钟后再试。' }, 429, { 'Retry-After': '900' });
   const value = await body(request, ['password', 'remember'], 2048);
-  if (typeof value.password !== 'string' || value.password.length < 12 || value.password.length > 128 || typeof value.remember !== 'boolean') {
-    throw new HttpError(400, '密码应为 12–128 个字符。');
+  if (typeof value.password !== 'string' || value.password.length < 6 || value.password.length > 128 || typeof value.remember !== 'boolean') {
+    throw new HttpError(400, '密码应为 6–128 个字符。');
   }
   if (!await verifyPassword(value.password, credential)) throw new HttpError(401, '密码不正确。');
   const age = value.remember ? 30 * 24 * 60 * 60 : 12 * 60 * 60;

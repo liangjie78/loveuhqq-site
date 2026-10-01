@@ -76,6 +76,22 @@ test('private notebook requires a current server session; API responses are unca
   assert.equal((await f.request('/api/notebook', 'GET', undefined, `${sessionCookieName}=${'a'.repeat(64)}`)).status, 401);
 });
 
+test('login accepts six-character passwords and rejects shorter passwords', async () => {
+  const shortPassword = 'xQ9m2P';
+  const shortSalt = '11223344556677889900aabbccddeeff';
+  const shortCredential = `pbkdf2$100000$${shortSalt}$${pbkdf2Sync(shortPassword, Buffer.from(shortSalt, 'hex'), 100_000, 32, 'sha256').toString('hex')}`;
+  const f = fixture();
+  f.env.EDITOR_PASSWORD_HASH = shortCredential;
+
+  const accepted = await f.request('/api/session', 'POST', { password: shortPassword, remember: false });
+  assert.equal(accepted.status, 200);
+  assert.match(accepted.headers.get('Set-Cookie'), new RegExp(`^${sessionCookieName}=[a-f0-9]{64};`));
+
+  const rejected = await f.request('/api/session', 'POST', { password: shortPassword.slice(0, 5), remember: false });
+  assert.equal(rejected.status, 400);
+  assert.deepEqual(await rejected.json(), { error: '密码应为 6–128 个字符。' });
+});
+
 test('session tokens are 32 random bytes, hash-only in D1, with exact cookie protections and lifetimes', async () => {
   const f = fixture();
   for (const [remember, age] of [[false, 43200], [true, 2592000]]) {
