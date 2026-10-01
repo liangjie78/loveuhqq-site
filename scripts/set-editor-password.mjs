@@ -41,8 +41,8 @@ async function main() {
   const config = resolve(process.cwd(), process.argv[3]);
   const wrangler = resolve(root, 'node_modules', 'wrangler', 'bin', 'wrangler.js');
   await Promise.all([access(config), access(wrangler)]);
-  let password = await hiddenInput('输入编辑密码（12–128 个字符，输入隐藏）：');
-  if (password.length < 12) throw new Error('密码至少需要 12 个字符。');
+  let password = await hiddenInput('输入编辑密码（6–128 个字符，输入隐藏）：');
+  if (password.length < 6) throw new Error('密码至少需要 6 个字符。');
   let confirmation = await hiddenInput('再次输入编辑密码：');
   if (confirmation !== password) { password = ''; confirmation = ''; throw new Error('两次密码不一致。'); }
   const salt = randomBytes(16);
