@@ -7,6 +7,10 @@ import { dotted, getRelationshipYearMonths, hundredthDayDate, monthNames, relati
 import { photos } from '../data/photos';
 import { momentTitles } from '../data/moments';
 import PolaroidCard from '../components/PolaroidCard.astro';
+import Notebook from '../components/Notebook.astro';
+import FutureList from '../components/FutureList.astro';
+import MomentArchive from '../components/MomentArchive.astro';
+import '../styles/notebook.css';
 
 const startLabel = dotted(relationshipStartDate);
 const hundredthLabel = dotted(hundredthDayDate);
@@ -70,7 +74,7 @@ let inkIndex = 0;
             <span><b>第一天</b><time data-year-first>{startLabel}</time></span>
             <span><b data-year-label>一周年</b><time data-year-last>{dotted(lastDay.date)}</time></span>
           </div>
-          <p class="year-hint" id="year-hint" data-needs-js>点一格，看看那一天。也可以用方向键翻看。</p>
+          <p class="year-hint" id="year-hint" data-needs-js>点一格，翻到那一天的背面。也可以用方向键翻看。</p>
           <div class="year-feedback">
             <p class="year-readout" data-year-readout aria-live="polite">{startLabel} — {dotted(lastDay.date)}</p>
             <button class="text-button year-today" type="button" data-return-today data-needs-js disabled>回到今天</button>
@@ -102,6 +106,7 @@ let inkIndex = 0;
           </ul>
         </div>
 
+        <Notebook />
         <dl class="days-stats" data-reveal data-needs-js>
           <div class="stat">
             <dt>已经涂了</dt>
@@ -114,6 +119,7 @@ let inkIndex = 0;
             <dd class="stat-date"><time data-next-date datetime={hundredthDayDate}>{hundredthLabel}</time></dd>
           </div>
         </dl>
+        <MomentArchive />
       </div>
     </section>
 
@@ -143,6 +149,7 @@ let inkIndex = 0;
       </div>
     </section>
 
+    <FutureList />
     <section class="section letter" id="letter" aria-labelledby="letter-title">
       <div class="section-inner letter-inner">
         <div class="envelope-wrap" data-reveal>

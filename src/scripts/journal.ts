@@ -10,6 +10,8 @@ import {
   type CalendarMonth,
 } from '../lib/anniversary';
 import { momentTitles } from '../data/moments';
+import './notebook';
+import { createCalendarEvent } from '../lib/calendar-export';
 
 const root = document.documentElement;
 const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
@@ -42,6 +44,11 @@ let today = 0;
 let todayDate = '';
 let pickedCell: HTMLElement | null = null;
 let pinned = false;
+let writtenDates = new Set<string>();
+document.addEventListener('notebook:changed', (event) => {
+  writtenDates = new Set((event as CustomEvent<string[]>).detail);
+  paintGrid();
+});
 
 function buildGrid(months: CalendarMonth[], year: number) {
   if (!grid) return;
@@ -106,6 +113,8 @@ function showReadout(day = today) {
   readout.textContent = cellDates.has(day) ? describeCell(day) : `从 ${dotted(cellDates.get(1) ?? '')} 开始`;
   readout.classList.toggle('is-picked', day !== today);
   if (returnToday) returnToday.disabled = day === today;
+  const date = cellDates.get(day);
+  if (date) document.dispatchEvent(new CustomEvent('journal:date', { detail: date }));
 }
 
 function paintGrid() {
@@ -117,6 +126,7 @@ function paintGrid() {
     const isPast = day < today;
     cell.classList.toggle('is-past', isPast);
     cell.classList.toggle('is-today', day === today);
+    cell.classList.toggle('is-written', writtenDates.has(cellDates.get(day) ?? ''));
     // A steady, scattered tone per day so the filled squares look hand-coloured.
     cell.dataset.tone = String(Math.imul(day, 2654435761) >>> 29 & 3);
     if (isPast) cell.style.setProperty('--n', String(pastCount++));
@@ -161,7 +171,7 @@ if (grid) {
     else release();
   });
   document.addEventListener('click', (event) => {
-    if (pickedCell && !grid.contains(event.target as Node)) release();
+    if (pickedCell && !grid.contains(event.target as Node) && !(event.target as Element).closest('.day-back')) release();
   });
 
   // Keyboard days: the grid is one tab stop, arrows walk the cells.
@@ -203,6 +213,12 @@ function refreshDates() {
   const nextIsToday = upcoming.daysRemaining === 0;
   prepareYear(getRelationshipYear(now));
   todayDate = cellDates.get(today) ?? upcoming.date;
+  for (const element of $$<HTMLTimeElement>('[data-moment-date]')) {
+    const future = element.dateTime > todayDate;
+    element.closest('li')?.classList.toggle('is-upcoming', future);
+    const label = element.closest('li')?.querySelector<HTMLElement>('[data-moment-upcoming]');
+    if (label) label.hidden = !future;
+  }
 
   for (const element of $$('[data-day-count]')) element.textContent = String(Math.max(0, today));
   if (countUpDone) $('[data-count-up]')!.textContent = String(Math.max(0, today));
@@ -258,6 +274,20 @@ function countUp() {
 }
 
 refreshDates();
+document.dispatchEvent(new Event('journal:notes-request'));
+
+for (const trigger of $$<HTMLButtonElement>('[data-calendar-export]')) {
+  trigger.addEventListener('click', () => {
+    const isHundredth = trigger.dataset.calendarExport === 'hundredth';
+    const year = getRelationshipYear(new Date());
+    const last = getRelationshipYearMonths(year).at(-1)!.days.at(-1)!;
+    const date = isHundredth ? hundredthDayDate : last.date;
+    const title = isHundredth ? '第 100 天' : anniversaryLabel(year);
+    const url = URL.createObjectURL(new Blob([createCalendarEvent(title, date)], { type: 'text/calendar;charset=utf-8' }));
+    const link = document.createElement('a'); link.href = url; link.download = `loveuhqq-${date}.ics`; link.click();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+  });
+}
 document.addEventListener('visibilitychange', () => {
   if (document.visibilityState === 'visible') refreshDates();
 });
