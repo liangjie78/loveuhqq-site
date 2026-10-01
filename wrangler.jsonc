@@ -20,6 +20,14 @@
     }
   ],
   "main": "worker/index.ts",
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "loveuhqq-notebook",
+      "database_id": "6b9b080a-b170-4b8c-8250-236b26cf1d0c",
+      "migrations_dir": "migrations"
+    }
+  ],
   "observability": {
     "enabled": true,
     "traces": {

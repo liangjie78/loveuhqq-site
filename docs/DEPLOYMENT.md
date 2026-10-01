@@ -33,7 +33,7 @@
 
 ## 首次生产启用共同手账
 
-以下步骤均在用户明确授权正式上线后执行。当前生产配置没有 D1 绑定，`npm run deploy` 会阻止未配置数据库或误绑预览数据库的发布。
+以下步骤均在用户明确授权正式上线后执行。生产配置已绑定独立的 `loveuhqq-notebook` D1；`npm run deploy` 会阻止缺失数据库或误绑预览数据库的发布。
 
 1. 用项目 Wrangler 创建 `loveuhqq-notebook`，把返回的真实 ID 作为 `DB` 绑定加入 `wrangler.jsonc` 的 `d1_databases`，不得填写预览 ID；提交配置并按 PR 流程交付。
 2. 执行 `npx wrangler d1 migrations apply DB --remote --config wrangler.jsonc`，核验迁移完成。只操作上述生产数据库。
