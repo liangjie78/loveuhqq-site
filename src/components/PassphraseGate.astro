@@ -27,6 +27,11 @@ import Postmark from './Postmark.astro';
         <span class="gate-group" data-label="月" aria-hidden="true"><span class="gate-slot" data-slot></span><span class="gate-slot" data-slot></span></span>
         <span class="gate-group" data-label="日" aria-hidden="true"><span class="gate-slot" data-slot></span><span class="gate-slot" data-slot></span></span>
       </div>
+      <div class="gate-password" data-gate-password-panel hidden>
+        <label for="editor-password">共同手账的密码</label>
+        <input id="editor-password" data-gate-password type="password" autocomplete="current-password" maxlength="128" />
+        <button class="pencil-button" type="submit">解锁手账</button>
+      </div>
       <p class="gate-error" data-gate-error role="alert"></p>
       <div class="gate-actions">
         <label class="gate-remember">
@@ -35,6 +40,7 @@ import Postmark from './Postmark.astro';
         </label>
       </div>
     </form>
+    <button class="text-button gate-visit" type="button" data-gate-visit>访客浏览</button>
   </div>
 </div>
 <script src="../scripts/passphrase-gate.ts"></script>

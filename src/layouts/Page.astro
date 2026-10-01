@@ -43,8 +43,7 @@ const image = new URL('/images/paper-heart.webp', Astro.site).href;
         var root = document.documentElement;
         root.classList.add('has-js');
         try {
-          var key = 'loveuhqq_auth';
-          if (localStorage.getItem(key) !== 'unlocked' && sessionStorage.getItem(key) !== 'unlocked') root.classList.add('is-locked');
+          if (sessionStorage.getItem('loveuhqq_visited') !== 'yes') root.classList.add('is-locked');
         } catch (error) {
           root.classList.add('is-locked');
         }

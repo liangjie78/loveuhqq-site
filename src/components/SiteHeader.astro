@@ -25,7 +25,12 @@ const links = [
         <p class="header-day" data-header-day hidden>
           第 <span data-day-count /> 天
         </p>
-        <p class="header-guest" data-header-guest hidden aria-label="当前身份：访客">访客</p>
+        <div class="header-guest" data-header-session>
+          <button type="button" class="text-button" data-open-login data-needs-js aria-label="访客，点击解锁共同手账">访客</button>
+          <noscript>访客</noscript>
+          <span data-session-label hidden>已解锁</span>
+          <button type="button" class="text-button" data-session-logout hidden>退出</button>
+        </div>
       </>
     ) : (
       <a class="back-link" href="/#photos">

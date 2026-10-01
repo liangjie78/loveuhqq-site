@@ -291,12 +291,22 @@ html.has-dialog, html.has-dialog body { overflow: hidden; }
 .header-day.is-shown { opacity: 1; translate: 0; }
 
 .header-guest {
+  display: flex;
+  align-items: center;
+  gap: .75rem;
   flex: none;
   font-size: .85rem;
   letter-spacing: .08em;
   color: var(--muted);
   white-space: nowrap;
 }
+.header-guest button { min-height: 2.75rem; color: var(--muted); }
+.header-guest button:hover { color: var(--rose); }
+.gate-password { display: grid; gap: .85rem; text-align: left; }
+.gate-password label { font-size: .9rem; color: var(--muted); }
+.gate-password input { min-width: 0; width: 100%; min-height: 44px; padding: .6rem; border: 1px solid var(--line-stronger); border-radius: 4px; background: var(--sheet); color: var(--ink); }
+.gate-password button { min-height: 44px; justify-self: end; }
+.gate-visit { margin-top: 1.25rem; min-height: 44px; color: var(--muted); }
 
 .back-link {
   display: inline-flex;

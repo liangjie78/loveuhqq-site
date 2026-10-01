@@ -34,5 +34,11 @@ jobs:
       - name: Run tests
         run: npm test
 
+      - name: Check Worker types
+        run: npm run check:worker
+
+      - name: Check frontend types
+        run: npm run check:frontend
+
       - name: Build site
         run: npm run build

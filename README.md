@@ -15,7 +15,8 @@
 - 纪念时间：从 2026-07-01 开始，当天算第 1 天，按北京时间自动更新；JavaScript 不可用时保留文案和起始日期。
 - 下一纪念日：第 100 天之后转向下一周年，纪念日当天显示“今天”，跨日和返回页面时自动刷新。
 - 内容状态：相册为明确标注的 AI 示意照片；值得标记的日子（`src/data/moments.ts`）已登记 3 个用户确认的日子，写给第 100 天的信标为“待写”；没有自动解锁的信件或照片上传后台。
-- 技术边界：Astro + TypeScript + 普通 CSS，默认静态生成；没有后端、数据库或 UI 框架。
+- 技术边界：Astro + TypeScript + 普通 CSS，页面静态生成；Cloudflare Worker 提供登录和共享手账接口，D1 保存备注、清单和会话，不引入 UI 框架。
+- 共同手账：访客浏览展示内容，解锁后两个人可以查看、编辑同一份备注和清单。云端按单条记录保存并检测编辑冲突，页面可见时每 10 秒同步；支持旧本机手账导入和 JSON 备份。
 
 界面截图：[桌面封面](docs/previews/journal-desktop.webp) · [桌面日历](docs/previews/journal-days-desktop.webp) · [手机封面](docs/previews/journal-mobile.webp) · [手机日历](docs/previews/journal-days-mobile.webp) · [门禁](docs/previews/journal-gate-mobile.webp)。截图用于展示源码界面，日期计数表示截图时的状态；实际页面按访问当天更新。顶部项目标识插画不作为当前页面截图。上述内容描述当前源码，不能据此判断正式网址已更新。
 
@@ -51,7 +52,7 @@ GitHub 自动部署尚未配置；没有绕过权限或创建额外凭据。GitH
 
 可见 UI 改动完成后，运行 `npm run deploy:preview`，从当前分支构建并更新独立 Worker `loveuhqq-site-preview`。验收地址是 [临时预览站](https://loveuhqq-site-preview.1756127916.workers.dev/)；每次更新后需实际检查首页、受影响页面和资源，并把链接与截图发给用户。此地址公开可访问，始终显示最近一次手动上传的预览版本，不会自动跟随 Git 提交，也不影响正式域名。
 
-预览配置位于 `wrangler.preview.jsonc`，只有 `workers.dev` 地址，没有正式站点的 Custom Domain 路由。
+预览配置位于 `wrangler.preview.jsonc`，只有 `workers.dev` 地址，没有正式站点的 Custom Domain 路由。共享手账使用独立的 `loveuhqq-notebook-preview` 数据库，不能导入真实私人记录用于公开验收。通过 `npm run password:preview` 在交互式终端设置预览编辑密码，输入不会显示，也不需要写进聊天或源码。
 
 生产操作、回滚、DNS 边界和已有验证证据见 [部署说明](docs/DEPLOYMENT.md)，视觉约束见 [设计说明](docs/DESIGN.md)。生产部署、Cloudflare 和 DNS 修改都需要当前任务的明确授权。
 

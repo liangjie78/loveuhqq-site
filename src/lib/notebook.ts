@@ -1,5 +1,8 @@
 export interface Wish { id: string; text: string; done: boolean }
 export interface Notebook { version: 1; notes: Record<string, string>; wishes: Wish[] }
+export interface CloudNotebook extends Notebook {
+  revisions: { notes: Record<string, number>; wishes: Record<string, number> };
+}
 export const notebookKey = 'loveuhqq_notebook_v1';
 export const emptyNotebook = (): Notebook => ({ version: 1, notes: {}, wishes: [] });
 
