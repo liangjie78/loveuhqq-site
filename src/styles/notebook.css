@@ -2,7 +2,7 @@
 .paper-label { font-size: .78rem; letter-spacing: .14em; color: var(--muted); }
 .paper-local { margin-top: .75rem; font-size: .76rem; color: var(--muted); }
 .paper-actions { display: flex; flex-wrap: wrap; align-items: center; gap: .5rem 1.5rem; }
-.paper-actions .text-button, .moment-calendar-actions .text-button { min-height: 44px; }
+.paper-actions .text-button, .moment-image-action .text-button { min-height: 44px; }
 .pencil-button { min-height: 44px; padding: .4rem 1rem; border: 1px solid var(--line-stronger); background: var(--sheet); font-size: .85rem; flex-shrink: 0; }
 .pencil-button:hover { color: var(--rose); border-color: var(--rose); }
 .pencil-button:active { background: var(--paper-2); }
@@ -28,7 +28,8 @@
 .memory-ticket time { font: 400 .82rem var(--serif); color: var(--muted); font-variant-numeric: tabular-nums; }
 .memory-ticket p { margin-top: .75rem; font: 400 1.1rem/1.7 var(--serif); }
 .memory-ticket [data-moment-upcoming] { display: inline-block; font-size: .7rem; border: 1px solid var(--line-strong); padding: 0 .4rem; margin-top: .6rem; color: var(--muted); }
-.moment-calendar-actions { display: flex; flex-wrap: wrap; gap: 0 2rem; margin-top: 1rem; font-size: .8rem; color: var(--muted); }
+.moment-image-action { display: flex; flex-wrap: wrap; align-items: center; gap: 0 1rem; margin-top: 1rem; font-size: .8rem; color: var(--muted); }
+.moment-image-action p { flex-basis: 100%; color: var(--rose-deep); }
 .future { background: var(--paper-2); }
 .future-spread { display: grid; grid-template-columns: 1fr 1.15fr; gap: 3rem 5rem; align-items: start; }
 .future-intro { padding-top: 1.5rem; }

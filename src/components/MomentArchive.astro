@@ -22,8 +22,9 @@ const timeline = [...entries]
       </li>
     ))}
   </ol>
-  <div class="moment-calendar-actions" role="group" aria-label="下载日历" data-needs-js>
-    <button class="text-button" type="button" data-calendar-export="hundredth">下载第 100 天日历</button>
-    <button class="text-button" type="button" data-calendar-export="anniversary">下载下一周年日历</button>
+  <div class="moment-image-action" data-needs-js>
+    <button class="text-button" type="button" data-moment-image>保存这些日子为图片 ↓</button>
+    <span>PNG 图片，可直接打开</span>
+    <p role="status" data-moment-image-status></p>
   </div>
 </section>

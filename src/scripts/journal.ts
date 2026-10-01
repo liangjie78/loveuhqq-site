@@ -7,11 +7,12 @@ import {
   getUpcomingAnniversary,
   hundredthDayDate,
   monthNames,
+  relationshipStartDate,
   type CalendarMonth,
 } from '../lib/anniversary';
 import { momentTitles } from '../data/moments';
 import './notebook';
-import { createCalendarEvent } from '../lib/calendar-export';
+import { renderMomentImage } from '../lib/moment-image';
 
 const root = document.documentElement;
 const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
@@ -276,18 +277,31 @@ function countUp() {
 refreshDates();
 document.dispatchEvent(new Event('journal:notes-request'));
 
-for (const trigger of $$<HTMLButtonElement>('[data-calendar-export]')) {
-  trigger.addEventListener('click', () => {
-    const isHundredth = trigger.dataset.calendarExport === 'hundredth';
-    const year = getRelationshipYear(new Date());
-    const last = getRelationshipYearMonths(year).at(-1)!.days.at(-1)!;
-    const date = isHundredth ? hundredthDayDate : last.date;
-    const title = isHundredth ? '第 100 天' : anniversaryLabel(year);
-    const url = URL.createObjectURL(new Blob([createCalendarEvent(title, date)], { type: 'text/calendar;charset=utf-8' }));
-    const link = document.createElement('a'); link.href = url; link.download = `loveuhqq-${date}.ics`; link.click();
-    setTimeout(() => URL.revokeObjectURL(url), 1000);
-  });
-}
+const momentImageButton = $<HTMLButtonElement>('[data-moment-image]');
+momentImageButton?.addEventListener('click', async () => {
+  const status = $('[data-moment-image-status]');
+  momentImageButton.disabled = true;
+  if (status) status.textContent = '正在整理图片…';
+  try {
+    const entries = $$<HTMLTimeElement>('[data-moment-date]').map((time) => ({
+      date: time.dateTime,
+      title: time.parentElement?.querySelector('p')?.textContent?.trim() ?? '',
+      upcoming: !time.parentElement?.querySelector<HTMLElement>('[data-moment-upcoming]')?.hidden,
+    }));
+    const blob = await renderMomentImage(entries, relationshipStartDate);
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = 'loveuhqq-记下的日子.png';
+    link.click();
+    window.setTimeout(() => URL.revokeObjectURL(url), 1000);
+    if (status) status.textContent = '图片已生成，可以从下载记录中打开。';
+  } catch {
+    if (status) status.textContent = '图片没能生成，请换个浏览器再试。';
+  } finally {
+    momentImageButton.disabled = false;
+  }
+});
 document.addEventListener('visibilitychange', () => {
   if (document.visibilityState === 'visible') refreshDates();
 });

@@ -343,14 +343,6 @@ html.has-dialog, html.has-dialog body { overflow: hidden; }
 .hero-name { margin-inline-start: 1.1em; color: var(--rose); }
 .ink { display: inline-block; }
 
-.hero-sub {
-  align-self: flex-end;
-  writing-mode: vertical-rl;
-  font: 400 clamp(.95rem, 1.35vw, 1.12rem)/1.9 var(--serif);
-  letter-spacing: .22em;
-  color: var(--muted);
-}
-
 .hero-keepsake {
   grid-area: keepsake;
   position: relative;
