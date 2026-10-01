@@ -37,6 +37,7 @@ function spokenDate(date: string, currentYear: number) {
 const grid = $('[data-year-grid]');
 const readout = $('[data-year-readout]');
 const returnToday = $<HTMLButtonElement>('[data-return-today]');
+const noteJump = $<HTMLButtonElement>('[data-note-jump]');
 const verticalCalendar = window.matchMedia('(max-width: 640px)');
 const cellDates = new Map<number, string>();
 let renderedYear = 1;
@@ -48,6 +49,10 @@ let today = 0;
 let todayDate = '';
 let pickedCell: HTMLElement | null = null;
 let pinned = false;
+let touchPointerId: number | null = null;
+let touchStartX = 0;
+let touchStartY = 0;
+let touchCell: HTMLElement | null = null;
 let writtenDates = new Set<string>();
 document.addEventListener('notebook:changed', (event) => {
   writtenDates = new Set((event as CustomEvent<string[]>).detail);
@@ -127,15 +132,16 @@ function updateYearStats() {
   $('[data-year-total]')!.textContent = String(cellDates.size);
 }
 
-function showReadout(day = today) {
+function showReadout(day = today, updateNotebook = false) {
   if (!readout) return;
   const inView = cellDates.has(day);
   readout.textContent = inView ? describeCell(day) : viewRange();
   readout.classList.toggle('is-picked', inView && day !== today);
+  if (noteJump) noteJump.hidden = !pinned || !inView;
   // While another year is on screen today is not one of its cells, so the control stays live.
   if (returnToday) returnToday.disabled = inView && day === today;
   const date = cellDates.get(day);
-  if (date) document.dispatchEvent(new CustomEvent('journal:date', { detail: date }));
+  if (date && updateNotebook) document.dispatchEvent(new CustomEvent('journal:date', { detail: date }));
 }
 
 function paintGrid() {
@@ -157,20 +163,20 @@ function paintGrid() {
 }
 
 if (grid) {
-  const pick = (target: EventTarget | null) => {
+  const pick = (target: EventTarget | null, updateNotebook = false) => {
     const cell = target instanceof Element ? target.closest<HTMLElement>('[data-day]') : null;
     if (!cell) return false;
     pickedCell?.classList.remove('is-picked');
     pickedCell = cell;
     cell.classList.add('is-picked');
-    showReadout(Number(cell.dataset.day));
+    showReadout(Number(cell.dataset.day), updateNotebook);
     return true;
   };
   const release = () => {
     pinned = false;
     pickedCell?.classList.remove('is-picked');
     pickedCell = null;
-    showReadout();
+    showReadout(today, true);
   };
   /** Only the explicit "回到今天" control leaves the year the reader is browsing. */
   const backToToday = () => {
@@ -181,7 +187,7 @@ if (grid) {
     paintGrid();
     updateYearStats();
     updateYearNav();
-    showReadout();
+    showReadout(today, true);
   };
   returnToday?.addEventListener('click', () => {
     backToToday();
@@ -194,16 +200,62 @@ if (grid) {
   grid.addEventListener('pointerleave', (event) => {
     if (event.pointerType === 'mouse' && !pinned) release();
   });
+  grid.addEventListener('pointerdown', (event) => {
+    if (event.pointerType !== 'touch' || touchPointerId !== null) return;
+    pinned = false;
+    if (!pick(event.target)) return;
+    touchPointerId = event.pointerId;
+    touchStartX = event.clientX;
+    touchStartY = event.clientY;
+    touchCell = pickedCell;
+    grid.setPointerCapture(event.pointerId);
+  });
+  grid.addEventListener('pointermove', (event) => {
+    if (event.pointerId !== touchPointerId) return;
+    const deltaX = Math.abs(event.clientX - touchStartX);
+    const deltaY = Math.abs(event.clientY - touchStartY);
+    // The mobile grid uses columns for months. Horizontal scrubbing follows that
+    // layout while touch-action: pan-y keeps ordinary page scrolling available.
+    if (deltaX < 8 || deltaX < deltaY * 1.25) return;
+    const cell = document.elementFromPoint(event.clientX, event.clientY);
+    if (cell && grid.contains(cell) && pick(cell)) touchCell = pickedCell;
+  });
+  const finishTouch = (event: PointerEvent, commit: boolean) => {
+    if (event.pointerId !== touchPointerId) return;
+    const cell = document.elementFromPoint(event.clientX, event.clientY);
+    const finalCell = cell instanceof Element ? cell.closest<HTMLElement>('[data-day]') : null;
+    if (commit && finalCell && grid.contains(finalCell)) touchCell = finalCell;
+    if (grid.hasPointerCapture(event.pointerId)) grid.releasePointerCapture(event.pointerId);
+    const selectedCell = touchCell;
+    touchPointerId = null;
+    touchCell = null;
+    if (!commit) { release(); return; }
+    if (!selectedCell || !grid.contains(selectedCell)) return;
+    pinned = true;
+    pick(selectedCell, true);
+    grid.focus({ preventScroll: true });
+    if (noteJump) noteJump.hidden = false;
+  };
+  grid.addEventListener('pointerup', (event) => finishTouch(event, true));
+  grid.addEventListener('pointercancel', (event) => finishTouch(event, false));
   grid.addEventListener('click', (event) => {
     // Keep the grid as the keyboard owner after a pick, so arrows work right away.
-    if (pick(event.target)) {
+    if (pick(event.target, true)) {
       pinned = true;
+      showReadout(Number(pickedCell!.dataset.day));
       grid.focus({ preventScroll: true });
     }
     else release();
   });
   document.addEventListener('click', (event) => {
-    if (pickedCell && !grid.contains(event.target as Node) && !(event.target as Element).closest('.day-back')) release();
+    const target = event.target as Element;
+    if (pickedCell && !grid.contains(target) && !target.closest('.day-back') && !target.closest('[data-note-jump]')) release();
+  });
+  noteJump?.addEventListener('click', () => {
+    document.querySelector<HTMLElement>('.day-back')?.scrollIntoView({
+      behavior: reducedMotion.matches ? 'auto' : 'smooth',
+      block: 'start',
+    });
   });
 
   // Keyboard days: the grid is one tab stop, arrows walk the cells.
@@ -213,7 +265,7 @@ if (grid) {
     const cell = grid.querySelector<HTMLElement>(`[data-day="${clamped}"]`);
     if (!cell) return;
     pinned = true;
-    pick(cell);
+    pick(cell, true);
     cell.scrollIntoView({ block: 'nearest', inline: 'nearest' });
   };
   grid.addEventListener('keydown', (event) => {
