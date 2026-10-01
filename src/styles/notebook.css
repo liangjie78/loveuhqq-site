@@ -3,6 +3,7 @@
 .paper-local { margin-top: .75rem; font-size: .76rem; color: var(--muted); }
 .paper-actions { display: flex; flex-wrap: wrap; align-items: center; gap: .5rem 1.5rem; }
 .paper-actions .text-button, .moment-image-action .text-button { min-height: 44px; }
+.moment-image-action .text-button:disabled { color: var(--faint); cursor: default; text-decoration: none; }
 .pencil-button { min-height: 44px; padding: .4rem 1rem; border: 1px solid var(--line-stronger); background: var(--sheet); font-size: .85rem; flex-shrink: 0; }
 .pencil-button:hover { color: var(--rose); border-color: var(--rose); }
 .pencil-button:active { background: var(--paper-2); }

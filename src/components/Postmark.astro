@@ -5,9 +5,14 @@ interface Props {
   /** Prefix for the SVG ids, unique per page. */
   id: string;
   class?: string;
+  /**
+   * The gate posts the start date too, which is exactly the passphrase: it
+   * must stay off that screen. The cover keeps its dated postmark.
+   */
+  dated?: boolean;
 }
 
-const { id, class: className } = Astro.props;
+const { id, class: className, dated = true } = Astro.props;
 const date = dotted(relationshipStartDate);
 ---
 
@@ -31,7 +36,7 @@ const date = dotted(relationshipStartDate);
     </g>
     <g fill="currentColor" class="postmark-text">
       <text font-size="10.5" letter-spacing="3.2"><textPath href={`#${id}-top`} startOffset="50%" text-anchor="middle">LOVEUHQQ</textPath></text>
-      <text x="62" y="67.5" text-anchor="middle" font-size="14" letter-spacing=".6">{date}</text>
+      {dated && <text x="62" y="67.5" text-anchor="middle" font-size="14" letter-spacing=".6">{date}</text>}
       <text font-size="10" letter-spacing="5"><textPath href={`#${id}-bottom`} startOffset="50%" text-anchor="middle">第一天</textPath></text>
     </g>
   </g>

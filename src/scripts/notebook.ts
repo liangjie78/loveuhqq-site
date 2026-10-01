@@ -17,7 +17,12 @@ function read(): Notebook {
   const raw = localStorage.getItem(notebookKey);
   return raw === null ? emptyNotebook() : parseNotebook(raw);
 }
-function message(text: string) { status.textContent = text; $('[data-note-status]').textContent = editing ? text : ''; }
+/** One live region at a time: both are role="status" and would announce the same string twice. */
+function message(text: string) {
+  const noteStatus = $('[data-note-status]');
+  if (editing) { noteStatus.textContent = text; status.textContent = ''; }
+  else { status.textContent = text; noteStatus.textContent = ''; }
+}
 
 /** Read again at commit time so other tabs' unrelated writing is preserved. */
 function commit(change: (latest: Notebook) => void, success: string): boolean {
@@ -40,7 +45,7 @@ function commit(change: (latest: Notebook) => void, success: string): boolean {
 function renderNote() {
   $('[data-note-date]').textContent = dotted(date);
   $('[data-note-text]').textContent = book.notes[date] || '这一天还空着。想记的时候，再写。';
-  $('[data-note-edit]').textContent = book.notes[date] ? '改一改 ↗' : '写一句 ↗';
+  $('[data-note-edit-label]').textContent = book.notes[date] ? '改一改' : '写一句';
 }
 function button(text: string, action: () => void) {
   const element = document.createElement('button');
@@ -56,7 +61,7 @@ function render() {
   $('[data-notes-count]').textContent = String(Object.keys(book.notes).length);
   const index = $('[data-notes-list]'); index.replaceChildren();
   for (const key of Object.keys(book.notes).sort().reverse()) {
-    const entry = button(`${dotted(key)}　${book.notes[key].slice(0, 36)}`, () => {
+    const entry = button(`${dotted(key)}　${[...book.notes[key]].slice(0, 36).join('')}`, () => {
       if (editing) { message('先收好或取消正在写的这一句。'); return; }
       date = key; renderNote(); $('[data-note-date]').scrollIntoView({ block: 'center' });
     });
@@ -98,6 +103,7 @@ function render() {
 
 function finishEditing() {
   editing = false; form.hidden = true;
+  textarea.setCustomValidity('');
   $('[data-note-edit]').hidden = false; $('[data-note-text]').hidden = false;
   renderNote();
 }
@@ -111,6 +117,9 @@ document.addEventListener('journal:notes-request', () => {
 });
 $('[data-note-edit]').addEventListener('click', () => {
   editing = true; original = book.notes[date] ?? ''; textarea.value = original;
+  // Opened fresh every time, so no earlier "write something first" message may linger:
+  // a stale custom validity would block submit before the handler ever runs.
+  textarea.setCustomValidity('');
   form.hidden = false; $('[data-note-edit]').hidden = true; $('[data-note-text]').hidden = true;
   $('[data-note-delete]').hidden = !original; textarea.focus();
 });
@@ -122,7 +131,11 @@ form.addEventListener('submit', (event) => {
   if (commit((latest) => {
     if ((latest.notes[date] ?? '') !== original) throw new Error('Note changed');
     latest.notes[date] = text;
-  }, '收好了，留在这台设备。')) { finishEditing(); $('[data-note-edit]').focus(); }
+  }, '收好了，留在这台设备。')) {
+    // This day has writing again, so a pending "removed that note" undo no longer applies.
+    undo = null; undoButton.hidden = true; noteUndoButton.hidden = true;
+    finishEditing(); $('[data-note-edit]').focus();
+  }
 });
 textarea.addEventListener('input', () => textarea.setCustomValidity(''));
 $('[data-note-delete]').addEventListener('click', () => {
@@ -145,11 +158,15 @@ $('[data-wish-draw]').addEventListener('click', () => {
   $('[data-wish-result]').textContent = candidates.length ? `这次就选：${candidates[Math.floor(Math.random() * candidates.length)].text}` : book.wishes.length ? '都做完了。再添一件？' : '先在清单里写一件，再来抽。';
 });
 for (const trigger of [undoButton, noteUndoButton]) trigger.addEventListener('click', () => {
-  if (undo && commit(undo, '已放回。')) {
-    undo = null; undoButton.hidden = true; noteUndoButton.hidden = true;
-    if (trigger === noteUndoButton) { $('[data-note-status]').textContent = '已放回。'; $('[data-note-edit]').focus(); }
-    else $('#wish-text').focus();
-  }
+  const done = Boolean(undo && commit(undo, '已放回。'));
+  if (done) { undo = null; undoButton.hidden = true; noteUndoButton.hidden = true; }
+  if (trigger === noteUndoButton) {
+    // Show it next to the note and clear the far-away region, so only one
+    // role="status" carries the message and it is announced once.
+    $('[data-note-status]').textContent = done ? '已放回。' : status.textContent;
+    status.textContent = '';
+    if (done) $('[data-note-edit]').focus();
+  } else if (done) $('#wish-text').focus();
 });
 function download(text: string, name: string) {
   const url = URL.createObjectURL(new Blob([text], { type: 'application/json;charset=utf-8' }));

@@ -27,6 +27,9 @@ function setPageInert(inert: boolean) {
 }
 
 if (gate && slotRow && form && input && error && remember) {
+  // Tells the <head> fail-safe that this bundle is alive. A locked page keeps
+  // `is-locked` on purpose; only a bundle that never ran is released by the timer.
+  root.classList.add('gate-ready');
   let checking = false;
   let clearTimer: number | undefined;
 
