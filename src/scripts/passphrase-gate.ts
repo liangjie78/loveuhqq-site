@@ -10,6 +10,8 @@ const remember = gate?.querySelector<HTMLInputElement>('[data-gate-remember]');
 const slots = gate ? [...gate.querySelectorAll<HTMLElement>('[data-slot]')] : [];
 const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
 const CODE_LENGTH = 4;
+const guestStatus = document.querySelector<HTMLElement>('[data-header-guest]');
+if (guestStatus) guestStatus.hidden = isPassphraseUnlocked();
 
 document.querySelectorAll<HTMLElement>('[data-lock-site]').forEach((button) => {
   button.addEventListener('click', () => {
@@ -40,11 +42,11 @@ if (gate && slotRow && form && input && error && remember) {
       slot.classList.toggle('is-filled', index < input.value.length);
       slot.classList.toggle('is-active', focused && index === Math.min(input.value.length, CODE_LENGTH - 1));
     });
-    form.classList.toggle('is-complete', input.value.length === CODE_LENGTH);
   };
 
   const unlock = () => {
     savePassphraseUnlock(remember.checked);
+    if (guestStatus) guestStatus.hidden = true;
     setPageInert(false);
     root.classList.remove('is-locked');
     document.dispatchEvent(new CustomEvent('gate:open'));

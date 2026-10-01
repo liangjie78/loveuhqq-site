@@ -290,6 +290,14 @@ html.has-dialog, html.has-dialog body { overflow: hidden; }
 .header-day span { color: var(--rose); font-variant-numeric: lining-nums; }
 .header-day.is-shown { opacity: 1; translate: 0; }
 
+.header-guest {
+  flex: none;
+  font-size: .85rem;
+  letter-spacing: .08em;
+  color: var(--muted);
+  white-space: nowrap;
+}
+
 .back-link {
   display: inline-flex;
   align-items: center;
@@ -926,7 +934,7 @@ html.is-locked .gate, .gate.is-leaving { display: grid; }
 
 .gate-error { min-height: 1.5rem; margin-top: 2.6rem; font-size: .88rem; letter-spacing: .06em; color: var(--rose); }
 
-.gate-actions { display: flex; align-items: center; justify-content: space-between; gap: 1.5rem; margin-top: .75rem; }
+.gate-actions { display: flex; align-items: center; justify-content: center; margin-top: .75rem; }
 
 .gate-remember {
   display: inline-flex;
@@ -961,23 +969,6 @@ html.is-locked .gate, .gate.is-leaving { display: grid; }
   rotate: -45deg;
   translate: 0 -1px;
 }
-
-.seal-button {
-  display: grid;
-  place-items: center;
-  width: 3.75rem;
-  height: 3.75rem;
-  border-radius: 48% 52% 50% 50% / 52% 47% 53% 48%;
-  font: 400 1.35rem/1 var(--serif);
-  color: var(--paper-bright);
-  background: radial-gradient(circle at 34% 28%, var(--rose-sheen), var(--rose) 52%, var(--rose-deep));
-  box-shadow: inset 0 0 0 5px rgb(255 255 255 / .07), inset 0 -3px 6px rgb(60 10 15 / .25), 0 8px 16px -6px rgb(140 47 56 / .55);
-  opacity: .5;
-  transition: opacity .3s, scale .3s var(--ease-out), rotate .3s var(--ease-out);
-}
-.seal-button span { opacity: .92; text-shadow: 0 -1px 0 rgb(80 15 20 / .35); }
-.gate-form.is-complete .seal-button { opacity: 1; }
-.seal-button:hover { opacity: 1; scale: 1.05; rotate: -6deg; }
 
 /* ---------- Album page ---------- */
 

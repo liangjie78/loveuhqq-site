@@ -82,3 +82,11 @@
   .memory-ticket { padding-inline: .75rem; }
 }
 @media (prefers-reduced-motion: reduce) { .draw-button span { transition: none; } }
+
+@media (max-width: 560px) {
+  .home:has(.header-guest:not([hidden])) { --header: 5.5rem; }
+  .home .site-header:has(.header-guest:not([hidden])) { flex-wrap: wrap; gap: 0; padding-bottom: .25rem; }
+  .home .site-header:has(.header-guest:not([hidden])) .wordmark { flex-basis: auto; }
+  .home .site-header:has(.header-guest:not([hidden])) .site-nav { order: 2; width: 100%; justify-content: space-between; gap: 0; }
+  .header-guest { order: 1; margin-left: auto; }
+}
