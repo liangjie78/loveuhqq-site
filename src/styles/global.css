@@ -1172,6 +1172,32 @@ html.is-locked .gate, .gate.is-leaving { display: grid; }
   .gate-slot { width: 2.6rem; }
 }
 
+/* ---------- Year navigation, grid focus and gate labels ---------- */
+
+.year-nav {
+  display: flex;
+  justify-content: flex-end;
+  gap: 1.25rem;
+  padding-left: 3.5rem;
+  margin-bottom: .5rem;
+}
+.year-step { font-size: .78rem; }
+/* The clickable year is the darker one: disabled must not look like the live control. */
+.year-step:not(:disabled) { color: var(--ink-2); }
+.year-step:disabled { color: var(--faint); cursor: default; text-decoration: none; }
+.year-step:not(:disabled):hover { color: var(--rose); }
+
+/* The grid is a single tab stop: a full-size outline would frame all 366 cells. */
+.year-grid:focus-visible { outline: 1.5px dashed var(--line-stronger); outline-offset: .75rem; border-radius: 6px; }
+.year-grid:focus-visible .year-cells > .is-picked { outline: 2px solid var(--rose); outline-offset: 2px; }
+
+/* The month/day labels carry the input format; --faint is below readable contrast on paper. */
+.gate-group::after { color: var(--muted); }
+
+@media (max-width: 640px) {
+  .year-nav { justify-content: center; padding-left: 0; }
+}
+
 @media (prefers-reduced-motion: reduce) {
   html { scroll-behavior: auto; }
   .ink, .intro { animation: none !important; }

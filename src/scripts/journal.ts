@@ -40,6 +40,9 @@ const returnToday = $<HTMLButtonElement>('[data-return-today]');
 const verticalCalendar = window.matchMedia('(max-width: 640px)');
 const cellDates = new Map<number, string>();
 let renderedYear = 1;
+/** The relationship year today falls in, and the year currently on screen. */
+let currentYear = 1;
+let viewYear = 1;
 let anniversaryDay = 0;
 let today = 0;
 let todayDate = '';
@@ -109,11 +112,28 @@ function describeCell(day: number) {
   return parts.filter(Boolean).join(' · ');
 }
 
+/** First and last date of the relationship year currently on screen. */
+function viewRange() {
+  const days = [...cellDates.keys()];
+  if (days.length === 0) return '';
+  return `${dotted(cellDates.get(Math.min(...days))!)} — ${dotted(cellDates.get(Math.max(...days))!)}`;
+}
+
+/** "已经涂了 N 格" and "这一年共 N 格" describe the year on screen, not always today's. */
+function updateYearStats() {
+  const days = [...cellDates.keys()];
+  const firstDay = days.length ? Math.min(...days) : 1;
+  $('[data-filled]')!.textContent = String(Math.min(cellDates.size, Math.max(0, today - firstDay + 1)));
+  $('[data-year-total]')!.textContent = String(cellDates.size);
+}
+
 function showReadout(day = today) {
   if (!readout) return;
-  readout.textContent = cellDates.has(day) ? describeCell(day) : `从 ${dotted(cellDates.get(1) ?? '')} 开始`;
-  readout.classList.toggle('is-picked', day !== today);
-  if (returnToday) returnToday.disabled = day === today;
+  const inView = cellDates.has(day);
+  readout.textContent = inView ? describeCell(day) : viewRange();
+  readout.classList.toggle('is-picked', inView && day !== today);
+  // While another year is on screen today is not one of its cells, so the control stays live.
+  if (returnToday) returnToday.disabled = inView && day === today;
   const date = cellDates.get(day);
   if (date) document.dispatchEvent(new CustomEvent('journal:date', { detail: date }));
 }
@@ -150,6 +170,13 @@ if (grid) {
     pinned = false;
     pickedCell?.classList.remove('is-picked');
     pickedCell = null;
+    // "回到今天" also walks back from a year the reader was only browsing.
+    if (viewYear !== currentYear) {
+      viewYear = currentYear;
+      prepareYear(viewYear);
+      paintGrid();
+      updateYearStats();
+    }
     showReadout();
   };
   returnToday?.addEventListener('click', () => {
@@ -203,6 +230,36 @@ if (grid) {
   });
 }
 
+/* ---------- Reviewing another year ---------- */
+
+/**
+ * Puts another relationship year on screen without touching the notebook draft.
+ * Year 1 is the earliest year the journal can show, and today's year is the last.
+ */
+function switchYear(year: number) {
+  if (year < 1 || year > currentYear || year === viewYear) return;
+  viewYear = year;
+  prepareYear(viewYear);
+  paintGrid();
+  updateYearStats();
+  updateYearNav();
+  showReadout();
+}
+
+function updateYearNav() {
+  const nav = $('[data-year-nav]');
+  const previous = $<HTMLButtonElement>('[data-year-prev]');
+  const next = $<HTMLButtonElement>('[data-year-next]');
+  if (!nav || !previous || !next) return;
+  // Nothing to switch to while the journal is still inside its very first year.
+  nav.hidden = currentYear <= 1 && viewYear <= 1;
+  previous.disabled = viewYear <= 1;
+  next.disabled = viewYear >= currentYear;
+}
+
+$('[data-year-prev]')?.addEventListener('click', () => switchYear(viewYear - 1));
+$('[data-year-next]')?.addEventListener('click', () => switchYear(viewYear + 1));
+
 /* ---------- Dates ---------- */
 
 let midnightTimer: number | undefined;
@@ -212,7 +269,11 @@ function refreshDates() {
   today = getAnniversaryDay(now);
   const upcoming = getUpcomingAnniversary(now);
   const nextIsToday = upcoming.daysRemaining === 0;
-  prepareYear(getRelationshipYear(now));
+  const todayYear = getRelationshipYear(now);
+  // Follow the year rollover only while the reader is sitting on the current year.
+  if (viewYear === currentYear) viewYear = todayYear;
+  currentYear = todayYear;
+  prepareYear(viewYear);
   todayDate = cellDates.get(today) ?? upcoming.date;
   for (const element of $$<HTMLTimeElement>('[data-moment-date]')) {
     const future = element.dateTime > todayDate;
@@ -236,12 +297,20 @@ function refreshDates() {
   const letterCount = $('[data-letter-count]')!;
   letterCount.hidden = hundredthRemaining < 0;
   letterCount.innerHTML = hundredthRemaining === 0 ? '就是今天' : `还有 <strong>${hundredthRemaining}</strong> 天`;
+  // Once day 100 is behind us the teardown date in the sentence is in the past.
+  const letterWait = $('[data-letter-wait]');
+  const letterLate = $('[data-letter-late]');
+  if (letterWait && letterLate) {
+    const past = hundredthRemaining < 0;
+    letterWait.hidden = past;
+    letterLate.hidden = !past;
+  }
 
-  const firstDay = cellDates.keys().next().value ?? 1;
-  $('[data-filled]')!.textContent = String(Math.max(0, today - firstDay + 1));
-  $('[data-year-total]')!.textContent = String(cellDates.size);
+  // The stats describe the year on screen, not always the current one.
+  updateYearStats();
 
   paintGrid();
+  updateYearNav();
   showReadout(pickedCell ? Number(pickedCell.dataset.day) : today);
 
   window.clearTimeout(midnightTimer);

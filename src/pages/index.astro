@@ -23,7 +23,7 @@ let inkIndex = 0;
 
 <Page
   title="爱你，何青青。 · loveuhqq"
-  description={`爱你，何青青。始于 ${startLabel}。`}
+  description="一本写给何青青的纸上手账。"
   path="/"
   bodyClass="home"
 >
@@ -73,6 +73,10 @@ let inkIndex = 0;
             <span><b>第一天</b><time data-year-first>{startLabel}</time></span>
             <span><b data-year-label>一周年</b><time data-year-last>{dotted(lastDay.date)}</time></span>
           </div>
+          <div class="year-nav" data-year-nav data-needs-js hidden>
+            <button class="text-button year-step" type="button" data-year-prev>← 上一年</button>
+            <button class="text-button year-step" type="button" data-year-next>下一年 →</button>
+          </div>
           <p class="year-hint" id="year-hint" data-needs-js>点一格，翻到那一天的背面。也可以用方向键翻看。</p>
           <div class="year-feedback">
             <p class="year-readout" data-year-readout aria-live="polite">{startLabel} — {dotted(lastDay.date)}</p>
@@ -97,11 +101,11 @@ let inkIndex = 0;
               </div>
             ))}
           </div>
-          <ul class="year-legend" aria-hidden="true">
-            <li><i class="is-past"></i>走过的日子</li>
-            <li><i></i>还没到的日子</li>
-            <li><i class="is-mark"></i>纪念日</li>
-            {momentTitles.size > 0 && <li><i class="is-moment"></i>有故事的日子</li>}
+          <ul class="year-legend">
+            <li><i class="is-past" aria-hidden="true"></i>走过的日子</li>
+            <li><i aria-hidden="true"></i>还没到的日子</li>
+            <li><i class="is-mark" aria-hidden="true"></i>纪念日</li>
+            {momentTitles.size > 0 && <li><i class="is-moment" aria-hidden="true"></i>有故事的日子</li>}
           </ul>
         </div>
 
@@ -161,7 +165,7 @@ let inkIndex = 0;
         <div class="letter-copy" data-reveal>
           <span class="stamp">待写</span>
           <h2 id="letter-title">写给第 100 天</h2>
-          <p>信还在写，等到 <time datetime={hundredthDayDate}>{hundredthLabel}</time> 那天再拆。</p>
+          <p><span data-letter-wait>信还在写，等到 <time datetime={hundredthDayDate}>{hundredthLabel}</time> 那天再拆。</span><span data-letter-late hidden>信还在写。</span></p>
           <p class="letter-count" data-letter-count hidden></p>
         </div>
       </div>
