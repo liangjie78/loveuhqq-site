@@ -37,7 +37,7 @@
 
 1. 用项目 Wrangler 创建 `loveuhqq-notebook`，把返回的真实 ID 作为 `DB` 绑定加入 `wrangler.jsonc` 的 `d1_databases`，不得填写预览 ID；提交配置并按 PR 流程交付。
 2. 执行 `npx wrangler d1 migrations apply DB --remote --config wrangler.jsonc`，核验迁移完成。只操作上述生产数据库。
-3. 用户在交互式终端运行 `npm run password:production`，隐藏输入 12–128 个字符的共同密码并确认。助手只把验证值通过 stdin 交给项目 Wrangler；不落盘、不回显密码。该操作会更新生产 Worker secret，必须纳入当次上线授权。
+3. 用户在交互式终端运行 `npm run password:production`，隐藏输入 6–128 个字符的共同密码并确认。助手只把验证值通过 stdin 交给项目 Wrangler；不落盘、不回显密码。该操作会更新生产 Worker secret，必须纳入当次上线授权。
 4. 从已批准合并的干净 main 执行 `npm test`、`npm run check:worker`、`npm run deploy`。分别核验 `/api/session`、访客读取 `/api/notebook` 的 401 和登录后的增改、完成、移除、同步。
 5. 两台旧设备先导出 JSON 备份，再各自解锁并导入。重叠记录逐条比较选择；原本机记录不会删除。真实数据只导入正式站，不导入预览。
 
