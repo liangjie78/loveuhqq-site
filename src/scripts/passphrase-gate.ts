@@ -23,6 +23,8 @@ const logoutUnconfirmedKey = 'loveuhqq_logout_unconfirmed';
 let logoutUnconfirmed = false;
 try { logoutUnconfirmed = sessionStorage.getItem(logoutUnconfirmedKey) === 'yes'; } catch { /* Storage is optional. */ }
 try { logoutUnconfirmed ||= localStorage.getItem(logoutUnconfirmedKey) === 'yes'; } catch { /* Storage is optional. */ }
+let logoutChannel: BroadcastChannel | null = null;
+try { logoutChannel = new BroadcastChannel('loveuhqq_logout'); } catch { /* Storage events still work. */ }
 
 function setPageInert(inert: boolean) {
   for (const element of document.body.children) {
@@ -66,6 +68,23 @@ function updateIdentity(state: SessionState) {
 function notifyOtherTabs() {
   try { localStorage.setItem('loveuhqq_session_changed', `${Date.now()}-${Math.random()}`); } catch { /* Optional notification. */ }
 }
+function broadcastLogout(pending: boolean) {
+  try { logoutChannel?.postMessage(pending); } catch { /* Storage events still work. */ }
+}
+function syncLogoutFromOtherTab(pending: boolean) {
+  if (logoutUnconfirmed === pending) {
+    if (!pending) void refreshSession().catch(() => {});
+    return;
+  }
+  logoutUnconfirmed = pending;
+  try {
+    if (pending) sessionStorage.setItem(logoutUnconfirmedKey, 'yes');
+    else sessionStorage.removeItem(logoutUnconfirmedKey);
+  } catch { /* Storage is optional. */ }
+  openGate();
+  if (pending) publishSession({ authenticated: false, configured: true });
+  else void refreshSession().catch(() => {});
+}
 async function logout(showGate: boolean) {
   if (checking) return;
   checking = true;
@@ -76,12 +95,14 @@ async function logout(showGate: boolean) {
     logoutUnconfirmed = false;
     try { sessionStorage.removeItem(logoutUnconfirmedKey); } catch { /* Storage is optional. */ }
     try { localStorage.removeItem(logoutUnconfirmedKey); } catch { /* Storage is optional. */ }
+    broadcastLogout(false);
     publishSession(state); notifyOtherTabs();
     succeeded = true;
   } catch {
     logoutUnconfirmed = true;
     try { sessionStorage.setItem(logoutUnconfirmedKey, 'yes'); } catch { /* Storage is optional. */ }
     try { localStorage.setItem(logoutUnconfirmedKey, 'yes'); } catch { /* Storage is optional. */ }
+    broadcastLogout(true);
     retryLogout.disabled = false;
     openGate();
     publishSession({ authenticated: false, configured: true });
@@ -162,18 +183,11 @@ if (root.classList.contains('is-locked')) {
   (logoutUnconfirmed ? retryLogout : input).focus({ preventScroll: true });
 }
 if (!logoutUnconfirmed) void getSession().catch(() => { if (!logoutUnconfirmed) error.textContent = '共同手账暂时连不上，可以先以访客浏览。'; });
+logoutChannel?.addEventListener('message', event => {
+  if (typeof event.data === 'boolean') syncLogoutFromOtherTab(event.data);
+});
 window.addEventListener('storage', event => {
-  if (event.key === logoutUnconfirmedKey) {
-    logoutUnconfirmed = event.newValue === 'yes';
-    try {
-      if (logoutUnconfirmed) sessionStorage.setItem(logoutUnconfirmedKey, 'yes');
-      else sessionStorage.removeItem(logoutUnconfirmedKey);
-    } catch { /* Storage is optional. */ }
-    openGate();
-    if (logoutUnconfirmed) publishSession({ authenticated: false, configured: true });
-    else void refreshSession().catch(() => {});
-    return;
-  }
+  if (event.key === logoutUnconfirmedKey) { syncLogoutFromOtherTab(event.newValue === 'yes'); return; }
   if (!logoutUnconfirmed && event.key === 'loveuhqq_session_changed') void refreshSession().catch(() => {});
 });
 document.addEventListener('visibilitychange', () => {
