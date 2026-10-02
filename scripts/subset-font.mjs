@@ -10,6 +10,11 @@
  * Usage: npm run subset:font
  * Run it again after adding new visible copy; tests/font-subset.test.mjs
  * fails the build when the charset file no longer matches src/.
+ *
+ * The subset only ever contains characters from src/. Characters that appear
+ * nowhere but the Worker (the private hundred-day letter lives there) are held
+ * out and recorded in worker-only-chars.txt — a shipped font is a character-set
+ * oracle, so including them would let a visitor recover private wording.
  */
 
 import { createHash } from 'node:crypto';
@@ -27,15 +32,15 @@ const cachePath = join(root, '.fontcache', 'NotoSerifSC-wght.ttf');
 
 const fontOutPath = join(root, 'src', 'assets', 'fonts', 'noto-serif-sc-400-subset.woff2');
 const charsetOutPath = join(root, 'src', 'assets', 'fonts', 'subset-chars.txt');
+/** Private Worker characters the public subset must never gain. */
+const privateCharsetOutPath = join(root, 'src', 'assets', 'fonts', 'worker-only-chars.txt');
 
-/** Every character that appears anywhere in src/, plus a printable-ASCII base. */
-export function collectCharset() {
+function collectChars(dir) {
   const chars = new Set();
-  for (let code = 0x20; code <= 0x7e; code += 1) chars.add(String.fromCodePoint(code));
 
-  const walk = (dir) => {
-    for (const entry of readdirSync(dir)) {
-      const path = join(dir, entry);
+  const walk = (current) => {
+    for (const entry of readdirSync(current)) {
+      const path = join(current, entry);
       if (statSync(path).isDirectory()) walk(path);
       else if (/\.(astro|ts|css)$/.test(entry)) {
         for (const char of readFileSync(path, 'utf8')) {
@@ -44,9 +49,33 @@ export function collectCharset() {
       }
     }
   };
-  walk(join(root, 'src'));
+  walk(dir);
+
+  return chars;
+}
+
+/** Every character that appears anywhere in src/, plus a printable-ASCII base. */
+export function collectCharset() {
+  const chars = new Set();
+  for (let code = 0x20; code <= 0x7e; code += 1) chars.add(String.fromCodePoint(code));
+
+  for (const char of collectChars(join(root, 'src'))) chars.add(char);
 
   return [...chars].sort();
+}
+
+/**
+ * Characters used only by files outside the shipped page sources (the Worker,
+ * which holds the private letter). A woff2 subset is a character-set oracle:
+ * if any of these ever reached the public charset, a visitor could intersect
+ * the downloadable font with a known corpus to recover private wording.
+ */
+export function collectWorkerOnlyCharset() {
+  const publicChars = collectChars(join(root, 'src'));
+
+  return [...collectChars(join(root, 'worker'))]
+    .filter((char) => !publicChars.has(char))
+    .sort();
 }
 
 async function getSourceFont() {
@@ -66,6 +95,7 @@ async function getSourceFont() {
 
 async function main() {
   const chars = collectCharset();
+  const workerOnly = collectWorkerOnlyCharset();
   const { default: subsetFont } = await import('subset-font');
   const source = await getSourceFont();
 
@@ -78,8 +108,13 @@ async function main() {
   mkdirSync(dirname(fontOutPath), { recursive: true });
   writeFileSync(fontOutPath, subset);
   writeFileSync(charsetOutPath, `${chars.join('')}\n`);
+  // The manifest is what tests/font-subset.test.mjs holds the subset against, so
+  // private Worker wording can never be inferred from the shipped font by rerunning
+  // this script. Only the Worker is scanned: the page sources ship anyway.
+  writeFileSync(privateCharsetOutPath, `${workerOnly.join('')}\n`);
 
   console.log(`${chars.length} chars -> ${fontOutPath} (${(subset.length / 1024).toFixed(1)} KB)`);
+  console.log(`${workerOnly.length} worker-only chars held out of the subset`);
 }
 
 const invoked = process.argv[1] && fileURLToPath(import.meta.url) === resolve(process.argv[1]);
