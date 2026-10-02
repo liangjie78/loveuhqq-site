@@ -61,7 +61,10 @@ function updateDates() {
     count.append('还有 ', number, ' 天');
   }
   window.clearTimeout(midnightTimer);
-  midnightTimer = window.setTimeout(updateDates, getNextShanghaiMidnight(now).getTime() - now.getTime() + 100);
+  // A restored or throttled page can hold an already-overdue timer; never let the
+  // rollover re-enter immediately and re-read a clock that has not moved.
+  const untilMidnight = getNextShanghaiMidnight(now).getTime() - now.getTime();
+  midnightTimer = window.setTimeout(updateDates, Math.max(1000, untilMidnight + 100));
 }
 
 function waitForDate() {
