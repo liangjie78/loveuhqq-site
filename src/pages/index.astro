@@ -157,16 +157,17 @@ let inkIndex = 0;
     <section class="section letter" id="letter" aria-labelledby="letter-title">
       <div class="section-inner letter-inner">
         <div class="envelope-wrap" data-reveal>
-          <button class="envelope" type="button" data-envelope aria-describedby="envelope-note">
+          <button class="envelope" type="button" data-envelope aria-describedby="envelope-note" aria-haspopup="dialog" hidden>
             <img src="/images/envelope-620.webp" alt="一个封着蜡的信封" width="800" height="620" loading="lazy" decoding="async" />
             <span class="sr-only">拆开信封</span>
           </button>
+          <noscript><div class="envelope"><img src="/images/envelope-620.webp" alt="一个封着蜡的信封" width="800" height="620" loading="lazy" decoding="async" /></div></noscript>
           <p class="envelope-note" id="envelope-note" data-envelope-note role="status"></p>
         </div>
         <div class="letter-copy" data-reveal>
-          <span class="stamp">待写</span>
+          <span class="stamp" data-letter-stamp>待拆</span>
           <h2 id="letter-title">写给第 100 天</h2>
-          <p><span data-letter-wait>信还在写，等到 <time datetime={hundredthDayDate}>{hundredthLabel}</time> 那天再拆。</span><span data-letter-late hidden>信还在写。</span></p>
+          <p><span data-letter-wait>等到 <time datetime={hundredthDayDate}>{hundredthLabel}</time> 那天，再拆开这封信。</span><span data-letter-ready hidden>这封信可以拆开了。</span><br />解锁共同手账后，才能读到信里的文字。</p>
           <p class="letter-count" data-letter-count hidden></p>
         </div>
       </div>
@@ -183,5 +184,17 @@ let inkIndex = 0;
   </footer>
 
   <Lightbox />
+  <dialog class="letter-dialog" data-letter-dialog aria-labelledby="letter-dialog-title">
+    <div class="letter-dialog-header">
+      <h2 id="letter-dialog-title">写给第 100 天</h2>
+      <button class="letter-close text-button" type="button" data-letter-close autofocus>收好这封信 <span aria-hidden="true">×</span></button>
+    </div>
+    <div class="letter-dialog-body" data-letter-scroll>
+      <p class="letter-status" data-letter-status role="status" aria-live="polite"></p>
+      <button class="text-button letter-retry" type="button" data-letter-retry hidden>再试一次</button>
+      <article class="letter-reading" data-letter-reading hidden></article>
+    </div>
+  </dialog>
   <script src="../scripts/journal.ts"></script>
+  <script src="../scripts/letter.ts"></script>
 </Page>

@@ -795,6 +795,46 @@ a.polaroid:hover, a.polaroid:focus-visible { rotate: 0deg; translate: 0 -8px; bo
 .letter-count { font: 400 1.1rem/1.4 var(--serif); color: var(--ink-2) !important; }
 .letter-count strong { margin: 0 .12em; font-weight: 400; font-size: 2.6rem; font-variant-numeric: lining-nums; color: var(--rose); }
 
+.letter-dialog {
+  width: min(42rem, calc(100% - 2 * var(--gutter)));
+  max-height: calc(100dvh - 2rem - env(safe-area-inset-top) - env(safe-area-inset-bottom));
+  margin: auto;
+  padding: 0;
+  border: 1px solid var(--line-strong);
+  background: var(--sheet);
+  color: var(--ink);
+  box-shadow: var(--shadow-lift);
+  overflow: hidden;
+}
+.letter-dialog[open] { display: flex; flex-direction: column; animation: print-in .45s var(--ease-out) both; }
+.letter-dialog::backdrop { background: var(--backdrop); }
+.letter-dialog-header {
+  display: flex;
+  flex: none;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: .5rem 1rem;
+  padding: 1rem clamp(1.25rem, 4vw, 2.5rem);
+  border-bottom: 1px solid var(--line);
+}
+.letter-dialog-header h2 { font: 400 clamp(1.2rem, 4vw, 1.5rem)/1.5 var(--serif); }
+.letter-close { margin-left: auto; color: var(--rose); }
+.letter-close span { margin-left: .4rem; font-size: 1.3rem; }
+.letter-dialog-body {
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: clamp(1.5rem, 5vw, 3rem) clamp(1.25rem, 4vw, 2.5rem);
+  background-image: linear-gradient(to right, transparent 0, transparent calc(1rem - 1px), var(--blush) calc(1rem - 1px), var(--blush) 1rem, transparent 1rem);
+}
+.letter-reading { font: 400 clamp(1rem, 2.8vw, 1.1rem)/2 var(--sans); overflow-wrap: anywhere; }
+.letter-reading p + p { margin-top: 1.4em; }
+.letter-reading .letter-closing { margin-top: 2.25em; text-align: right; color: var(--ink-2); }
+.letter-status { line-height: 1.9; color: var(--muted); }
+.letter-status:empty { display: none; }
+.letter-retry { margin-top: .75rem; color: var(--rose); }
+
 /* ---------- Footer ---------- */
 
 .site-footer {

@@ -71,6 +71,8 @@ function broadcastLogout(pending: boolean) {
   try { logoutChannel?.postMessage(pending); } catch { /* Storage events still work. */ }
 }
 function syncLogoutFromOtherTab(pending: boolean) {
+  // Revoke private content before any asynchronous session confirmation.
+  if (!pending) publishSession({ authenticated: false, configured: true });
   if (logoutUnconfirmed === pending) {
     if (!pending) void refreshSession().catch(() => {});
     return;
