@@ -9,7 +9,6 @@ const input = gate.querySelector<HTMLInputElement>('[data-gate-input]')!;
 const row = gate.querySelector<HTMLElement>('.gate-slots')!;
 const slots = [...gate.querySelectorAll<HTMLElement>('[data-slot]')];
 const error = gate.querySelector<HTMLElement>('[data-gate-error]')!;
-const remember = gate.querySelector<HTMLInputElement>('[data-gate-remember]')!;
 const visit = gate.querySelector<HTMLButtonElement>('[data-gate-visit]')!;
 const retryLogout = gate.querySelector<HTMLButtonElement>('[data-gate-retry]')!;
 const passwordPanel = gate.querySelector<HTMLElement>('[data-gate-password-panel]')!;
@@ -164,11 +163,11 @@ form.addEventListener('submit', async event => {
         input.value = ''; renderSlots(); input.focus(); return;
       }
       stage = 'password'; row.hidden = true; passwordPanel.hidden = false;
-      title.textContent = '翻开我们的共同手账'; hint.textContent = '输入密码后，两个人都能记下和修改。';
+      title.textContent = '翻开我们的共同手账'; hint.textContent = '';
       error.textContent = ''; password.focus();
     } else {
       const state = await api<SessionState>('/api/session', { method: 'POST',
-        body: JSON.stringify({ password: password.value, remember: remember.checked }) });
+        body: JSON.stringify({ password: password.value, remember: true }) });
       publishSession(state); notifyOtherTabs(); loggedIn = true;
     }
   } catch (cause) {
