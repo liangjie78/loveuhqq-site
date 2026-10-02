@@ -19,7 +19,7 @@
 - **记下的日子**：以打孔票根展示已确认的故事日期和第一天，包括早于日历起点的记录。未来日期标注“还没到”；“保存这些日子为图片”将当前票根生成一张可直接打开的 PNG 图片，不创建系统提醒。
 - **往后**：左侧留白与标题、右侧贴着胶带的横线清单；手机上下排列。访客显示“解锁后，翻看我们的记录”；解锁后加载共同清单，支持新增、修改、完成、移除与撤销，也可以从未完成事项里抽一件。
 - 首页增加“往后”导航；≤380px 时字标与导航分两行，保持五个入口完整可点，日历置顶读数沿用对应页眉高度。
-- 日记与清单共用一份云端手账，服务器确认后才提示保存成功。页面可见时每 10 秒检查更新，回到前台立即刷新；同条记录以修订号检查冲突，保留输入并展示最新内容，不自动覆盖。草稿可暂存在本标签页的 sessionStorage，登录后恢复；访客不读取或显示草稿及旧本机记录，退出清空内存中的私密正文。备份只在解锁后导入、导出；导入先完整校验，重叠记录逐条展示差异和选择，按记录上传，部分失败如实反馈。原本机手账不删除。预览与生产使用独立数据库，真实记录仅迁入生产。无 JavaScript 时保留原有静态展示，私密记录不在 HTML 中。
+- 日记与清单共用一份云端手账，服务器确认后才提示保存成功。页面可见时每 10 秒检查更新，回到前台立即刷新；同条记录以修订号检查冲突，保留输入并展示最新内容，不自动覆盖。草稿可暂存在本标签页的 sessionStorage，登录后恢复；访客不读取或显示草稿及旧本机记录，退出清空内存中的私密正文。页面不提供手动导入或导出，旧本机手账不删除。预览与生产使用独立数据库，真实记录只保存在生产数据库。无 JavaScript 时保留原有静态展示，私密记录不在 HTML 中。
 - **404**：一张底边被撕开的纸，“这一页，好像被撕掉了。”
 
 ## 日期与状态
@@ -83,7 +83,7 @@
 - `src/scripts/journal.ts`：首页日期、日历（含键盘翻看）、计数、页眉状态、纸心与信封；`gallery.ts`：灯箱；`reveal.ts`：滚动淡入；`passphrase-gate.ts`：门禁。
 - `src/lib/anniversary.ts`（含恋爱年份、按月日历与共享的日期格式、月份名）、`tests/anniversary.test.mjs`、`tests/calendar.test.mjs`：日期计算与测试。
 - `src/data/photos.ts`、`src/data/moments.ts`、`public/images/`：照片、值得标记的日子与本地素材。
-- `src/components/Notebook.astro`、`FutureList.astro`、`MomentArchive.astro`、`src/styles/notebook.css`：新增纸签、清单与故事票根；`src/scripts/notebook.ts` 负责本机记录，`src/lib/notebook.ts` 负责备份校验与合并，`src/lib/moment-image.ts` 生成可打开的纪念日图片。
+- `src/components/Notebook.astro`、`FutureList.astro`、`MomentArchive.astro`、`src/styles/notebook.css`：纸签、清单与故事票根；`src/scripts/notebook.ts` 负责云端手账交互与临时草稿，`src/lib/notebook.ts` 负责记录校验，`src/lib/moment-image.ts` 生成可打开的纪念日图片。
 - `scripts/subset-font.mjs`、`src/assets/fonts/`、`tests/font-subset.test.mjs`：宋体子集的生成、产物与字符集守卫；`astro.config.mjs` 禁止字体内联（CSP 只允许同源字体）。
 - `wrangler.jsonc`、`wrangler.preview.jsonc`：静态资源目录，以及 `not_found_handling: "404-page"`——没有这一项时 Workers 静态资源只回一个空 404 正文，`dist/404.html` 不会送到访客手里。
 

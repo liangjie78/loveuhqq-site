@@ -3,7 +3,6 @@ export interface Notebook { version: 1; notes: Record<string, string>; wishes: W
 export interface CloudNotebook extends Notebook {
   revisions: { notes: Record<string, number>; wishes: Record<string, number> };
 }
-export const notebookKey = 'loveuhqq_notebook_v1';
 export const emptyNotebook = (): Notebook => ({ version: 1, notes: {}, wishes: [] });
 
 export function isCalendarDate(date: string): boolean {
@@ -12,7 +11,7 @@ export function isCalendarDate(date: string): boolean {
     Number.isFinite(parsed.getTime()) && parsed.toISOString().slice(0, 10) === date;
 }
 
-/** Validate the entire file before importing anything; never truncate someone's writing. */
+/** Validate a complete notebook payload without truncating any writing. */
 export function parseNotebook(raw: string): Notebook {
   const value = JSON.parse(raw);
   if (!value || value.version !== 1 || !value.notes || typeof value.notes !== 'object' || Array.isArray(value.notes) || !Array.isArray(value.wishes)) throw new Error('Invalid notebook');
@@ -30,12 +29,4 @@ export function parseNotebook(raw: string): Notebook {
     result.wishes.push({ id: wish.id, text: wish.text, done: wish.done });
   }
   return result;
-}
-
-/** Existing writing wins when the same date or wish is already on this device. */
-export function mergeNotebooks(current: Notebook, incoming: Notebook): Notebook {
-  return parseNotebook(JSON.stringify({ version: 1,
-    notes: { ...incoming.notes, ...current.notes },
-    wishes: [...current.wishes, ...incoming.wishes.filter((wish) => !current.wishes.some(({ id }) => id === wish.id))],
-  }));
 }

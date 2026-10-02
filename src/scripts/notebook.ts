@@ -1,7 +1,7 @@
 import { dotted, relationshipStartDate } from '../lib/anniversary';
 import { api, ApiError, emptyCloudNotebook, type CloudNotebook, type SessionState } from '../lib/cloud-notebook';
 import { getSession, onSessionChange, publishSession } from '../lib/session';
-import { isCalendarDate, notebookKey, parseNotebook, type Notebook, type Wish } from '../lib/notebook';
+import { isCalendarDate, parseNotebook, type Wish } from '../lib/notebook';
 
 const $ = <T extends HTMLElement = HTMLElement>(selector: string) => document.querySelector<T>(selector)!;
 const noteGuest = $('[data-note-guest]');
@@ -24,12 +24,6 @@ const wishStatus = $('[data-wish-status]');
 const wishRetry = $<HTMLButtonElement>('[data-wish-retry]');
 const wishRefresh = $<HTMLButtonElement>('[data-wish-refresh]');
 const wishUndoButton = $<HTMLButtonElement>('[data-wish-undo]');
-const toolsStatus = $('[data-notebook-status]');
-const fileInput = $<HTMLInputElement>('[data-notebook-file]');
-const importDialog = $<HTMLDialogElement>('[data-import-dialog]');
-const importForm = $<HTMLFormElement>('[data-import-form]');
-const importConflicts = $('[data-import-conflicts]');
-const importCancel = $<HTMLButtonElement>('[data-import-cancel]');
 
 interface Drafts {
   version: 1;
@@ -40,12 +34,6 @@ interface Drafts {
 interface NoteUndo { date: string; text: string; expectedVersion: number }
 interface WishUndo { wish: Wish; expectedVersion: number }
 interface WishEdit { id: string; expectedVersion: number; original: Wish }
-type ImportConflict =
-  | { type: 'note'; key: string; cloud?: string; incoming: string; deleted: boolean }
-  | { type: 'wish'; key: string; cloud?: Wish; incoming: Wish; deleted: boolean };
-type ImportOperation =
-  | { type: 'note'; key: string; text: string; expectedVersion: number }
-  | { type: 'wish'; wish: Wish; expectedVersion: number };
 
 const DRAFT_KEY = 'loveuhqq_notebook_drafts_v1';
 const emptyDrafts = (): Drafts => ({ version: 1, notes: {}, wishText: '', wishes: {} });
@@ -68,11 +56,10 @@ let wishEditSession = 0;
 let wishAdding = false;
 let noteUndo: NoteUndo | null = null;
 let wishUndo: WishUndo | null = null;
-let importing = false;
 const busy = new Set<string>();
 
-function showStatus(area: 'note' | 'wish' | 'tools', text: string) {
-  const target = area === 'note' ? noteStatus : area === 'wish' ? wishStatus : toolsStatus;
+function showStatus(area: 'note' | 'wish', text: string) {
+  const target = area === 'note' ? noteStatus : wishStatus;
   if (area === 'note' && !ready) noteLoadingStatus.textContent = text;
   else if (area === 'wish' && !ready) wishLoadingStatus.textContent = text;
   else target.textContent = text;
@@ -419,7 +406,7 @@ function handleUnauthorized() {
   publishSession({ authenticated: false, configured: true });
 }
 
-function reportError(area: 'note' | 'wish' | 'tools', error: unknown) {
+function reportError(area: 'note' | 'wish', error: unknown) {
   if (error instanceof ApiError && error.status === 401) { handleUnauthorized(); return; }
   if (error instanceof ApiError && error.status === 409) {
     if (area === 'note') showNoteConflict();
@@ -488,7 +475,7 @@ function setSession(state: SessionState) {
   noteForm.querySelectorAll<HTMLInputElement | HTMLTextAreaElement | HTMLButtonElement>('input, textarea, button').forEach((control) => { control.disabled = false; });
   noteUndo = null; wishUndo = null;
   noteUndoButton.hidden = true; wishUndoButton.hidden = true;
-  noteStatus.textContent = ''; wishStatus.textContent = ''; toolsStatus.textContent = '';
+  noteStatus.textContent = ''; wishStatus.textContent = '';
   noteRetry.hidden = true; wishRetry.hidden = true;
   if (wasAuthenticated && !authenticated) draftsCache = null;
   if (!authenticated) {
@@ -496,8 +483,6 @@ function setSession(state: SessionState) {
     $('[data-note-conflict]').hidden = true;
     $('[data-note-latest]').hidden = true;
     $('[data-note-latest]').textContent = '';
-    importConflicts.replaceChildren();
-    importDialog.open && importDialog.close('cancel');
   }
   render();
   dispatchNotebookChanged();
@@ -700,160 +685,6 @@ document.addEventListener('journal:date', (event) => {
   renderNote();
 });
 document.addEventListener('journal:notes-request', () => { if (authenticated && ready) dispatchNotebookChanged(); });
-
-function download(text: string, name: string) {
-  const url = URL.createObjectURL(new Blob([text], { type: 'application/json;charset=utf-8' }));
-  const link = document.createElement('a'); link.href = url; link.download = name; link.click();
-  setTimeout(() => URL.revokeObjectURL(url), 1000);
-}
-
-$('[data-notebook-export]').addEventListener('click', () => {
-  if (!authenticated || !ready) return;
-  const backup: Notebook = { version: 1, notes: { ...book.notes }, wishes: book.wishes.map((wish) => ({ ...wish })) };
-  download(JSON.stringify(backup, null, 2), 'loveuhqq-notebook.json');
-  showStatus('tools', '云端手账已导出。');
-});
-
-function describeWish(wish: Wish) { return `${wish.text}${wish.done ? '（已完成）' : '（还没完成）'}`; }
-
-async function chooseImportConflicts(conflicts: ImportConflict[]): Promise<Map<string, boolean> | null> {
-  if (!conflicts.length) return new Map();
-  importConflicts.replaceChildren();
-  conflicts.forEach((conflict, index) => {
-    const fieldset = document.createElement('fieldset'); fieldset.className = 'notebook-conflict';
-    const legend = document.createElement('legend');
-    legend.textContent = conflict.type === 'note' ? dotted(conflict.key) : '往后的小清单';
-    const cloud = document.createElement('p');
-    cloud.textContent = `云端：${conflict.deleted ? '已移除' : conflict.type === 'note' ? conflict.cloud : describeWish(conflict.cloud!)}`;
-    const incoming = document.createElement('p'); incoming.textContent = `导入：${conflict.type === 'note' ? conflict.incoming : describeWish(conflict.incoming)}`;
-    const choices = document.createElement('div'); choices.className = 'notebook-conflict-choices';
-    const labels = conflict.deleted ? ['保留已移除', '从备份恢复'] : ['保留云端', '用导入内容'];
-    for (const [value, labelText, checked] of [['cloud', labels[0], true], ['incoming', labels[1], false]] as const) {
-      const label = document.createElement('label');
-      const input = document.createElement('input'); input.type = 'radio'; input.name = `notebook-conflict-${index}`;
-      input.value = value; input.checked = checked;
-      label.append(input, document.createTextNode(labelText)); choices.append(label);
-    }
-    fieldset.append(legend, cloud, incoming, choices); importConflicts.append(fieldset);
-  });
-  return new Promise((resolve) => {
-    const onClose = () => {
-      if (importDialog.returnValue !== 'import') { resolve(null); return; }
-      const result = new Map<string, boolean>();
-      conflicts.forEach((conflict, index) => {
-        const choice = importForm.querySelector<HTMLInputElement>(`[name="notebook-conflict-${index}"]:checked`);
-        result.set(`${conflict.type}:${conflict.key}`, choice?.value === 'incoming');
-      });
-      resolve(result);
-    };
-    const onSubmit = (event: SubmitEvent) => { event.preventDefault(); importDialog.close('import'); };
-    const onCancel = () => importDialog.close('cancel');
-    importDialog.addEventListener('close', onClose, { once: true });
-    importForm.addEventListener('submit', onSubmit, { once: true });
-    importCancel.addEventListener('click', onCancel, { once: true });
-    importDialog.showModal();
-  });
-}
-
-function planImport(incoming: Notebook, snapshot: CloudNotebook, choices: Map<string, boolean>): ImportOperation[] {
-  const operations: ImportOperation[] = [];
-  for (const [key, text] of Object.entries(incoming.notes)) {
-    const current = snapshot.notes[key];
-    const deleted = current === undefined && revisionOf(snapshot.revisions.notes, key) > 0;
-    const conflict = (current !== undefined && current !== text) || deleted;
-    if (current === text || (conflict && !choices.get(`note:${key}`))) continue;
-    operations.push({ type: 'note', key, text, expectedVersion: revisionOf(snapshot.revisions.notes, key) });
-  }
-  for (const wish of incoming.wishes) {
-    const current = snapshot.wishes.find(({ id }) => id === wish.id);
-    const same = current?.text === wish.text && current.done === wish.done;
-    const deleted = current === undefined && revisionOf(snapshot.revisions.wishes, wish.id) > 0;
-    const conflict = (current !== undefined && !same) || deleted;
-    if (same || (conflict && !choices.get(`wish:${wish.id}`))) continue;
-    operations.push({ type: 'wish', wish, expectedVersion: revisionOf(snapshot.revisions.wishes, wish.id) });
-  }
-  return operations;
-}
-
-async function importNotebook(incoming: Notebook) {
-  if (!authenticated || !ready || importing) return;
-  importing = true;
-  $('[data-notebook-import]').setAttribute('aria-disabled', 'true');
-  $('[data-notebook-local-import]').setAttribute('aria-disabled', 'true');
-  const snapshot = validateCloud(book);
-  try {
-    const conflicts: ImportConflict[] = [];
-    for (const [key, text] of Object.entries(incoming.notes)) {
-      const cloud = snapshot.notes[key];
-      const deleted = cloud === undefined && revisionOf(snapshot.revisions.notes, key) > 0;
-      if ((cloud !== undefined && cloud !== text) || deleted) conflicts.push({ type: 'note', key, cloud, incoming: text, deleted });
-    }
-    for (const wish of incoming.wishes) {
-      const cloud = snapshot.wishes.find(({ id }) => id === wish.id);
-      const deleted = !cloud && revisionOf(snapshot.revisions.wishes, wish.id) > 0;
-      if ((cloud && (cloud.text !== wish.text || cloud.done !== wish.done)) || deleted) conflicts.push({ type: 'wish', key: wish.id, cloud, incoming: wish, deleted });
-    }
-    const choices = await chooseImportConflicts(conflicts);
-    if (!choices || !authenticated) return;
-    const operations = planImport(incoming, snapshot, choices);
-    if (!operations.length) { showStatus('tools', '没有新内容需要放回；相同内容已略过。'); return; }
-    const requestGeneration = generation;
-    let completed = 0;
-    let failure: unknown = null;
-    for (let offset = 0; offset < operations.length && !failure; offset += 4) {
-      const batch = operations.slice(offset, offset + 4);
-      showStatus('tools', `正在放回手账：${completed} / ${operations.length}`);
-      const results = await Promise.all(batch.map(async (operation) => {
-        const path = operation.type === 'note' ? `/api/notes/${encodeURIComponent(operation.key)}` : wishPath(operation.wish.id);
-        const body = operation.type === 'note'
-          ? { expectedVersion: operation.expectedVersion, text: operation.text }
-          : { expectedVersion: operation.expectedVersion, text: operation.wish.text, done: operation.wish.done };
-        try { return { ok: true as const, value: validateCloud(await api<CloudNotebook>(path, { method: 'PUT', body: JSON.stringify(body) })) }; }
-        catch (error) { return { ok: false as const, error }; }
-      }));
-      if (!authenticated || requestGeneration !== generation) return;
-      for (const result of results) {
-        if (result.ok) { book = mergeCloud(book, result.value); completed++; }
-        else if (!failure) failure = result.error;
-      }
-      render(); dispatchNotebookChanged();
-    }
-    if (failure) {
-      reportError('tools', failure);
-      const reason = failure instanceof ApiError && failure.status === 409 ? '云端有记录刚被改过，已停止；刷新后可再导入。' : '连接中断，已停止。';
-      showStatus('tools', `已放回 ${completed} 条，${reason} 再次导入会略过相同内容。`);
-      return;
-    }
-    showStatus('tools', `已放回 ${completed} 条。相同内容已略过。`);
-  } finally {
-    importing = false;
-    $('[data-notebook-import]').removeAttribute('aria-disabled');
-    $('[data-notebook-local-import]').removeAttribute('aria-disabled');
-  }
-}
-
-$('[data-notebook-import]').addEventListener('click', () => fileInput.click());
-fileInput.addEventListener('change', async () => {
-  const file = fileInput.files?.[0];
-  if (!file) return;
-  try {
-    if (file.size > 8_000_000) throw new Error('Backup too large');
-    await importNotebook(parseNotebook(await file.text()));
-  } catch {
-    showStatus('tools', '这份文件不是可用的手账备份，原内容没有改动。');
-  } finally { fileInput.value = ''; }
-});
-
-$('[data-notebook-local-import]').addEventListener('click', () => {
-  if (!authenticated || !ready) return;
-  try {
-    const raw = localStorage.getItem(notebookKey);
-    if (raw === null) { showStatus('tools', '这台设备里还没有旧手账。'); return; }
-    void importNotebook(parseNotebook(raw));
-  } catch {
-    showStatus('tools', '这台设备里的旧手账无法读取；原数据没有改动。');
-  }
-});
 
 onSessionChange(setSession);
 void getSession().catch(() => { /* Unknown sessions remain in the guest view until a later session event. */ });

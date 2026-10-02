@@ -39,7 +39,7 @@
 2. 执行 `npx wrangler d1 migrations apply DB --remote --config wrangler.jsonc`，核验迁移完成。只操作上述生产数据库。
 3. 用户在交互式终端运行 `npm run password:production`，隐藏输入 6–128 个字符的共同密码并确认。助手只把验证值通过 stdin 交给项目 Wrangler；不落盘、不回显密码。该操作会更新生产 Worker secret，必须纳入当次上线授权。
 4. 从已批准合并的干净 main 执行 `npm test`、`npm run check:worker`、`npm run deploy`。分别核验 `/api/session`、访客读取 `/api/notebook` 的 401 和登录后的增改、完成、移除、同步。
-5. 两台旧设备先导出 JSON 备份，再各自解锁并导入。重叠记录逐条比较选择；原本机记录不会删除。真实数据只导入正式站，不导入预览。
+5. 在各设备登录正式站，核验日记和清单从同一份云端手账读取，并能在另一台设备看到更新。真实记录不得写入预览数据库。
 
 换密码会使所有旧登录状态失效。记住设备的会话最长 30 天，未勾选时 12 小时；退出会撤销该会话。客户端草稿是设备暂存，不等于云端已保存。
 
