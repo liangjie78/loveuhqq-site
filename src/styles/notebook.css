@@ -4,9 +4,6 @@
 .paper-actions { display: flex; flex-wrap: wrap; align-items: center; gap: .5rem 1.5rem; }
 .paper-actions .text-button, .moment-image-action .text-button { min-height: 44px; }
 .moment-image-action .text-button:disabled { color: var(--faint); cursor: default; text-decoration: none; }
-.pencil-button { min-height: 44px; padding: .4rem 1rem; border: 1px solid var(--line-stronger); background: var(--sheet); font-size: .85rem; flex-shrink: 0; }
-.pencil-button:hover { color: var(--rose); border-color: var(--rose); }
-.pencil-button:active { background: var(--paper-2); }
 .day-back { margin: 1.5rem 2.5rem 0; padding: 1.5rem 2rem; background: var(--sheet); box-shadow: var(--shadow-paper); border-left: 2px solid var(--blush); position: relative; scroll-margin-top: calc(var(--header) + env(safe-area-inset-top) + .75rem); }
 .day-back::after { content: ''; position: absolute; top: 0; right: 0; width: 1.25rem; height: 1.25rem; background: var(--paper-2); clip-path: polygon(0 0, 100% 100%, 0 100%); }
 .day-back-heading { display: flex; align-items: center; justify-content: space-between; gap: 1rem; }

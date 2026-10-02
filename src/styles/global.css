@@ -173,6 +173,21 @@ html.has-dialog, html.has-dialog body { overflow: hidden; }
 }
 .text-button:hover { color: var(--ink); }
 
+.pencil-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 44px;
+  padding: .4rem 1rem;
+  border: 1px solid var(--line-stronger);
+  background: var(--sheet);
+  font-size: .85rem;
+  flex-shrink: 0;
+  transition: color .2s, border-color .2s, background-color .2s;
+}
+.pencil-button:hover { color: var(--rose); border-color: var(--rose); }
+.pencil-button:active { background: var(--paper-2); }
+
 .pill-link {
   display: inline-flex;
   align-items: center;
@@ -306,6 +321,7 @@ html.has-dialog, html.has-dialog body { overflow: hidden; }
 .gate-password label { font-size: .9rem; color: var(--muted); }
 .gate-password input { min-width: 0; width: 100%; min-height: 44px; padding: .6rem; border: 1px solid var(--line-stronger); border-radius: 4px; background: var(--sheet); color: var(--ink); }
 .gate-password button { min-height: 44px; width: 100%; margin-top: .25rem; }
+.gate-retry { width: min(100%, 20rem); min-height: 44px; margin-top: 1.25rem; }
 .gate-visit { margin-top: 2.25rem; min-height: 44px; color: var(--muted); }
 
 .back-link {
@@ -947,6 +963,7 @@ html.is-locked .gate, .gate.is-leaving { display: grid; }
 
 .gate-error { min-height: 1.5rem; margin-top: 2.6rem; font-size: .88rem; letter-spacing: .06em; color: var(--rose); }
 .gate-error:empty { display: none; }
+.gate-card:has([data-gate-retry]:not([hidden])) .gate-error { margin-top: 1.25rem; }
 
 /* ---------- Album page ---------- */
 
