@@ -42,15 +42,18 @@ const image = new URL('/images/paper-heart.webp', Astro.site).href;
       (function () {
         var root = document.documentElement;
         root.classList.add('has-js');
+        var logoutUnconfirmed = false;
+        try { logoutUnconfirmed = sessionStorage.getItem('loveuhqq_logout_unconfirmed') === 'yes'; } catch (error) { /* Storage is optional. */ }
+        try { logoutUnconfirmed = logoutUnconfirmed || localStorage.getItem('loveuhqq_logout_unconfirmed') === 'yes'; } catch (error) { /* Storage is optional. */ }
         try {
-          if (sessionStorage.getItem('loveuhqq_visited') !== 'yes') root.classList.add('is-locked');
+          if (logoutUnconfirmed || sessionStorage.getItem('loveuhqq_visited') !== 'yes') root.classList.add('is-locked');
         } catch (error) {
           root.classList.add('is-locked');
         }
         // Fail-safe: if the gate bundle never runs, do not leave the journal hidden
         // behind a lock nobody can open. The gate sets `gate-ready` as soon as it is live.
         setTimeout(function () {
-          if (!root.classList.contains('gate-ready')) root.classList.remove('is-locked');
+          if (!logoutUnconfirmed && !root.classList.contains('gate-ready')) root.classList.remove('is-locked');
         }, 3000);
         // Hold the opening until the serif has loaded, so the title never swaps fonts mid-way.
         if (document.fonts && document.fonts.load) {

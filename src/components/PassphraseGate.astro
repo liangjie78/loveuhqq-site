@@ -30,17 +30,16 @@ import Postmark from './Postmark.astro';
       <div class="gate-password" data-gate-password-panel hidden>
         <label for="editor-password">共同手账的密码</label>
         <input id="editor-password" data-gate-password type="password" autocomplete="current-password" maxlength="128" />
+        <label class="gate-remember">
+          <input type="checkbox" data-gate-remember checked />
+          <span>记住这台设备（30 天；不选则 12 小时）</span>
+        </label>
         <button class="pencil-button" type="submit">解锁手账</button>
       </div>
       <p class="gate-error" data-gate-error role="alert"></p>
-      <div class="gate-actions">
-        <label class="gate-remember">
-          <input type="checkbox" data-gate-remember checked />
-          <span>记住这台设备</span>
-        </label>
-      </div>
     </form>
-    <button class="text-button gate-visit" type="button" data-gate-visit>访客浏览</button>
+    <button class="pencil-button" type="button" data-gate-retry hidden>重试退出</button>
+    <button class="text-button gate-visit" type="button" data-gate-visit>先以访客浏览公开内容</button>
   </div>
 </div>
 <script src="../scripts/passphrase-gate.ts"></script>
