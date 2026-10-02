@@ -5,6 +5,7 @@ import { pbkdf2Sync } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import worker from '../worker/index.ts';
 import { digest, isPasswordHash, readSessionToken, sessionCookieName, verifyPassword } from '../worker/auth.ts';
+import { hundredDayLetter } from '../worker/letter.ts';
 
 const origin = 'https://journal.example';
 const password = 'example-test-password-only';
@@ -74,6 +75,69 @@ test('private notebook requires a current server session; API responses are unca
   const cookie = await f.login();
   assert.deepEqual(await (await f.request('/api/session', 'GET', undefined, cookie)).json(), { authenticated: true, configured: true });
   assert.equal((await f.request('/api/notebook', 'GET', undefined, `${sessionCookieName}=${'a'.repeat(64)}`)).status, 401);
+});
+
+test('letter opens at the hundredth Shanghai midnight and stays open afterward', async (t) => {
+  const unlock = Date.parse('2026-10-08T00:00:00+08:00');
+  t.mock.timers.enable({ apis: ['Date'], now: unlock - 1 });
+  const f = fixture();
+  const cookie = await f.login(true);
+  for (const [now, status] of [[unlock - 1, 403], [unlock, 200], [unlock + 86400000, 200]]) {
+    t.mock.timers.setTime(now);
+    const response = await f.request('/api/letter', 'GET', undefined, cookie);
+    assert.equal(response.status, status);
+    assert.equal(response.headers.get('Cache-Control'), 'no-store');
+    assert.equal(response.headers.get('X-Content-Type-Options'), 'nosniff');
+    const result = await response.json();
+    if (status === 200) assert.deepEqual(result, hundredDayLetter);
+    else {
+      assert.deepEqual(Object.keys(result), ['error']);
+      assert.ok(!JSON.stringify(result).includes(hundredDayLetter.paragraphs[0]));
+    }
+  }
+});
+
+test('letter rejects missing, invalid, expired, rotated and logged-out sessions after opening', async (t) => {
+  t.mock.timers.enable({ apis: ['Date'], now: Date.parse('2026-10-08T00:00:00+08:00') });
+  const f = fixture();
+  const denied = async (cookie) => {
+    const response = await f.request('/api/letter', 'GET', undefined, cookie);
+    assert.equal(response.status, 401);
+    assert.equal(response.headers.get('Cache-Control'), 'no-store');
+    assert.deepEqual(await response.json(), { error: '请先登录手账。' });
+  };
+  await denied();
+  await denied(`${sessionCookieName}=${'a'.repeat(64)}`);
+  const cookie = await f.login();
+  f.env.EDITOR_PASSWORD_HASH = credential.replace(salt, 'ffeeddccbbaa99887766554433221100');
+  await denied(cookie);
+  f.env.EDITOR_PASSWORD_HASH = credential;
+  f.sqlite.prepare('UPDATE sessions SET expires_at = ?').run(Date.now());
+  await denied(cookie);
+  const fresh = await f.login();
+  assert.equal((await f.request('/api/letter', 'GET', undefined, fresh)).status, 200);
+  assert.equal((await f.request('/api/session', 'DELETE', undefined, fresh)).status, 200);
+  await denied(fresh);
+});
+
+test('letter fails closed when unconfigured and accepts only GET', async () => {
+  const f = fixture();
+  for (const [binding, value] of [['EDITOR_PASSWORD_HASH', undefined], ['DB', undefined]]) {
+    const previous = f.env[binding];
+    f.env[binding] = value;
+    const response = await f.request('/api/letter');
+    assert.equal(response.status, 503);
+    assert.equal(response.headers.get('Cache-Control'), 'no-store');
+    assert.deepEqual(await response.json(), { error: '云端手账尚未配置完成。' });
+    f.env[binding] = previous;
+  }
+  for (const method of ['HEAD', 'OPTIONS', 'POST', 'PUT', 'DELETE', 'PATCH']) {
+    const response = await f.request('/api/letter', method, undefined, undefined, { Origin: '' });
+    assert.equal(response.status, 405);
+    assert.equal(response.headers.get('Allow'), 'GET');
+    assert.equal(response.headers.get('Cache-Control'), 'no-store');
+    assert.deepEqual(await response.json(), { error: '方法不支持。' });
+  }
 });
 
 test('login accepts six-character passwords and rejects shorter passwords', async () => {

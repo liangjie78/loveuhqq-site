@@ -5,7 +5,6 @@ import {
   getRelationshipYear,
   getRelationshipYearMonths,
   getUpcomingAnniversary,
-  hundredthDayDate,
   monthNames,
   relationshipStartDate,
   type CalendarMonth,
@@ -374,19 +373,6 @@ function refreshDates() {
   nextDate.dateTime = upcoming.date;
   nextDate.textContent = dotted(upcoming.date);
 
-  const hundredthRemaining = hundredthDay - today;
-  const letterCount = $('[data-letter-count]')!;
-  letterCount.hidden = hundredthRemaining < 0;
-  letterCount.innerHTML = hundredthRemaining === 0 ? '就是今天' : `还有 <strong>${hundredthRemaining}</strong> 天`;
-  // Once day 100 is behind us the teardown date in the sentence is in the past.
-  const letterWait = $('[data-letter-wait]');
-  const letterLate = $('[data-letter-late]');
-  if (letterWait && letterLate) {
-    const past = hundredthRemaining < 0;
-    letterWait.hidden = past;
-    letterLate.hidden = !past;
-  }
-
   // The stats describe the year on screen, not always the current one.
   updateYearStats();
 
@@ -563,25 +549,4 @@ if (heart) {
     heart.style.removeProperty('--tilt-x');
     heart.style.removeProperty('--tilt-y');
   });
-}
-
-/* ---------- The sealed letter ---------- */
-
-const envelope = $('[data-envelope]');
-const envelopeNote = $('[data-envelope-note]');
-
-if (envelope && envelopeNote) {
-  let noteTimer: number | undefined;
-  envelope.addEventListener('click', () => {
-    envelopeNote.textContent = today < hundredthDay
-      ? `还没到拆的时候，${dotted(hundredthDayDate)} 再来。`
-      : '信还在写。';
-    envelopeNote.classList.add('is-shown');
-    envelope.classList.remove('is-wiggling');
-    void envelope.offsetWidth;
-    envelope.classList.add('is-wiggling');
-    window.clearTimeout(noteTimer);
-    noteTimer = window.setTimeout(() => envelopeNote.classList.remove('is-shown'), 3200);
-  });
-  envelope.addEventListener('animationend', () => envelope.classList.remove('is-wiggling'));
 }

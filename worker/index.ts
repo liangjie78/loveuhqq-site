@@ -1,6 +1,8 @@
 import { isCalendarDate, parseNotebook } from '../src/lib/notebook.ts';
 import type { CloudNotebook } from '../src/lib/notebook.ts';
+import { getAnniversaryDay } from '../src/lib/anniversary.ts';
 import { digest, isPasswordHash, randomToken, readSessionToken, sessionCookie, verifyPassword } from './auth.ts';
+import { hundredDayLetter } from './letter.ts';
 
 type Env = Cloudflare.Env & { EDITOR_PASSWORD_HASH?: string };
 type Entry = { kind: 'note' | 'wish'; entry_key: string; text: string; done: number; version: number; deleted: number };
@@ -140,8 +142,9 @@ export default {
     const path = new URL(request.url).pathname;
     if (path !== '/api' && !path.startsWith('/api/')) return env.ASSETS.fetch(request);
     try {
-      const known = path === '/api/session' || path === '/api/notebook' || /^\/api\/(notes|wishes)\/[^/]+$/.test(path);
+      const known = path === '/api/session' || path === '/api/notebook' || path === '/api/letter' || /^\/api\/(notes|wishes)\/[^/]+$/.test(path);
       if (!known) return json({ error: '接口不存在。' }, 404);
+      if (path === '/api/letter' && request.method !== 'GET') return json({ error: '方法不支持。' }, 405, { Allow: 'GET' });
       if (!['GET', 'HEAD', 'OPTIONS'].includes(request.method)) assertOrigin(request);
       const configured = !!env.DB && isPasswordHash(env.EDITOR_PASSWORD_HASH);
       if (path === '/api/session' && request.method === 'GET') {
@@ -158,6 +161,10 @@ export default {
         return json({ error: '方法不支持。' }, 405, { Allow: 'GET, POST, DELETE' });
       }
       if (!await authenticated(request, env.DB, env.EDITOR_PASSWORD_HASH!)) return json({ error: '请先登录手账。' }, 401);
+      if (path === '/api/letter') {
+        if (getAnniversaryDay(new Date(Date.now())) < 100) return json({ error: '百日信还未到拆信的日子。' }, 403);
+        return json(hundredDayLetter);
+      }
       if (path === '/api/notebook') {
         return request.method === 'GET' ? json(await notebook(env.DB)) : json({ error: '方法不支持。' }, 405, { Allow: 'GET' });
       }
