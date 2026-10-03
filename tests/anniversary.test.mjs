@@ -3,6 +3,7 @@ import test from 'node:test';
 
 import {
   getAnniversaryDay,
+  getMomentDateStatus,
   getNextShanghaiMidnight,
   getUpcomingAnniversary,
   hundredthDayDate,
@@ -27,6 +28,27 @@ test('switches days at the Shanghai midnight UTC boundary', () => {
   assert.equal(getAnniversaryDay(date('2026-06-30T16:00:00.000Z')), 1);
   assert.equal(getAnniversaryDay(date('2026-07-01T15:59:59.999Z')), 1);
   assert.equal(getAnniversaryDay(date('2026-07-01T16:00:00.000Z')), 2);
+});
+
+test('marks a moment upcoming, current, then past at Shanghai midnight boundaries', () => {
+  const momentDate = '2026-10-08';
+
+  assert.equal(
+    getMomentDateStatus(momentDate, date('2026-10-07T15:59:59.999Z')),
+    'upcoming',
+  );
+  assert.equal(
+    getMomentDateStatus(momentDate, date('2026-10-07T16:00:00.000Z')),
+    'today',
+  );
+  assert.equal(
+    getMomentDateStatus(momentDate, date('2026-10-08T15:59:59.999Z')),
+    'today',
+  );
+  assert.equal(
+    getMomentDateStatus(momentDate, date('2026-10-08T16:00:00.000Z')),
+    'past',
+  );
 });
 
 test('handles month, year, and leap-day boundaries', () => {
