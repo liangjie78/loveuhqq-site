@@ -1,17 +1,16 @@
 import {
   dotted,
   getAnniversaryDay,
+  getMomentDateStatus,
   getNextShanghaiMidnight,
   getRelationshipYear,
   getRelationshipYearMonths,
   getUpcomingAnniversary,
   monthNames,
-  relationshipStartDate,
   type CalendarMonth,
 } from '../lib/anniversary';
 import { momentTitles } from '../data/moments';
 import './notebook';
-import { renderMomentImage } from '../lib/moment-image';
 
 const root = document.documentElement;
 const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
@@ -356,10 +355,14 @@ function refreshDates() {
   prepareYear(viewYear);
   todayDate = cellDates.get(today) ?? upcoming.date;
   for (const element of $$<HTMLTimeElement>('[data-moment-date]')) {
-    const future = element.dateTime > todayDate;
-    element.closest('li')?.classList.toggle('is-upcoming', future);
-    const label = element.closest('li')?.querySelector<HTMLElement>('[data-moment-upcoming]');
-    if (label) label.hidden = !future;
+    const status = getMomentDateStatus(element.dateTime, now);
+    const ticket = element.closest('li');
+    ticket?.classList.toggle('is-upcoming', status === 'upcoming');
+    const label = ticket?.querySelector<HTMLElement>('[data-moment-status]');
+    if (label) {
+      label.textContent = status === 'upcoming' ? '还没到' : status === 'today' ? '时候已到' : '';
+      label.hidden = status === 'past';
+    }
   }
 
   for (const element of $$('[data-day-count]')) element.textContent = String(Math.max(0, today));
@@ -413,31 +416,6 @@ function countUp() {
 refreshDates();
 document.dispatchEvent(new Event('journal:notes-request'));
 
-const momentImageButton = $<HTMLButtonElement>('[data-moment-image]');
-momentImageButton?.addEventListener('click', async () => {
-  const status = $('[data-moment-image-status]');
-  momentImageButton.disabled = true;
-  if (status) status.textContent = '正在整理图片…';
-  try {
-    const entries = $$<HTMLTimeElement>('[data-moment-date]').map((time) => ({
-      date: time.dateTime,
-      title: time.parentElement?.querySelector('p')?.textContent?.trim() ?? '',
-      upcoming: !time.parentElement?.querySelector<HTMLElement>('[data-moment-upcoming]')?.hidden,
-    }));
-    const blob = await renderMomentImage(entries, relationshipStartDate);
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = 'loveuhqq-记下的日子.png';
-    link.click();
-    window.setTimeout(() => URL.revokeObjectURL(url), 1000);
-    if (status) status.textContent = '图片已生成，可以从下载记录中打开。';
-  } catch {
-    if (status) status.textContent = '图片没能生成，请换个浏览器再试。';
-  } finally {
-    momentImageButton.disabled = false;
-  }
-});
 document.addEventListener('visibilitychange', () => {
   if (document.visibilityState === 'visible') refreshDates();
 });

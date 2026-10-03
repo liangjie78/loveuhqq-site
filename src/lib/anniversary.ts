@@ -22,6 +22,8 @@ export interface UpcomingAnniversary {
   daysRemaining: number;
 }
 
+export type MomentDateStatus = 'upcoming' | 'today' | 'past';
+
 function getValidTimestamp(now: Date): number {
   const timestamp = now.getTime();
 
@@ -53,6 +55,16 @@ function formatCalendarDate(timestamp: number): string {
   const day = String(calendarDate.getUTCDate()).padStart(2, '0');
 
   return `${year}-${month}-${day}`;
+}
+
+/** Returns a marked date's status against today's Shanghai calendar date. */
+export function getMomentDateStatus(date: string, now: Date): MomentDateStatus {
+  const timestamp = getValidTimestamp(now);
+  const today = formatCalendarDate(getShanghaiCalendarTimestamp(timestamp));
+
+  if (date > today) return 'upcoming';
+  if (date === today) return 'today';
+  return 'past';
 }
 
 function getAnnualAnniversaryTimestamp(year: number): number {

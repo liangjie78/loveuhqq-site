@@ -607,17 +607,18 @@ html.fonts-pending .intro { animation-play-state: paused; }
   font-size: .76rem;
   color: var(--muted);
 }
+.year-legend li { display: flex; align-items: center; }
 .year-legend i {
-  display: inline-block;
+  display: grid;
+  place-items: center;
+  flex: none;
   width: .7rem;
   height: .7rem;
   margin-right: .45rem;
   border-radius: 28%;
-  vertical-align: -.08em;
   background: var(--empty);
 }
 .year-legend .is-past { background: var(--rose-2); }
-.year-legend .is-moment { display: inline-grid; place-items: center; }
 .year-legend .is-mark {
   border-radius: 0;
   background: var(--rose);
@@ -705,6 +706,30 @@ a.polaroid:hover, a.polaroid:focus-visible { rotate: 0deg; translate: 0 -8px; bo
 
 /* ---------- A note on lined paper ---------- */
 
+.note-stack {
+  position: relative;
+  max-width: 46rem;
+  margin-inline: auto;
+  isolation: isolate;
+}
+.note-stack::before {
+  content: "";
+  position: absolute;
+  z-index: -1;
+  inset: .65rem .35rem -.55rem .35rem;
+  rotate: -1.2deg;
+  background: var(--paper-bright);
+  box-shadow: var(--shadow-paper);
+}
+.note-stack .note-tape {
+  position: absolute;
+  top: -.8rem;
+  right: 2.5rem;
+  width: 5.5rem;
+  height: 1.35rem;
+  rotate: 8deg;
+}
+
 .note-paper {
   --lh: clamp(3rem, 6vw, 4.5rem);
   --top: calc(var(--lh) * .9);
@@ -740,7 +765,7 @@ a.polaroid:hover, a.polaroid:focus-visible { rotate: 0deg; translate: 0 -8px; bo
 .note-line { font: 400 clamp(1.8rem, 4.6vw, 3.2rem)/var(--lh) var(--serif); letter-spacing: .06em; }
 .note-line + .note-line { color: var(--rose); }
 .note-sign { width: fit-content; margin-left: auto; font: 400 clamp(.95rem, 1.6vw, 1.15rem)/var(--lh) var(--serif); letter-spacing: .12em; color: var(--muted); }
-.can-reveal .note-paper:not(.is-in) :is(.note-line, .note-sign) { clip-path: inset(-20% 100% -20% 0); }
+.can-reveal .note-stack:not(.is-in) :is(.note-line, .note-sign) { clip-path: inset(-20% 100% -20% 0); }
 
 /* ---------- The sealed letter ---------- */
 
@@ -1176,6 +1201,8 @@ html.is-locked .gate, .gate.is-leaving { display: grid; }
   .year-cells > span { width: min(100%, 1.05rem); }
   .year-readout { font-size: .9rem; }
   .year-legend { justify-content: center; }
+
+  .note-stack .note-tape { right: 1rem; width: 4.5rem; }
 
   .days-stats { gap: 1rem 1.25rem; }
   .stat dt { font-size: .8rem; }

@@ -18,12 +18,8 @@ const timeline = [...entries]
       <li class="memory-ticket">
         <time data-moment-date datetime={date}>{dotted(date)}</time>
         <p>{title}</p>
-        <span data-moment-upcoming hidden>还没到</span>
+        <span data-moment-status hidden>还没到</span>
       </li>
     ))}
   </ol>
-  <div class="moment-image-action" data-needs-js>
-    <button class="text-button" type="button" data-moment-image>保存这些日子为图片 ↓</button>
-    <p role="status" data-moment-image-status></p>
-  </div>
 </section>
