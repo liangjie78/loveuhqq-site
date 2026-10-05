@@ -20,6 +20,12 @@
       "database_id": "1172b520-9bfe-451c-adca-12f09605f697"
     }
   ],
+  "r2_buckets": [
+    {
+      "binding": "PHOTOS",
+      "bucket_name": "loveuhqq-photos-preview"
+    }
+  ],
   "main": "worker/index.ts",
   "observability": {
     "enabled": true,

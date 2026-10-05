@@ -2,8 +2,8 @@
 import Page from '../layouts/Page.astro';
 import SiteHeader from '../components/SiteHeader.astro';
 import Lightbox from '../components/Lightbox.astro';
-import PolaroidCard from '../components/PolaroidCard.astro';
-import { getPhotoSummary, photos } from '../data/photos';
+import PhotoPlaceholders from '../components/PhotoPlaceholders.astro';
+import PhotosLocked from '../components/PhotosLocked.astro';
 import '../styles/album-transition.css';
 ---
 
@@ -12,16 +12,15 @@ import '../styles/album-transition.css';
   <main class="album" id="main" tabindex="-1">
     <header class="album-head" data-reveal>
       <h1>相册</h1>
-      <p>{getPhotoSummary(photos)}</p>
+      <p data-photos-summary>解锁后，才能翻开这本相册。</p>
     </header>
-    <div class="album-wall" data-reveal>
-      {photos.map((photo, index) => (
-        <PolaroidCard photo={photo} index={index} pink={index % 3 === 1} />
-      ))}
-      <div class="polaroid polaroid-empty" aria-hidden="true">
-        <span class="polaroid-slot"><span>留给下一张</span></span>
-        <span class="polaroid-caption"><span class="polaroid-title">&nbsp;</span></span>
-      </div>
+    <PhotosLocked />
+    <div class="photos-status" data-needs-js>
+      <p data-photos-status role="status" hidden></p>
+      <button class="text-button" type="button" data-photos-retry hidden>再试一次</button>
+    </div>
+    <div class="album-wall" data-photo-wall="all" data-reveal>
+      <PhotoPlaceholders count={6} />
     </div>
   </main>
   <footer class="site-footer site-footer-small">

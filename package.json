@@ -10,6 +10,9 @@
     "build": "astro build",
     "check:worker": "tsc -p tsconfig.worker.json",
     "check:frontend": "tsc -p tsconfig.frontend.json",
+    "photos:prepare": "node scripts/prepare-photos.mjs",
+    "photos:upload:preview": "node scripts/upload-photos.mjs --config wrangler.preview.jsonc",
+    "photos:upload:production": "node scripts/check-production-config.mjs && node scripts/upload-photos.mjs --config wrangler.jsonc",
     "password:preview": "node scripts/set-editor-password.mjs --config wrangler.preview.jsonc",
     "password:production": "node scripts/set-editor-password.mjs --config wrangler.jsonc",
     "preview": "astro preview",
@@ -20,6 +23,7 @@
     "astro": "7.3.2"
   },
   "devDependencies": {
+    "sharp": "0.35.4",
     "subset-font": "^2.9.0",
     "terser": "^5.51.2",
     "typescript": "7.0.2",

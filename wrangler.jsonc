@@ -19,6 +19,12 @@
       "custom_domain": true
     }
   ],
+  "r2_buckets": [
+    {
+      "binding": "PHOTOS",
+      "bucket_name": "loveuhqq-photos"
+    }
+  ],
   "main": "worker/index.ts",
   "d1_databases": [
     {

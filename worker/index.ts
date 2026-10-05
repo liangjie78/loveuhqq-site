@@ -3,8 +3,10 @@ import type { CloudNotebook } from '../src/lib/notebook.ts';
 import { getAnniversaryDay } from '../src/lib/anniversary.ts';
 import { digest, isPasswordHash, randomToken, readSessionToken, sessionCookie, verifyPassword } from './auth.ts';
 import { hundredDayLetter } from './letter.ts';
+import { emptyPhotoManifest, parsePhotoManifest, photoIdPattern, photoManifestKey, photoObjectKey, photoSizes } from '../src/lib/photos.ts';
+import type { PhotoSize } from '../src/lib/photos.ts';
 
-type Env = Cloudflare.Env & { EDITOR_PASSWORD_HASH?: string };
+type Env = Omit<Cloudflare.Env, "PHOTOS"> & { EDITOR_PASSWORD_HASH?: string; PHOTOS?: R2Bucket };
 type Entry = { kind: 'note' | 'wish'; entry_key: string; text: string; done: number; version: number; deleted: number };
 type JsonObject = Record<string, unknown>;
 class HttpError extends Error {
@@ -137,14 +139,29 @@ async function mutate(request: Request, db: D1Database, kind: 'note' | 'wish', k
   return json(await notebook(db));
 }
 
+async function photoManifest(bucket: R2Bucket): Promise<Response> {
+  const object = await bucket.get(photoManifestKey);
+  return json(object ? parsePhotoManifest(await object.json()) : emptyPhotoManifest());
+}
+
+async function photo(bucket: R2Bucket, id: string, size: string): Promise<Response> {
+  if (!photoIdPattern.test(id) || !photoSizes.includes(size as PhotoSize)) return json({ error: '照片不存在。' }, 404);
+  const object = await bucket.get(photoObjectKey(id, size as PhotoSize));
+  if (!object) return json({ error: '照片不存在。' }, 404);
+  // Private and never stored: after logout the browser must ask the Worker again.
+  return new Response(object.body, { headers: { 'Content-Type': 'image/webp', 'Content-Length': String(object.size),
+    'Cache-Control': 'private, no-store', 'X-Content-Type-Options': 'nosniff', 'Cross-Origin-Resource-Policy': 'same-origin' } });
+}
+
 export default {
   async fetch(request: Request, env: Env): Promise<Response> {
     const path = new URL(request.url).pathname;
     if (path !== '/api' && !path.startsWith('/api/')) return env.ASSETS.fetch(request);
     try {
-      const known = path === '/api/session' || path === '/api/notebook' || path === '/api/letter' || /^\/api\/(notes|wishes)\/[^/]+$/.test(path);
+      const photoPath = path === '/api/photos' || /^\/api\/photos\/[^/]+\/[^/]+$/.test(path);
+      const known = path === '/api/session' || path === '/api/notebook' || path === '/api/letter' || photoPath || /^\/api\/(notes|wishes)\/[^/]+$/.test(path);
       if (!known) return json({ error: '接口不存在。' }, 404);
-      if (path === '/api/letter' && request.method !== 'GET') return json({ error: '方法不支持。' }, 405, { Allow: 'GET' });
+      if ((path === '/api/letter' || photoPath) && request.method !== 'GET') return json({ error: '方法不支持。' }, 405, { Allow: 'GET' });
       if (!['GET', 'HEAD', 'OPTIONS'].includes(request.method)) assertOrigin(request);
       const configured = !!env.DB && isPasswordHash(env.EDITOR_PASSWORD_HASH);
       if (path === '/api/session' && request.method === 'GET') {
@@ -164,6 +181,12 @@ export default {
       if (path === '/api/letter') {
         if (getAnniversaryDay(new Date(Date.now())) < 100) return json({ error: '百日信还未到拆信的日子。' }, 403);
         return json(hundredDayLetter);
+      }
+      if (photoPath) {
+        if (!env.PHOTOS) return json({ error: '相册暂时打不开，请稍后再来。' }, 503);
+        if (path === '/api/photos') return await photoManifest(env.PHOTOS);
+        const [, , , id, size] = path.split('/');
+        return await photo(env.PHOTOS, id, size);
       }
       if (path === '/api/notebook') {
         return request.method === 'GET' ? json(await notebook(env.DB)) : json({ error: '方法不支持。' }, 405, { Allow: 'GET' });

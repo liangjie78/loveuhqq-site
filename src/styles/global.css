@@ -704,6 +704,18 @@ a.polaroid:hover, a.polaroid:focus-visible { rotate: 0deg; translate: 0 -8px; bo
 
 .photos-more { margin-top: 3.5rem; text-align: center; }
 
+/* Real photos keep their own shape; very tall screenshots are cut from the top on the wall. */
+.polaroid-private img { height: auto; aspect-ratio: auto; max-height: 150cqi; object-fit: cover; object-position: center top; }
+.polaroid-private .polaroid-caption { align-items: flex-start; }
+/* Private captions never reach the public serif subset, so they use the system face. */
+.polaroid-private .polaroid-title { font-family: var(--sans); font-size: clamp(.88rem, 1.2vw, .98rem); white-space: normal; }
+.polaroid-private .polaroid-tag { padding-top: .2rem; font-variant-numeric: tabular-nums; }
+
+.photos-locked { display: grid; justify-items: center; gap: 1rem; margin-top: 2.5rem; text-align: center; color: var(--muted); line-height: 1.85; }
+.photos-locked[hidden] { display: none; }
+.photos-status { display: grid; justify-items: center; gap: .5rem; margin-top: 2rem; color: var(--muted); }
+.photos-status:not(:has(:not([hidden]))) { display: none; }
+
 /* ---------- A note on lined paper ---------- */
 
 .note-stack {
@@ -901,14 +913,15 @@ a.polaroid:hover, a.polaroid:focus-visible { rotate: 0deg; translate: 0 -8px; bo
 
 .lightbox-print {
   container-type: inline-size;
-  width: min(100%, 34rem, calc((100svh - 13rem) * .8 + 1.6rem));
+  /* --ratio is the photo's width / height, set by the gallery script. */
+  width: min(100%, 60rem, calc((100svh - 13rem) * var(--ratio, .8) + 1.6rem));
   padding: .8rem .8rem 0;
   background: var(--sheet);
   box-shadow: 0 30px 80px -20px rgb(0 0 0 / .55);
   rotate: -1deg;
 }
 .lightbox[open] .lightbox-print { animation: print-in .6s var(--ease-out) both; }
-.lightbox-print img { width: 100%; height: auto; aspect-ratio: 4 / 5; object-fit: cover; background: var(--paper-2); }
+.lightbox-print img { width: 100%; height: auto; background: var(--paper-2); }
 .lightbox-print figcaption {
   display: flex;
   align-items: baseline;
@@ -916,7 +929,7 @@ a.polaroid:hover, a.polaroid:focus-visible { rotate: 0deg; translate: 0 -8px; bo
   gap: 1rem;
   padding: .9rem .2rem 1.1rem;
 }
-.lightbox-title { font: 400 1.1rem/1.4 var(--serif); letter-spacing: .04em; }
+.lightbox-title { font: 400 1.02rem/1.5 var(--sans); letter-spacing: .04em; }
 .lightbox-meta { flex: none; font-size: .75rem; letter-spacing: .06em; color: var(--muted); font-variant-numeric: tabular-nums; }
 @container (max-width: 20rem) {
   .lightbox-print figcaption { flex-direction: column; align-items: flex-start; gap: .25rem; }
@@ -1039,6 +1052,7 @@ html.is-locked .gate, .gate.is-leaving { display: grid; }
 .album-wall {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
+  align-items: start;
   gap: clamp(2rem, 5vw, 3.5rem) clamp(1.25rem, 3.5vw, 2.75rem);
   margin-top: clamp(3rem, 6vw, 4.5rem);
 }
@@ -1211,7 +1225,7 @@ html.is-locked .gate, .gate.is-leaving { display: grid; }
 /* Short landscape viewports keep the print and controls in separate spaces. */
 @media (max-height: 520px) and (min-aspect-ratio: 1/1) {
   .lightbox { padding: calc(1rem + env(safe-area-inset-top)) calc(5rem + env(safe-area-inset-right)) calc(1rem + env(safe-area-inset-bottom)) calc(5rem + env(safe-area-inset-left)); }
-  .lightbox-print { width: min(100%, 34rem, calc((100dvh - 7rem - env(safe-area-inset-top) - env(safe-area-inset-bottom)) * .8 + 1.6rem)); rotate: 0deg; }
+  .lightbox-print { width: min(100%, 60rem, calc((100dvh - 7rem - env(safe-area-inset-top) - env(safe-area-inset-bottom)) * var(--ratio, .8) + 1.6rem)); rotate: 0deg; }
   .lightbox-print figcaption { padding: .5rem .2rem .65rem; }
   .lightbox-prev, .lightbox-next { top: 50%; bottom: auto; translate: 0 -50%; }
   .lightbox-prev { left: calc(1rem + env(safe-area-inset-left)); }

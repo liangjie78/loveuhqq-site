@@ -14,7 +14,7 @@
 - 视觉与交互：暖色纸面、蜡封红、思源宋体竖排标题；纸心与邮戳、按月排列的“一天一格”日历、胶带拍立得、横线信纸和可点的信封。支持拍立得灯箱（键盘与滑动）、日历点选与方向键翻看读数、进入第二年后的往年回看（“← 上一年 / 下一年 →”）、门禁日期格和减少动态效果偏好。详见 [设计说明](docs/DESIGN.md)。
 - 纪念时间：从 2026-07-01 开始，当天算第 1 天，按北京时间自动更新；JavaScript 不可用时保留文案和起始日期。
 - 下一纪念日：第 100 天之后转向下一周年，纪念日当天显示“今天”，跨日和返回页面时自动刷新。
-- 内容状态：相册为明确标注的 AI 示意照片；值得标记的日子（`src/data/moments.ts`）已登记 3 个用户确认的日子，写给第 100 天的信标为“待写”；没有自动解锁的信件或照片上传后台。
+- 内容状态：相册是登录后才能看到的真实照片（保存在私有 R2，经 Worker 鉴权后送出）；值得标记的日子（`src/data/moments.ts`）已登记 3 个用户确认的日子，写给第 100 天的信标为“待写”；没有自动解锁的信件或照片上传后台。
 - 技术边界：Astro + TypeScript + 普通 CSS，页面静态生成；Cloudflare Worker 提供登录和共享手账接口，D1 保存备注、清单和会话，不引入 UI 框架。
 - 共同手账：访客浏览展示内容，解锁后两个人可以查看、编辑同一份备注和清单。云端按单条记录保存并检测编辑冲突，页面可见时每 10 秒同步；登录后可在不同设备继续使用。
 
@@ -36,7 +36,7 @@ npm run preview
 
 构建输出在 `dist/`，不提交到 Git。当前页面入口是 [`src/pages/index.astro`](src/pages/index.astro)，样式入口是 [`src/styles/global.css`](src/styles/global.css)。
 
-相册数据位于 [`src/data/photos.ts`](src/data/photos.ts)，图片保存在 `public/images/`。提供真实照片和故事后，再替换示意内容及其标签；日期仍只修改 `src/lib/anniversary.ts` 中的来源，不在页面写死天数。
+相册照片不进仓库：用 `npm run photos:prepare -- <照片文件夹> --featured "标题,标题,标题"` 在本机生成去除 EXIF 的 WebP 和清单（输出到已忽略的 `.private-photos/`，文件名即标题），再用 `npm run photos:upload:preview` 或 `photos:upload:production` 上传到对应的 R2 桶，详见 [部署说明](docs/DEPLOYMENT.md#私密相册)。日期仍只修改 `src/lib/anniversary.ts` 中的来源，不在页面写死天数。
 
 ## 部署路径
 
