@@ -20,10 +20,10 @@
       "database_id": "1172b520-9bfe-451c-adca-12f09605f697"
     }
   ],
-  "r2_buckets": [
+  "kv_namespaces": [
     {
       "binding": "PHOTOS",
-      "bucket_name": "loveuhqq-photos-preview"
+      "id": "b74bb16196a048cc82b2c1c0feae90e9"
     }
   ],
   "main": "worker/index.ts",

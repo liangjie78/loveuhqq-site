@@ -33,11 +33,12 @@ function fixture(objects = { 'manifest.json': JSON.stringify(manifest), [photoOb
   };
   const reads = [];
   const PHOTOS = {
-    async get(key) {
+    async get(key, type) {
       reads.push(key);
       if (!(key in objects)) return null;
-      const bytes = new TextEncoder().encode(objects[key]);
-      return { size: bytes.byteLength, body: new Blob([bytes]).stream(), async json() { return JSON.parse(objects[key]); } };
+      if (type === 'json') return JSON.parse(objects[key]);
+      assert.equal(type, 'arrayBuffer');
+      return new TextEncoder().encode(objects[key]).buffer;
     },
   };
   const env = { DB, PHOTOS, EDITOR_PASSWORD_HASH: credential, ASSETS: { fetch: async () => new Response('asset') } };
@@ -52,7 +53,7 @@ function fixture(objects = { 'manifest.json': JSON.stringify(manifest), [photoOb
   } };
 }
 
-test('photo manifest and images never leave R2 without a session', async () => {
+test('photo manifest and images never leave KV without a session', async () => {
   const f = fixture();
   for (const path of ['/api/photos', '/api/photos/aaaaaaaaaaaaaaaa/thumb', '/api/photos/aaaaaaaaaaaaaaaa/large']) {
     for (const cookie of [undefined, `${sessionCookieName}=${'a'.repeat(64)}`]) {

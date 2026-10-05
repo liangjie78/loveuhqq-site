@@ -33,11 +33,11 @@
 
 ## 私密相册
 
-照片、标题和日期都在私有 R2 桶里，不进 Git、不进静态资源：生产 `loveuhqq-photos`，预览 `loveuhqq-photos-preview`，均以 `PHOTOS` 绑定，桶不开公网访问。Worker 的 `GET /api/photos`（清单）和 `GET /api/photos/<id>/<thumb|large>`（图片）都要求有效会话，图片以 `private, no-store` 返回；桶里没有清单时相册为空，绑定缺失或清单损坏时返回 503。
+照片、标题和日期都在 Workers KV 里，不进 Git、不进静态资源：生产命名空间 `loveuhqq-photos`（`f2758069198e4a90896513225121d661`），预览 `loveuhqq-photos-preview`（`b74bb16196a048cc82b2c1c0feae90e9`），均以 `PHOTOS` 绑定；KV 没有公网地址，只能经 Worker 读取。账号未开通 R2，选用 Workers 自带的 KV（免费额度 1GB、每日 10 万次读取，单值上限 25MB）。Worker 的 `GET /api/photos`（清单）和 `GET /api/photos/<id>/<thumb|large>`（图片）都要求有效会话，图片以 `private, no-store` 返回；没有清单时相册为空，绑定缺失或清单损坏时返回 503。
 
 1. 本机处理：`npm run photos:prepare -- <照片文件夹> --featured "标题,标题,标题"`。文件名（去扩展名）是标题，EXIF 日期用于排序和显示；输出 800×1000 以内的缩略图与 1800px 以内的大图，全部去除 EXIF/GPS，写入 `.private-photos/`（已忽略）。照片 id 取原图哈希，换图即换地址。
-2. 首次建桶（Cloudflare 外部修改，需用户授权）：`npx wrangler r2 bucket create loveuhqq-photos-preview` 与 `npx wrangler r2 bucket create loveuhqq-photos`。部署带 `PHOTOS` 绑定的 Worker 前桶必须存在。
-3. 上传：`npm run photos:upload:preview` 或 `npm run photos:upload:production`。先传图片、最后传 `manifest.json`；脚本只新增或覆盖，不删除桶内对象。生产上传同样需要授权，并先通过 `check-production-config`。
+2. 命名空间已于 2026-10-05 经用户授权创建（`npx wrangler kv namespace create <名称>`）；重建时须同步更新两个 Wrangler 配置和 `check-production-config` 中的 id。
+3. 上传：`npm run photos:upload:preview` 或 `npm run photos:upload:production`。先批量写入图片、再写 `manifest.json`；脚本只新增或覆盖，不删除已有键。KV 为最终一致，新上传内容在各地生效可能需要约一分钟。生产上传同样需要授权，并先通过 `check-production-config`。
 4. 核验：未登录访问清单和图片返回 401；登录后首页三张、相册全部可见；构建产物中不出现照片标题。
 
 ## 首次生产启用共同手账

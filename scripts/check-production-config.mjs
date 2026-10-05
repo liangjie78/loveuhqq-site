@@ -6,8 +6,8 @@ if (!db?.database_id || db.database_name !== 'loveuhqq-notebook' || db.database_
   console.error('Production deployment requires its own loveuhqq-notebook D1 binding. Follow docs/DEPLOYMENT.md before deploying.');
   process.exit(1);
 }
-const photos = config.r2_buckets?.find(binding => binding.binding === 'PHOTOS');
-if (photos?.bucket_name !== 'loveuhqq-photos') {
-  console.error('Production deployment requires its own loveuhqq-photos R2 binding. Follow docs/DEPLOYMENT.md before deploying.');
+const photos = config.kv_namespaces?.find(binding => binding.binding === 'PHOTOS');
+if (photos?.id !== 'f2758069198e4a90896513225121d661') {
+  console.error('Production deployment requires its own loveuhqq-photos KV binding. Follow docs/DEPLOYMENT.md before deploying.');
   process.exit(1);
 }

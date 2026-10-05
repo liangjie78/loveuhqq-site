@@ -1,5 +1,5 @@
 /**
- * The private album. Photos, titles and dates live in R2 behind the Worker's session
+ * The private album. Photos, titles and dates live in Workers KV behind the Worker's session
  * check; nothing here is private, only the shape both sides agree on.
  */
 export interface PrivatePhoto {

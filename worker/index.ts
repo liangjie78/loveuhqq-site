@@ -6,7 +6,7 @@ import { hundredDayLetter } from './letter.ts';
 import { emptyPhotoManifest, parsePhotoManifest, photoIdPattern, photoManifestKey, photoObjectKey, photoSizes } from '../src/lib/photos.ts';
 import type { PhotoSize } from '../src/lib/photos.ts';
 
-type Env = Omit<Cloudflare.Env, "PHOTOS"> & { EDITOR_PASSWORD_HASH?: string; PHOTOS?: R2Bucket };
+type Env = Omit<Cloudflare.Env, "PHOTOS"> & { EDITOR_PASSWORD_HASH?: string; PHOTOS?: KVNamespace };
 type Entry = { kind: 'note' | 'wish'; entry_key: string; text: string; done: number; version: number; deleted: number };
 type JsonObject = Record<string, unknown>;
 class HttpError extends Error {
@@ -139,17 +139,17 @@ async function mutate(request: Request, db: D1Database, kind: 'note' | 'wish', k
   return json(await notebook(db));
 }
 
-async function photoManifest(bucket: R2Bucket): Promise<Response> {
-  const object = await bucket.get(photoManifestKey);
-  return json(object ? parsePhotoManifest(await object.json()) : emptyPhotoManifest());
+async function photoManifest(store: KVNamespace): Promise<Response> {
+  const manifest = await store.get(photoManifestKey, 'json');
+  return json(manifest === null ? emptyPhotoManifest() : parsePhotoManifest(manifest));
 }
 
-async function photo(bucket: R2Bucket, id: string, size: string): Promise<Response> {
+async function photo(store: KVNamespace, id: string, size: string): Promise<Response> {
   if (!photoIdPattern.test(id) || !photoSizes.includes(size as PhotoSize)) return json({ error: '照片不存在。' }, 404);
-  const object = await bucket.get(photoObjectKey(id, size as PhotoSize));
-  if (!object) return json({ error: '照片不存在。' }, 404);
+  const bytes = await store.get(photoObjectKey(id, size as PhotoSize), 'arrayBuffer');
+  if (!bytes) return json({ error: '照片不存在。' }, 404);
   // Private and never stored: after logout the browser must ask the Worker again.
-  return new Response(object.body, { headers: { 'Content-Type': 'image/webp', 'Content-Length': String(object.size),
+  return new Response(bytes, { headers: { 'Content-Type': 'image/webp', 'Content-Length': String(bytes.byteLength),
     'Cache-Control': 'private, no-store', 'X-Content-Type-Options': 'nosniff', 'Cross-Origin-Resource-Policy': 'same-origin' } });
 }
 

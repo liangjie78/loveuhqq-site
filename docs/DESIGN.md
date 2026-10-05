@@ -82,7 +82,7 @@
 - `src/styles/global.css`：全部样式与动效，颜色集中在 `:root` 令牌。
 - `src/scripts/journal.ts`：首页日期、日历（含键盘翻看）、计数、页眉状态、纸心；`letter.ts`：百日信状态与私密阅读；`gallery.ts`：灯箱；`reveal.ts`：滚动淡入；`passphrase-gate.ts`：门禁。
 - `src/lib/anniversary.ts`（含恋爱年份、按月日历与共享的日期格式、月份名）、`tests/anniversary.test.mjs`、`tests/calendar.test.mjs`：日期计算与测试。
-- `src/lib/photos.ts`：私密相册清单的格式与校验（照片本身在 R2，见 `docs/DEPLOYMENT.md`）；`src/data/moments.ts`、`public/images/`：值得标记的日子与本地素材。
+- `src/lib/photos.ts`：私密相册清单的格式与校验（照片本身在 Workers KV，见 `docs/DEPLOYMENT.md`）；`src/data/moments.ts`、`public/images/`：值得标记的日子与本地素材。
 - `src/components/Notebook.astro`、`FutureList.astro`、`MomentArchive.astro`、`src/styles/notebook.css`：纸签、清单与故事票根；`src/scripts/notebook.ts` 负责云端手账交互与临时草稿，`src/lib/notebook.ts` 负责记录校验。
 - `scripts/subset-font.mjs`、`src/assets/fonts/`、`tests/font-subset.test.mjs`：宋体子集的生成、产物与字符集守卫；`astro.config.mjs` 禁止字体内联（CSP 只允许同源字体）。
 - `wrangler.jsonc`、`wrangler.preview.jsonc`：静态资源目录，以及 `not_found_handling: "404-page"`——没有这一项时 Workers 静态资源只回一个空 404 正文，`dist/404.html` 不会送到访客手里。

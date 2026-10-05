@@ -1,15 +1,16 @@
 /*
- * Uploads .private-photos/ (from `npm run photos:prepare`) to the PHOTOS R2 bucket
- * named in the given Wrangler config. Images go first and manifest.json last, so the
- * album never lists a photo that is not there yet. Objects are only ever added or
- * overwritten; nothing in the bucket is deleted.
+ * Uploads .private-photos/ (from `npm run photos:prepare`) to the PHOTOS KV namespace
+ * named in the given Wrangler config. Images go in one bulk write and manifest.json in
+ * a second, so the album never lists a photo that is not there yet. Keys are only ever
+ * added or overwritten; nothing in the namespace is deleted.
  *
  * Usage: npm run photos:upload:preview   (wrangler.preview.jsonc)
  *        npm run photos:upload:production (wrangler.jsonc)
  */
 
 import { spawnSync } from 'node:child_process';
-import { existsSync, readFileSync } from 'node:fs';
+import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { parsePhotoManifest, photoManifestKey, photoObjectKey, photoSizes } from '../src/lib/photos.ts';
@@ -21,23 +22,29 @@ const configPath = configArg > -1 ? process.argv[configArg + 1] : '';
 if (!configPath) throw new Error('Usage: node scripts/upload-photos.mjs --config <wrangler config>');
 
 const config = JSON.parse(readFileSync(join(root, configPath), 'utf8'));
-const bucket = config.r2_buckets?.find(binding => binding.binding === 'PHOTOS')?.bucket_name;
-if (!bucket) throw new Error(`${configPath} has no PHOTOS R2 binding.`);
+const namespace = config.kv_namespaces?.find(binding => binding.binding === 'PHOTOS')?.id;
+if (!namespace) throw new Error(`${configPath} has no PHOTOS KV binding.`);
 
 const manifestPath = join(source, photoManifestKey);
 if (!existsSync(manifestPath)) throw new Error('Run `npm run photos:prepare -- <folder>` first.');
 const manifest = parsePhotoManifest(JSON.parse(readFileSync(manifestPath, 'utf8')));
 
 const wrangler = join(root, 'node_modules', 'wrangler', 'bin', 'wrangler.js');
-function put(key, contentType) {
-  const result = spawnSync(process.execPath, [wrangler, 'r2', 'object', 'put', `${bucket}/${key}`, '--remote',
-    '--config', configPath, '--file', join(source, key), '--content-type', contentType], { cwd: root, stdio: ['ignore', 'ignore', 'inherit'] });
-  if (result.status !== 0) throw new Error(`Upload failed: ${key}`);
+// The bulk file holds private photos, so it lives in a private temp folder and is always removed.
+const scratch = mkdtempSync(join(tmpdir(), 'loveuhqq-photos-'));
+function bulkPut(keys) {
+  const file = join(scratch, 'bulk.json');
+  writeFileSync(file, JSON.stringify(keys.map(key => ({ key, value: readFileSync(join(source, key)).toString('base64'), base64: true }))));
+  const result = spawnSync(process.execPath, [wrangler, 'kv', 'bulk', 'put', file, '--namespace-id', namespace, '--remote',
+    '--config', configPath], { cwd: root, stdio: ['ignore', 'ignore', 'inherit'] });
+  rmSync(file, { force: true });
+  if (result.status !== 0) throw new Error(`Upload failed: ${keys.length} keys`);
 }
 
-for (const photo of manifest.photos) {
-  for (const size of photoSizes) put(photoObjectKey(photo.id, size), 'image/webp');
-  console.log(`${bucket}: ${photo.title}`);
+try {
+  bulkPut(manifest.photos.flatMap(photo => photoSizes.map(size => photoObjectKey(photo.id, size))));
+  bulkPut([photoManifestKey]);
+} finally {
+  rmSync(scratch, { recursive: true, force: true });
 }
-put(photoManifestKey, 'application/json');
-console.log(`${manifest.photos.length} photos and ${photoManifestKey} -> ${bucket}`);
+console.log(`${manifest.photos.length} photos and ${photoManifestKey} -> KV ${namespace}`);

@@ -1,5 +1,5 @@
 /*
- * Turns a folder of original photos into the private album that goes to R2.
+ * Turns a folder of original photos into the private album that goes to Workers KV.
  *
  * Usage: npm run photos:prepare -- <source-folder> [--featured "标题,标题,标题"]
  *

@@ -19,10 +19,10 @@
       "custom_domain": true
     }
   ],
-  "r2_buckets": [
+  "kv_namespaces": [
     {
       "binding": "PHOTOS",
-      "bucket_name": "loveuhqq-photos"
+      "id": "f2758069198e4a90896513225121d661"
     }
   ],
   "main": "worker/index.ts",
