@@ -5,7 +5,6 @@ import { getSession, onSessionChange, publishSession } from '../lib/session';
 
 const root = document.documentElement;
 const dialog = document.querySelector<HTMLDialogElement>('[data-lightbox]')!;
-const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
 const walls = [...document.querySelectorAll<HTMLElement>('[data-photo-wall]')];
 // The locked placeholders are restored whenever the session ends.
 const placeholders = new Map(walls.map(wall => [wall, [...wall.children].map(child => child.cloneNode(true))]));
@@ -17,7 +16,7 @@ const albumLinks = document.querySelectorAll<HTMLAnchorElement>('[data-album-lin
 const lockedSummary = summary?.textContent ?? '';
 
 const print = dialog.querySelector<HTMLElement>('.lightbox-print')!;
-const image = dialog.querySelector<HTMLImageElement>('[data-lightbox-image]')!;
+let image = dialog.querySelector<HTMLImageElement>('[data-lightbox-image]')!;
 const title = dialog.querySelector<HTMLElement>('[data-lightbox-title]')!;
 const meta = dialog.querySelector<HTMLElement>('[data-lightbox-meta]')!;
 const previous = dialog.querySelector<HTMLButtonElement>('[data-lightbox-prev]')!;
@@ -30,6 +29,7 @@ let request: AbortController | null = null;
 let pendingAlbum = false;
 let current: PrivatePhoto[] = [];
 let index = 0;
+let imageGeneration = 0;
 let trigger: HTMLElement | null = null;
 let touchStartX = 0;
 let touchStartY = 0;
@@ -88,6 +88,7 @@ function setStatus(message: string, canRetry = false) {
 
 function clearPhotos() {
   generation++;
+  imageGeneration++;
   request?.abort();
   request = null;
   loaded = false;
@@ -139,22 +140,30 @@ async function loadPhotos() {
   }
 }
 
-function show(target: number, direction = 0) {
+async function show(target: number) {
   index = (target + current.length) % current.length;
   const photo = current[index];
-  image.width = photo.width;
-  image.height = photo.height;
-  print.style.setProperty('--ratio', String(photo.width / photo.height));
-  image.src = photoUrl(photo.id, 'large');
-  image.alt = photo.title;
-  title.textContent = photo.title;
-  meta.textContent = [dateLabel(photo), `${index + 1} / ${current.length}`].filter(Boolean).join(' · ');
-  if (direction !== 0 && !reducedMotion.matches) {
-    image.animate(
-      [{ opacity: 0, transform: `translateX(${direction * 18}px)` }, { opacity: 1, transform: 'none' }],
-      { duration: 360, easing: 'cubic-bezier(.16, 1, .3, 1)' },
-    );
+  const position = index;
+  const currentImageGeneration = ++imageGeneration;
+  const nextImage = new Image(photo.width, photo.height);
+  nextImage.dataset.lightboxImage = '';
+  nextImage.alt = photo.title;
+  nextImage.src = photoUrl(photo.id, 'large');
+  if (dialog.open) {
+    try {
+      await nextImage.decode();
+    } catch {
+      if (imageGeneration === currentImageGeneration) meta.textContent = '照片暂时打不开，请稍后再试。';
+      return;
+    }
   }
+  if (imageGeneration !== currentImageGeneration) return;
+  // Keep the current print intact until the next image is ready, then swap together.
+  print.style.setProperty('--ratio', String(photo.width / photo.height));
+  image.replaceWith(nextImage);
+  image = nextImage;
+  title.textContent = photo.title;
+  meta.textContent = [dateLabel(photo), `${position + 1} / ${current.length}`].filter(Boolean).join(' · ');
 }
 
 function open(list: PrivatePhoto[], target: number, from: HTMLElement) {
@@ -166,14 +175,14 @@ function open(list: PrivatePhoto[], target: number, from: HTMLElement) {
   root.classList.add('has-dialog');
 }
 
-previous.addEventListener('click', () => show(index - 1, -1));
-next.addEventListener('click', () => show(index + 1, 1));
+previous.addEventListener('click', () => void show(index - 1));
+next.addEventListener('click', () => void show(index + 1));
 dialog.querySelector('[data-lightbox-close]')!.addEventListener('click', () => dialog.close());
 
 dialog.addEventListener('keydown', (event) => {
   if (current.length < 2) return;
-  if (event.key === 'ArrowLeft') show(index - 1, -1);
-  else if (event.key === 'ArrowRight') show(index + 1, 1);
+  if (event.key === 'ArrowLeft') void show(index - 1);
+  else if (event.key === 'ArrowRight') void show(index + 1);
   else return;
   event.preventDefault();
 });
@@ -191,11 +200,12 @@ dialog.addEventListener('touchend', (event) => {
   const deltaX = event.changedTouches[0].clientX - touchStartX;
   const deltaY = event.changedTouches[0].clientY - touchStartY;
   if (current.length < 2 || Math.abs(deltaX) < 48 || Math.abs(deltaX) < Math.abs(deltaY) * 1.4) return;
-  if (deltaX < 0) show(index + 1, 1);
-  else show(index - 1, -1);
+  if (deltaX < 0) void show(index + 1);
+  else void show(index - 1);
 }, { passive: true });
 
 dialog.addEventListener('close', () => {
+  imageGeneration++;
   root.classList.remove('has-dialog');
   if (!root.classList.contains('is-locked')) trigger?.focus({ preventScroll: true });
 });
