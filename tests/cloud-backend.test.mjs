@@ -77,7 +77,7 @@ test('private notebook requires a current server session; API responses are unca
   assert.equal((await f.request('/api/notebook', 'GET', undefined, `${sessionCookieName}=${'a'.repeat(64)}`)).status, 401);
 });
 
-test('letter opens at the hundredth Shanghai midnight and stays open afterward', async (t) => {
+test('letter opens at the hundredth Taipei midnight and stays open afterward', async (t) => {
   const unlock = Date.parse('2026-10-08T00:00:00+08:00');
   t.mock.timers.enable({ apis: ['Date'], now: unlock - 1 });
   const f = fixture();

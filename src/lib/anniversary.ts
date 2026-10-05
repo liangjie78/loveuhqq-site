@@ -1,7 +1,8 @@
-const SHANGHAI_OFFSET_MS = 8 * 60 * 60 * 1000;
+// Asia/Taipei is a fixed UTC+8 with no daylight saving, so a constant offset is exact.
+const TAIPEI_OFFSET_MS = 8 * 60 * 60 * 1000;
 const DAY_MS = 24 * 60 * 60 * 1000;
 
-/** The first calendar day of the relationship in Asia/Shanghai. */
+/** The first calendar day of the relationship in Asia/Taipei. */
 export const relationshipStartDate = '2026-07-01';
 
 /** Shared by the Astro templates and the client scripts, so keep one copy. */
@@ -34,17 +35,17 @@ function getValidTimestamp(now: Date): number {
   return timestamp;
 }
 
-function getShanghaiCalendarDate(timestamp: number): Date {
-  return new Date(timestamp + SHANGHAI_OFFSET_MS);
+function getTaipeiCalendarDate(timestamp: number): Date {
+  return new Date(timestamp + TAIPEI_OFFSET_MS);
 }
 
-function getShanghaiCalendarTimestamp(timestamp: number): number {
-  const shanghaiDate = getShanghaiCalendarDate(timestamp);
+function getTaipeiCalendarTimestamp(timestamp: number): number {
+  const taipeiDate = getTaipeiCalendarDate(timestamp);
 
   return Date.UTC(
-    shanghaiDate.getUTCFullYear(),
-    shanghaiDate.getUTCMonth(),
-    shanghaiDate.getUTCDate(),
+    taipeiDate.getUTCFullYear(),
+    taipeiDate.getUTCMonth(),
+    taipeiDate.getUTCDate(),
   );
 }
 
@@ -57,10 +58,10 @@ function formatCalendarDate(timestamp: number): string {
   return `${year}-${month}-${day}`;
 }
 
-/** Returns a marked date's status against today's Shanghai calendar date. */
+/** Returns a marked date's status against today's Taipei calendar date. */
 export function getMomentDateStatus(date: string, now: Date): MomentDateStatus {
   const timestamp = getValidTimestamp(now);
-  const today = formatCalendarDate(getShanghaiCalendarTimestamp(timestamp));
+  const today = formatCalendarDate(getTaipeiCalendarTimestamp(timestamp));
 
   if (date > today) return 'upcoming';
   if (date === today) return 'today';
@@ -81,12 +82,12 @@ export const hundredthDayDate = formatCalendarDate(
 );
 
 /**
- * Returns the inclusive relationship day for the Shanghai calendar date of
+ * Returns the inclusive relationship day for the Taipei calendar date of
  * `now`. The start date is day 1, so dates before it return zero or less.
  */
 export function getAnniversaryDay(now: Date): number {
   const timestamp = getValidTimestamp(now);
-  const calendarDateTimestamp = getShanghaiCalendarTimestamp(timestamp);
+  const calendarDateTimestamp = getTaipeiCalendarTimestamp(timestamp);
 
   return (
     Math.floor(
@@ -95,22 +96,22 @@ export function getAnniversaryDay(now: Date): number {
   );
 }
 
-/** Returns the next Shanghai midnight, strictly later than `now`. */
-export function getNextShanghaiMidnight(now: Date): Date {
+/** Returns the next Taipei midnight, strictly later than `now`. */
+export function getNextTaipeiMidnight(now: Date): Date {
   const timestamp = getValidTimestamp(now);
-  const shanghaiDate = getShanghaiCalendarDate(timestamp);
+  const taipeiDate = getTaipeiCalendarDate(timestamp);
   const nextMidnightTimestamp =
     Date.UTC(
-      shanghaiDate.getUTCFullYear(),
-      shanghaiDate.getUTCMonth(),
-      shanghaiDate.getUTCDate() + 1,
-    ) - SHANGHAI_OFFSET_MS;
+      taipeiDate.getUTCFullYear(),
+      taipeiDate.getUTCMonth(),
+      taipeiDate.getUTCDate() + 1,
+    ) - TAIPEI_OFFSET_MS;
 
   return new Date(nextMidnightTimestamp);
 }
 
 /**
- * Returns the closest upcoming milestone in the Shanghai calendar.
+ * Returns the closest upcoming milestone in the Taipei calendar.
  *
  * The start date is treated as a milestone on day 1, and the 100th day is
  * counted inclusively from that date. Anniversary dates use the same month
@@ -118,7 +119,7 @@ export function getNextShanghaiMidnight(now: Date): Date {
  */
 export function getUpcomingAnniversary(now: Date): UpcomingAnniversary {
   const timestamp = getValidTimestamp(now);
-  const currentCalendarTimestamp = getShanghaiCalendarTimestamp(timestamp);
+  const currentCalendarTimestamp = getTaipeiCalendarTimestamp(timestamp);
 
   if (currentCalendarTimestamp <= relationshipStartTimestamp) {
     return {
@@ -171,7 +172,7 @@ export function getUpcomingAnniversary(now: Date): UpcomingAnniversary {
 }
 
 export interface CalendarDay {
-  /** Shanghai calendar date as YYYY-MM-DD. */
+  /** Taipei calendar date as YYYY-MM-DD. */
   date: string;
   /** Day of the month, 1-31. */
   dayOfMonth: number;
@@ -187,13 +188,13 @@ export interface CalendarMonth {
 }
 
 /**
- * Returns the relationship year that the Shanghai calendar date of `now`
+ * Returns the relationship year that the Taipei calendar date of `now`
  * falls in. Each anniversary closes its year: year 1 runs from the start
  * date through the first anniversary, year 2 from the next day through the
  * second anniversary. Dates before the start belong to year 1.
  */
 export function getRelationshipYear(now: Date): number {
-  const currentCalendarTimestamp = getShanghaiCalendarTimestamp(
+  const currentCalendarTimestamp = getTaipeiCalendarTimestamp(
     getValidTimestamp(now),
   );
   const startYear = relationshipStartCalendarDate.getUTCFullYear();

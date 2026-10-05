@@ -1,5 +1,5 @@
 export interface Moment {
-  /** Shanghai calendar date as YYYY-MM-DD. */
+  /** Taipei calendar date as YYYY-MM-DD. */
   date: string;
   /** A short title, shown when the day is picked on the calendar. */
   title: string;
