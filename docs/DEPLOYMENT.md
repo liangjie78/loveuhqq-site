@@ -144,3 +144,10 @@
 - 真实 Chrome 1440×900 访问正式站：门禁输码解锁、封面开场（纸心、邮戳、第 91 天）与思源宋体子集渲染正常；`blogtext.x23.shop` 未受影响。
 
 参考：[Cloudflare Static Assets](https://developers.cloudflare.com/workers/static-assets/)。
+
+## 私密照片墙正式上线（2026-10-05，Asia/Shanghai）
+
+- 用户明确授权合并 PR #46 并执行生产部署。源码为 `main` 提交 `8cf0cac`（#46 squash 合并），GitHub CI 通过；在干净 `main` 上复现 `npm ci`、65 项单元测试与 `npm run build`。发布前已在 `loveuhqq-site-preview`（版本 `eefd6249-7040-4f9f-82e0-bddc5f393807`）部署验收。
+- 账号未开通 R2，经用户选择改用 Workers KV：创建 `loveuhqq-photos-preview`（`b74bb16196a048cc82b2c1c0feae90e9`）与 `loveuhqq-photos`（`f2758069198e4a90896513225121d661`）。16 张照片（缩略图与大图，均已去除 EXIF）及清单共 33 个键分别写入两个命名空间；原图不进仓库。
+- 部署前线上版本为 `6d6814c2-062f-4b69-afda-94781605fe57`，可作回滚目标。生产版本 ID：`a7e596e0-5a8c-4e27-8cc3-0b89146b7fb2`，Deployments 确认流量 100%，绑定 `PHOTOS` KV 与 `loveuhqq-notebook` D1。
+- 正式站首页、`/photos/`、`/favicon.svg`、`/manifest.json`、`/robots.txt` 与抽查的 `/_assets/*` 脚本、样式、字体均为 HTTPS 200；未知路径返回 404 且正文为“这一页，好像被撕掉了。”；已删除的示意图 `/images/sea.webp` 为 404。首页与 `/photos/` HTML 与 `dist` 一致，只含“待解锁”空位，不含任何照片标题。未登录时 `/api/photos` 与图片接口均为 401（`no-store`）；`blogtext.x23.shop` 未受影响。登录后的照片显示由用户在正式站验收。
