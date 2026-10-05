@@ -19,6 +19,12 @@
       "custom_domain": true
     }
   ],
+  "kv_namespaces": [
+    {
+      "binding": "PHOTOS",
+      "id": "f2758069198e4a90896513225121d661"
+    }
+  ],
   "main": "worker/index.ts",
   "d1_databases": [
     {
