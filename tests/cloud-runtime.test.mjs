@@ -39,7 +39,7 @@ test('actual workerd and D1 support password login, CAS, tombstones and server l
   } finally { await mf.dispose(); }
 });
 
-test('actual workerd protects letter content at the Taipei unlock boundary', async () => {
+test('actual workerd protects letter content at the Shanghai unlock boundary', async () => {
   const salt = '00112233445566778899aabbccddeeff';
   const password = 'artificial-letter-runtime-password';
   const stored = `pbkdf2$100000$${salt}$${pbkdf2Sync(password, Buffer.from(salt, 'hex'), 100000, 32, 'sha256').toString('hex')}`;

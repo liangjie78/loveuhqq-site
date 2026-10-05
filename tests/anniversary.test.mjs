@@ -4,7 +4,7 @@ import test from 'node:test';
 import {
   getAnniversaryDay,
   getMomentDateStatus,
-  getNextTaipeiMidnight,
+  getNextShanghaiMidnight,
   getUpcomingAnniversary,
   hundredthDayDate,
   relationshipStartDate,
@@ -17,20 +17,20 @@ test('exports the confirmed relationship start date', () => {
   assert.equal(hundredthDayDate, '2026-10-08');
 });
 
-test('counts inclusive days by the Taipei calendar date', () => {
+test('counts inclusive days by the Shanghai calendar date', () => {
   assert.equal(getAnniversaryDay(date('2026-07-01T00:00:00+08:00')), 1);
   assert.equal(getAnniversaryDay(date('2026-07-02T00:00:00+08:00')), 2);
   assert.equal(getAnniversaryDay(date('2026-09-22T12:34:56+08:00')), 84);
 });
 
-test('switches days at the Taipei midnight UTC boundary', () => {
+test('switches days at the Shanghai midnight UTC boundary', () => {
   assert.equal(getAnniversaryDay(date('2026-06-30T15:59:59.999Z')), 0);
   assert.equal(getAnniversaryDay(date('2026-06-30T16:00:00.000Z')), 1);
   assert.equal(getAnniversaryDay(date('2026-07-01T15:59:59.999Z')), 1);
   assert.equal(getAnniversaryDay(date('2026-07-01T16:00:00.000Z')), 2);
 });
 
-test('marks a moment upcoming, current, then past at Taipei midnight boundaries', () => {
+test('marks a moment upcoming, current, then past at Shanghai midnight boundaries', () => {
   const momentDate = '2026-10-08';
 
   assert.equal(
@@ -74,21 +74,21 @@ test('returns zero or less before the relationship starts', () => {
   assert.equal(getAnniversaryDay(date('2026-06-29T15:59:59.999Z')), -1);
 });
 
-test('returns the next Taipei midnight strictly after now', () => {
+test('returns the next Shanghai midnight strictly after now', () => {
   assert.equal(
-    getNextTaipeiMidnight(date('2026-07-01T15:59:59.999Z')).toISOString(),
+    getNextShanghaiMidnight(date('2026-07-01T15:59:59.999Z')).toISOString(),
     '2026-07-01T16:00:00.000Z',
   );
   assert.equal(
-    getNextTaipeiMidnight(date('2026-07-01T16:00:00.000Z')).toISOString(),
+    getNextShanghaiMidnight(date('2026-07-01T16:00:00.000Z')).toISOString(),
     '2026-07-02T16:00:00.000Z',
   );
   assert.equal(
-    getNextTaipeiMidnight(date('2026-07-31T12:00:00+08:00')).toISOString(),
+    getNextShanghaiMidnight(date('2026-07-31T12:00:00+08:00')).toISOString(),
     '2026-07-31T16:00:00.000Z',
   );
   assert.equal(
-    getNextTaipeiMidnight(date('2026-12-31T12:00:00+08:00')).toISOString(),
+    getNextShanghaiMidnight(date('2026-12-31T12:00:00+08:00')).toISOString(),
     '2026-12-31T16:00:00.000Z',
   );
 });
@@ -99,7 +99,7 @@ test('rejects invalid dates', () => {
     RangeError,
   );
   assert.throws(
-    () => getNextTaipeiMidnight(new Date(Number.NaN)),
+    () => getNextShanghaiMidnight(new Date(Number.NaN)),
     RangeError,
   );
   assert.throws(
@@ -127,7 +127,7 @@ test('returns the start milestone before and on the relationship start date', ()
   );
 });
 
-test('selects the 100th day before and on its Taipei calendar date', () => {
+test('selects the 100th day before and on its Shanghai calendar date', () => {
   assert.deepEqual(
     getUpcomingAnniversary(date('2026-10-07T23:59:59+08:00')),
     {

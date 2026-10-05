@@ -1,4 +1,4 @@
-import { dotted, getAnniversaryDay, getNextTaipeiMidnight, hundredthDayDate } from '../lib/anniversary';
+import { dotted, getAnniversaryDay, getNextShanghaiMidnight, hundredthDayDate } from '../lib/anniversary';
 import { api, ApiError } from '../lib/cloud-notebook';
 import { getSession, onSessionChange, publishSession } from '../lib/session';
 
@@ -63,7 +63,7 @@ function updateDates() {
   window.clearTimeout(midnightTimer);
   // A restored or throttled page can hold an already-overdue timer; never let the
   // rollover re-enter immediately and re-read a clock that has not moved.
-  const untilMidnight = getNextTaipeiMidnight(now).getTime() - now.getTime();
+  const untilMidnight = getNextShanghaiMidnight(now).getTime() - now.getTime();
   midnightTimer = window.setTimeout(updateDates, Math.max(1000, untilMidnight + 100));
 }
 
@@ -108,7 +108,7 @@ async function loadLetter() {
       return;
     }
     status.textContent = error instanceof ApiError && error.status === 403
-      ? `还没到拆的时候，台北时间 ${dotted(hundredthDayDate)} 再来。`
+      ? `还没到拆的时候，北京时间 ${dotted(hundredthDayDate)} 再来。`
       : error instanceof ApiError && error.status === 503
         ? '这封信暂时无法打开，请稍后再来。'
         : '暂时没能打开这封信，请再试一次。';

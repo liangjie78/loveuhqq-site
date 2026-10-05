@@ -6,7 +6,7 @@ export interface PrivatePhoto {
   /** First 16 hex chars of the source file's SHA-256, so a changed photo gets a new URL. */
   id: string;
   title: string;
-  /** Taipei calendar date the photo or screenshot was taken, when known. */
+  /** Shanghai calendar date the photo or screenshot was taken, when known. */
   date: string | null;
   /** Pixel size of the large rendition; the thumbnail keeps the same ratio. */
   width: number;

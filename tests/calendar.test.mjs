@@ -18,7 +18,7 @@ test('the first anniversary closes relationship year 1', () => {
   assert.equal(getRelationshipYear(date('2028-07-02T00:00:00+08:00')), 3);
 });
 
-test('switches relationship years at the Taipei midnight', () => {
+test('switches relationship years at the Shanghai midnight', () => {
   assert.equal(getRelationshipYear(date('2027-07-01T15:59:59.999Z')), 1);
   assert.equal(getRelationshipYear(date('2027-07-01T16:00:00.000Z')), 2);
 });

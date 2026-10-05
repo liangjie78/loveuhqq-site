@@ -2,7 +2,7 @@ import {
   dotted,
   getAnniversaryDay,
   getMomentDateStatus,
-  getNextTaipeiMidnight,
+  getNextShanghaiMidnight,
   getRelationshipYear,
   getRelationshipYearMonths,
   getUpcomingAnniversary,
@@ -384,7 +384,7 @@ function refreshDates() {
   showReadout(pickedCell ? Number(pickedCell.dataset.day) : today);
 
   window.clearTimeout(midnightTimer);
-  midnightTimer = window.setTimeout(refreshDates, getNextTaipeiMidnight(now).getTime() - now.getTime() + 100);
+  midnightTimer = window.setTimeout(refreshDates, getNextShanghaiMidnight(now).getTime() - now.getTime() + 100);
 }
 
 /* ---------- Opening: the day count ticks up once ---------- */

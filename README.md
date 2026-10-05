@@ -12,7 +12,7 @@
 - 唯一正式源码：[liangjie78/loveuhqq-site](https://github.com/liangjie78/loveuhqq-site)（Private）
 - 页面结构：封面、日子、照片、心里话、往后、信、页脚，自然连续滚动；另有相册页 `/photos/` 和 404 页（`dist/404.html` 由 `wrangler.jsonc` 的 `not_found_handling: "404-page"` 送出，缺这项时 Workers 只回空 404）。
 - 视觉与交互：暖色纸面、蜡封红、思源宋体竖排标题；纸心与邮戳、按月排列的“一天一格”日历、胶带拍立得、横线信纸和可点的信封。支持拍立得灯箱（键盘与滑动）、日历点选与方向键翻看读数、进入第二年后的往年回看（“← 上一年 / 下一年 →”）、门禁日期格和减少动态效果偏好。详见 [设计说明](docs/DESIGN.md)。
-- 纪念时间：从 2026-07-01 开始，当天算第 1 天，按台北时间自动更新；JavaScript 不可用时保留文案和起始日期。
+- 纪念时间：从 2026-07-01 开始，当天算第 1 天，按北京时间自动更新；JavaScript 不可用时保留文案和起始日期。
 - 下一纪念日：第 100 天之后转向下一周年，纪念日当天显示“今天”，跨日和返回页面时自动刷新。
 - 内容状态：相册是登录后才能看到的真实照片（保存在 Workers KV，经 Worker 鉴权后送出）；值得标记的日子（`src/data/moments.ts`）已登记 3 个用户确认的日子，写给第 100 天的信标为“待写”；没有自动解锁的信件或照片上传后台。
 - 技术边界：Astro + TypeScript + 普通 CSS，页面静态生成；Cloudflare Worker 提供登录和共享手账接口，D1 保存备注、清单和会话，不引入 UI 框架。
@@ -65,7 +65,7 @@ GitHub 自动部署尚未配置；没有绕过权限或创建额外凭据。GitH
 | [`wrangler.preview.jsonc`](wrangler.preview.jsonc) | 独立预览 Worker 配置，不绑定正式域名 |
 | [`public/favicon.svg`](public/favicon.svg) | 页面 favicon |
 | [`docs/DEPLOYMENT.md`](docs/DEPLOYMENT.md) | 发布、核验和回滚边界 |
-| [`src/lib/anniversary.ts`](src/lib/anniversary.ts) | 起始日期、台北时间天数与跨日计算 |
+| [`src/lib/anniversary.ts`](src/lib/anniversary.ts) | 起始日期、北京时间天数与跨日计算 |
 | [`scripts/subset-font.mjs`](scripts/subset-font.mjs) | 按站点用字生成思源宋体子集（`npm run subset:font`） |
 | [`docs/DESIGN.md`](docs/DESIGN.md) | 纸上手账的视觉、布局与交互约定 |
 
