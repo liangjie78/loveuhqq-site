@@ -30,11 +30,18 @@ let pendingAlbum = false;
 let current: PrivatePhoto[] = [];
 let index = 0;
 let imageGeneration = 0;
+let pendingImage: HTMLImageElement | null = null;
 let trigger: HTMLElement | null = null;
 let touchStartX = 0;
 let touchStartY = 0;
 
 const dateLabel = (photo: PrivatePhoto) => (photo.date ? dotted(photo.date) : '');
+
+function discardPendingImage() {
+  const pending = pendingImage;
+  pendingImage = null;
+  pending?.removeAttribute('src');
+}
 
 function card(photo: PrivatePhoto, list: PrivatePhoto[], position: number, pink: boolean): HTMLAnchorElement {
   const link = document.createElement('a');
@@ -89,6 +96,7 @@ function setStatus(message: string, canRetry = false) {
 function clearPhotos() {
   generation++;
   imageGeneration++;
+  discardPendingImage();
   request?.abort();
   request = null;
   loaded = false;
@@ -145,7 +153,9 @@ async function show(target: number) {
   const photo = current[index];
   const position = index;
   const currentImageGeneration = ++imageGeneration;
+  discardPendingImage();
   const nextImage = new Image(photo.width, photo.height);
+  pendingImage = nextImage;
   nextImage.dataset.lightboxImage = '';
   nextImage.alt = photo.title;
   nextImage.src = photoUrl(photo.id, 'large');
@@ -153,11 +163,15 @@ async function show(target: number) {
     try {
       await nextImage.decode();
     } catch {
-      if (imageGeneration === currentImageGeneration) meta.textContent = '照片暂时打不开，请稍后再试。';
+      if (imageGeneration === currentImageGeneration) {
+        pendingImage = null;
+        meta.textContent = '照片暂时打不开，请稍后再试。';
+      }
       return;
     }
   }
   if (imageGeneration !== currentImageGeneration) return;
+  pendingImage = null;
   // Keep the current print intact until the next image is ready, then swap together.
   print.style.setProperty('--ratio', String(photo.width / photo.height));
   image.replaceWith(nextImage);
@@ -206,6 +220,7 @@ dialog.addEventListener('touchend', (event) => {
 
 dialog.addEventListener('close', () => {
   imageGeneration++;
+  discardPendingImage();
   root.classList.remove('has-dialog');
   if (!root.classList.contains('is-locked')) trigger?.focus({ preventScroll: true });
 });
