@@ -867,7 +867,7 @@ a.polaroid:hover, a.polaroid:focus-visible { rotate: 0deg; translate: 0 -8px; bo
 }
 .letter-reading { font: 400 clamp(1rem, 2.8vw, 1.1rem)/2 var(--sans); overflow-wrap: anywhere; }
 .letter-reading p + p { margin-top: 1.4em; }
-.letter-reading .letter-closing { margin-top: 2.25em; text-align: right; color: var(--ink-2); }
+.letter-reading .letter-closing { margin-top: 2.25em; text-align: right; color: var(--ink-2); white-space: pre-line; }
 .letter-status { line-height: 1.9; color: var(--muted); }
 .letter-status:empty { display: none; }
 .letter-retry { margin-top: .75rem; color: var(--rose); }
