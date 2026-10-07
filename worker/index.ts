@@ -2,7 +2,7 @@ import { isCalendarDate, parseNotebook } from '../src/lib/notebook.ts';
 import type { CloudNotebook } from '../src/lib/notebook.ts';
 import { getAnniversaryDay } from '../src/lib/anniversary.ts';
 import { digest, isPasswordHash, randomToken, readSessionToken, sessionCookie, verifyPassword } from './auth.ts';
-import { hundredDayLetter } from './letter.ts';
+import { hundredDayLetter, hundredDayLetterKey, parseLetter } from './letter.ts';
 import { emptyPhotoManifest, parsePhotoManifest, photoIdPattern, photoManifestKey, photoObjectKey, photoSizes } from '../src/lib/photos.ts';
 import type { PhotoSize } from '../src/lib/photos.ts';
 
@@ -180,7 +180,9 @@ export default {
       if (!await authenticated(request, env.DB, env.EDITOR_PASSWORD_HASH!)) return json({ error: '请先登录手账。' }, 401);
       if (path === '/api/letter') {
         if (getAnniversaryDay(new Date(Date.now())) < 100) return json({ error: '百日信还未到拆信的日子。' }, 403);
-        return json(hundredDayLetter);
+        // Read private storage only after both server-side gates have passed.
+        const letter = env.PHOTOS ? await env.PHOTOS.get(hundredDayLetterKey, 'text') : null;
+        return json(letter === null ? hundredDayLetter : parseLetter(JSON.parse(letter)));
       }
       if (photoPath) {
         if (!env.PHOTOS) return json({ error: '相册暂时打不开，请稍后再来。' }, 503);

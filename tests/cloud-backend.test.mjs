@@ -5,7 +5,7 @@ import { pbkdf2Sync } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import worker from '../worker/index.ts';
 import { digest, isPasswordHash, readSessionToken, sessionCookieName, verifyPassword } from '../worker/auth.ts';
-import { hundredDayLetter } from '../worker/letter.ts';
+import { hundredDayLetter, hundredDayLetterKey } from '../worker/letter.ts';
 
 const origin = 'https://journal.example';
 const password = 'example-test-password-only';
@@ -138,6 +138,45 @@ test('letter fails closed when unconfigured and accepts only GET', async () => {
     assert.equal(response.headers.get('Cache-Control'), 'no-store');
     assert.deepEqual(await response.json(), { error: '方法不支持。' });
   }
+});
+
+test('cloud letter storage is read only after session and date gates, and invalid content fails closed', async (t) => {
+  const unlock = Date.parse('2026-10-08T00:00:00+08:00');
+  t.mock.timers.enable({ apis: ['Date'], now: unlock - 1 });
+  const f = fixture();
+  const formal = { salutation: '测试称呼', paragraphs: ['合成正式信件第一段', '<script>synthetic only</script>'], closing: '测试落款' };
+  let stored = formal;
+  let reads = 0;
+  f.env.PHOTOS = { async get(key, type) {
+    assert.equal(key, hundredDayLetterKey);
+    assert.equal(type, 'text');
+    reads++;
+    if (stored instanceof Error) throw stored;
+    return stored === null ? null : stored === undefined ? 'null' : JSON.stringify(stored);
+  } };
+  assert.equal((await f.request('/api/letter')).status, 401);
+  assert.equal((await f.request('/api/letter', 'GET', undefined, `${sessionCookieName}=${'a'.repeat(64)}`)).status, 401);
+  const cookie = await f.login(true);
+  assert.equal((await f.request('/api/letter', 'GET', undefined, cookie)).status, 403);
+  assert.equal(reads, 0);
+  t.mock.timers.setTime(unlock);
+  const response = await f.request('/api/letter', 'GET', undefined, cookie);
+  assert.equal(response.status, 200);
+  assert.equal(response.headers.get('Cache-Control'), 'no-store');
+  assert.deepEqual(await response.json(), formal);
+  stored = null;
+  assert.deepEqual(await (await f.request('/api/letter', 'GET', undefined, cookie)).json(), hundredDayLetter);
+  for (stored of [undefined, {}, { ...formal, paragraphs: [] }, { ...formal, paragraphs: [' '] }, { ...formal, paragraphs: [3] },
+    { ...formal, extra: 'private extra' }, new Error('synthetic storage error containing private text')]) {
+    const unavailable = await f.request('/api/letter', 'GET', undefined, cookie);
+    assert.equal(unavailable.status, 503);
+    assert.equal(unavailable.headers.get('Cache-Control'), 'no-store');
+    assert.deepEqual(await unavailable.json(), { error: '云端手账暂时不可用，请稍后重试。' });
+  }
+  await f.request('/api/session', 'DELETE', undefined, cookie);
+  const beforeLogoutRead = reads;
+  assert.equal((await f.request('/api/letter', 'GET', undefined, cookie)).status, 401);
+  assert.equal(reads, beforeLogoutRead);
 });
 
 test('login accepts six-character passwords and rejects shorter passwords', async () => {

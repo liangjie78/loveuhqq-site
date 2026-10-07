@@ -10,5 +10,6 @@ dist/
 .dev.vars*
 *.log
 .private-photos/
+.private-letter/
 .claude/launch.json
 /axe-results-*.json
