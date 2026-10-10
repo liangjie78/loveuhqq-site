@@ -143,9 +143,23 @@ async function mutate(request: Request, db: D1Database, kind: 'note' | 'wish', k
   return json(await notebook(db));
 }
 
-async function photoManifest(store: KVNamespace): Promise<Response> {
-  const manifest = await store.get(photoManifestKey, 'json');
-  return json(manifest === null ? emptyPhotoManifest() : parsePhotoManifest(manifest));
+async function readPhotoManifest(db: D1Database, store: KVNamespace) {
+  const select = () => db.prepare('SELECT manifest, revision FROM photo_manifest WHERE id = 1')
+    .first<{ manifest: string; revision: number }>();
+  let row = await select();
+  if (!row) {
+    const raw = await store.get(photoManifestKey, 'json');
+    const parsed = raw === null ? emptyPhotoManifest() : parsePhotoManifest(raw);
+    await db.prepare('INSERT INTO photo_manifest (id, manifest, revision) VALUES (1, ?, ?) ON CONFLICT(id) DO NOTHING')
+      .bind(JSON.stringify(parsed), parsed.revision).run();
+    row = await select();
+  }
+  if (!row) throw new Error('Photo manifest initialization failed');
+  return parsePhotoManifest({ ...JSON.parse(row.manifest), revision: row.revision });
+}
+
+async function photoManifest(db: D1Database, store: KVNamespace): Promise<Response> {
+  return json(await readPhotoManifest(db, store));
 }
 
 async function photo(store: KVNamespace, id: string, size: string): Promise<Response> {
@@ -178,7 +192,7 @@ function parseUploadDimension(raw: unknown, label: string): number {
   return value;
 }
 
-async function uploadPhoto(request: Request, store: KVNamespace): Promise<Response> {
+async function uploadPhoto(request: Request, db: D1Database, store: KVNamespace): Promise<Response> {
   const declared = request.headers.get('Content-Length');
   if (declared && (!/^\d+$/.test(declared) || Number(declared) > maxPhotoUploadBytes)) {
     throw new HttpError(413, '这张图有点大，压缩后再贴。');
@@ -219,12 +233,7 @@ async function uploadPhoto(request: Request, store: KVNamespace): Promise<Respon
     throw new HttpError(413, '这张图有点大，压缩后再贴。');
   }
 
-  // Images first, then CAS the manifest — same order as the CLI uploader.
-  await store.put(photoObjectKey(id, 'thumb'), thumb);
-  await store.put(photoObjectKey(id, 'large'), large);
-
-  const raw = await store.get(photoManifestKey, 'json');
-  const current = raw === null ? emptyPhotoManifest() : parsePhotoManifest(raw);
+  const current = await readPhotoManifest(db, store);
   if (current.photos.some(photo => photo.id === id)) return json(current);
   if (current.revision !== expectedRevision) {
     throw new HttpError(409, '相册刚在其他设备更新，请刷新后再贴。');
@@ -240,7 +249,23 @@ async function uploadPhoto(request: Request, store: KVNamespace): Promise<Respon
     featured: current.featured,
     photos,
   });
-  await store.put(photoManifestKey, JSON.stringify(next));
+  const keys = [photoObjectKey(id, 'thumb'), photoObjectKey(id, 'large')];
+  try {
+    await store.put(keys[0], thumb);
+    await store.put(keys[1], large);
+    const result = await db.prepare('UPDATE photo_manifest SET manifest = ?, revision = revision + 1 WHERE id = 1 AND revision = ?')
+      .bind(JSON.stringify(next), expectedRevision).run();
+    if (result.meta.changes !== 1) throw new HttpError(409, '相册刚在其他设备更新，请刷新后再贴。');
+  } catch (error) {
+    // A same-id concurrent commit owns these keys. Cleanup must never mask the original error.
+    try {
+      const fresh = await readPhotoManifest(db, store);
+      if (!fresh.photos.some(photo => photo.id === id)) {
+        await Promise.allSettled(keys.map(key => store.delete(key)));
+      }
+    } catch { /* Best effort if the database or KV is unavailable. */ }
+    throw error;
+  }
   return json(next);
 }
 
@@ -283,8 +308,8 @@ export default {
       }
       if (photoPath) {
         if (!env.PHOTOS) return json({ error: '相册暂时打不开，请稍后再来。' }, 503);
-        if (path === '/api/photos' && request.method === 'POST') return await uploadPhoto(request, env.PHOTOS);
-        if (path === '/api/photos') return await photoManifest(env.PHOTOS);
+        if (path === '/api/photos' && request.method === 'POST') return await uploadPhoto(request, env.DB, env.PHOTOS);
+        if (path === '/api/photos') return await photoManifest(env.DB, env.PHOTOS);
         const [, , , id, size] = path.split('/');
         return await photo(env.PHOTOS, id, size);
       }

@@ -5,7 +5,8 @@ import { DatabaseSync } from 'node:sqlite';
 import { readFileSync } from 'node:fs';
 import worker from '../worker/index.ts';
 import { sessionCookieName } from '../worker/auth.ts';
-import { emptyPhotoManifest, featuredPhotos, parsePhotoManifest, photoObjectKey } from '../src/lib/photos.ts';
+import { emptyPhotoManifest, featuredPhotos, parsePhotoManifest, photoObjectKey, maxPhotos, maxPhotoTitleLength } from '../src/lib/photos.ts';
+import { manifestUpsertSql, parseArgs } from '../scripts/upload-photos.mjs';
 import { exifDate, photoId } from '../scripts/prepare-photos.mjs';
 
 const origin = 'https://journal.example';
@@ -26,6 +27,7 @@ const tinyWebp = Uint8Array.from([
 function fixture(objects = { 'manifest.json': JSON.stringify(manifest), [photoObjectKey('aaaaaaaaaaaaaaaa', 'thumb')]: 'thumb-bytes' }) {
   const sqlite = new DatabaseSync(':memory:');
   sqlite.exec(readFileSync(new URL('../migrations/0001_cloud_notebook.sql', import.meta.url), 'utf8'));
+  sqlite.exec(readFileSync(new URL('../migrations/0002_photo_manifest.sql', import.meta.url), 'utf8'));
   const DB = {
     prepare(sql) {
       const statement = sqlite.prepare(sql);
@@ -41,8 +43,10 @@ function fixture(objects = { 'manifest.json': JSON.stringify(manifest), [photoOb
   };
   const reads = [];
   const writes = [];
+  const deletes = [];
   const store = { ...objects };
   const PHOTOS = {
+    async delete(key) { deletes.push(key); delete store[key]; },
     async get(key, type) {
       reads.push(key);
       if (!(key in store)) return null;
@@ -68,7 +72,7 @@ function fixture(objects = { 'manifest.json': JSON.stringify(manifest), [photoOb
     headers: { Origin: origin, 'CF-Connecting-IP': '192.0.2.1', ...(cookie ? { Cookie: cookie } : {}), ...(init.headers ?? {}) },
     body: init.body,
   }), env);
-  return { env, reads, writes, store, request, async login() {
+  return { sqlite, env, reads, writes, deletes, store, request, async login() {
     const response = await worker.fetch(new Request(`${origin}/api/session`, { method: 'POST',
       headers: { Origin: origin, 'Content-Type': 'application/json', 'CF-Connecting-IP': '192.0.2.1' },
       body: JSON.stringify({ password, remember: false }) }), env);
@@ -178,8 +182,9 @@ test('signed-in upload adds one photo without changing featured', async () => {
   assert.ok(body.photos.some(item => item.id === 'cccccccccccccccc' && item.title === '海边那天'));
   assert.ok(f.writes.includes(photoObjectKey('cccccccccccccccc', 'thumb')));
   assert.ok(f.writes.includes(photoObjectKey('cccccccccccccccc', 'large')));
-  assert.ok(f.writes.includes('manifest.json'));
-  assert.ok(f.writes.indexOf(photoObjectKey('cccccccccccccccc', 'thumb')) < f.writes.indexOf('manifest.json'));
+  assert.deepEqual(f.writes, ['thumb', 'large'].map(size => photoObjectKey('cccccccccccccccc', size)));
+  assert.deepEqual(await (await f.request('/api/photos', 'GET', cookie)).json(), body);
+  assert.equal(f.sqlite.prepare('SELECT revision FROM photo_manifest').get().revision, 1);
 });
 
 test('upload into an empty featured album never invents homepage picks', async () => {
@@ -219,4 +224,181 @@ test('upload without a session is refused and does not write', async () => {
   assert.equal(response.status, 401);
   assert.deepEqual(f.writes, []);
   assert.equal(f.store['manifest.json'], undefined);
+});
+
+async function assertAbsent(f, cookie, id) {
+  for (const size of ['thumb', 'large']) {
+    assert.equal(Object.hasOwn(f.store, photoObjectKey(id, size)), false);
+    assert.equal((await f.request(`/api/photos/${id}/${size}`, 'GET', cookie)).status, 404);
+  }
+}
+
+test('stale upload checks revision before writing any images', async () => {
+  const f = fixture();
+  const cookie = await f.login();
+  const response = await f.request('/api/photos', 'POST', cookie, { body: uploadForm({ expectedRevision: '99' }) });
+  assert.equal(response.status, 409);
+  assert.deepEqual(await response.json(), { error: '相册刚在其他设备更新，请刷新后再贴。' });
+  assert.deepEqual(f.writes, []);
+  await assertAbsent(f, cookie, 'cccccccccccccccc');
+});
+
+test('full album rejects upload without image writes', async () => {
+  const full = { ...manifest, featured: [], photos: Array.from({ length: maxPhotos }, (_, i) => photo(i.toString(16).padStart(16, '0'))) };
+  const f = fixture({ 'manifest.json': JSON.stringify(full) });
+  const cookie = await f.login();
+  const response = await f.request('/api/photos', 'POST', cookie, { body: uploadForm() });
+  assert.equal(response.status, 422);
+  assert.deepEqual(await response.json(), { error: '相册已经贴满了，这本装不下更多了。' });
+  assert.deepEqual(f.writes, []);
+  await assertAbsent(f, cookie, 'cccccccccccccccc');
+});
+
+test('concurrent different-id uploads commit exactly one revision with no loser images', async () => {
+  const f = fixture();
+  const cookie = await f.login();
+  await f.request('/api/photos', 'GET', cookie);
+  const ids = ['cccccccccccccccc', 'dddddddddddddddd'];
+  const responses = await Promise.all(ids.map(id => f.request('/api/photos', 'POST', cookie, { body: uploadForm({ id }) })));
+  assert.deepEqual(responses.map(r => r.status).sort(), [200, 409]);
+  const winner = ids[responses.findIndex(r => r.status === 200)];
+  const loser = ids.find(id => id !== winner);
+  const final = await (await f.request('/api/photos', 'GET', cookie)).json();
+  assert.equal(final.revision, manifest.revision + 1);
+  assert.deepEqual(final.featured, manifest.featured);
+  assert.deepEqual(final.photos.map(p => p.id).sort(), [...manifest.photos.map(p => p.id), winner].sort());
+  await assertAbsent(f, cookie, loser);
+  for (const size of ['thumb', 'large']) assert.ok(f.store[photoObjectKey(winner, size)]);
+});
+
+for (const committedSameId of [false, true]) {
+  test(`lost CAS cleans images unless same id committed concurrently (${committedSameId})`, async () => {
+    const f = fixture();
+    const cookie = await f.login();
+    await f.request('/api/photos', 'GET', cookie);
+    const put = f.env.PHOTOS.put;
+    f.env.PHOTOS.put = async (key, value) => {
+      await put(key, value);
+      if (key === photoObjectKey('cccccccccccccccc', 'large')) {
+        const concurrent = { ...manifest, revision: 1, photos: committedSameId ? [...manifest.photos, photo('cccccccccccccccc')] : manifest.photos };
+        f.sqlite.prepare('UPDATE photo_manifest SET manifest = ?, revision = 1 WHERE id = 1').run(JSON.stringify(concurrent));
+      }
+    };
+    assert.equal((await f.request('/api/photos', 'POST', cookie, { body: uploadForm() })).status, 409);
+    if (committedSameId) {
+      assert.deepEqual(f.deletes, []);
+      for (const size of ['thumb', 'large']) assert.ok(f.store[photoObjectKey('cccccccccccccccc', size)]);
+    } else {
+      assert.deepEqual(f.deletes.sort(), ['thumb', 'large'].map(size => photoObjectKey('cccccccccccccccc', size)).sort());
+      await assertAbsent(f, cookie, 'cccccccccccccccc');
+    }
+  });
+}
+
+test('manifest commit errors clean up and delete failures preserve the original 503', async () => {
+  for (const deleteFails of [false, true]) {
+    const f = fixture();
+    const cookie = await f.login();
+    await f.request('/api/photos', 'GET', cookie);
+    const prepare = f.env.DB.prepare;
+    f.env.DB.prepare = sql => {
+      if (sql.startsWith('UPDATE photo_manifest')) return { bind() { return this; }, async run() { throw new Error('write failed'); } };
+      return prepare(sql);
+    };
+    if (deleteFails) f.env.PHOTOS.delete = async key => { f.deletes.push(key); throw new Error('delete failed'); };
+    assert.equal((await f.request('/api/photos', 'POST', cookie, { body: uploadForm() })).status, 503);
+    assert.equal(f.deletes.length, 2);
+    if (!deleteFails) await assertAbsent(f, cookie, 'cccccccccccccccc');
+  }
+});
+
+test('D1 initializes once from KV preserving featured and revision; column wins thereafter', async () => {
+  const seed = { ...manifest, revision: 7 };
+  const f = fixture({ 'manifest.json': JSON.stringify(seed) });
+  const cookie = await f.login();
+  assert.deepEqual(await (await f.request('/api/photos', 'GET', cookie)).json(), seed);
+  assert.equal(f.sqlite.prepare('SELECT COUNT(*) AS count FROM photo_manifest').get().count, 1);
+  f.store['manifest.json'] = 'invalid';
+  f.sqlite.exec('UPDATE photo_manifest SET revision = 8');
+  assert.deepEqual(await (await f.request('/api/photos', 'GET', cookie)).json(), { ...seed, revision: 8 });
+  assert.equal(f.reads.filter(key => key === 'manifest.json').length, 1);
+});
+
+for (const seeded of [false, true]) {
+  test(`concurrent initial GETs converge on a single D1 row (KV seed: ${seeded})`, async () => {
+    const expected = seeded ? { ...manifest, revision: 4 } : emptyPhotoManifest();
+    const f = fixture(seeded ? { 'manifest.json': JSON.stringify(expected) } : {});
+    const cookie = await f.login();
+    const responses = await Promise.all([f.request('/api/photos', 'GET', cookie), f.request('/api/photos', 'GET', cookie)]);
+    for (const response of responses) {
+      assert.equal(response.status, 200);
+      assert.deepEqual(await response.json(), expected);
+    }
+    assert.equal(f.sqlite.prepare('SELECT COUNT(*) AS count FROM photo_manifest').get().count, 1);
+  });
+}
+
+test('dedupe returns current manifest even with stale revision without writes or deletes', async () => {
+  const f = fixture();
+  const cookie = await f.login();
+  const response = await f.request('/api/photos', 'POST', cookie, { body: uploadForm({ id: 'aaaaaaaaaaaaaaaa', expectedRevision: '99' }) });
+  assert.equal(response.status, 200);
+  assert.deepEqual(await response.json(), manifest);
+  assert.deepEqual(f.writes, []);
+  assert.deepEqual(f.deletes, []);
+  assert.equal(f.store[photoObjectKey('aaaaaaaaaaaaaaaa', 'thumb')], 'thumb-bytes');
+});
+
+test('CLI SQL inserts then bumps revision; worker serves new featured and image, escaping quotes', async () => {
+  const f = fixture({});
+  const first = { ...manifest, revision: 5 };
+  f.sqlite.exec(manifestUpsertSql(first));
+  assert.equal(f.sqlite.prepare('SELECT revision FROM photo_manifest').get().revision, 5);
+  const next = { version: 1, revision: 0, featured: ['cccccccccccccccc'], photos: [photo('cccccccccccccccc', { title: "a friend's photo" })] };
+  f.sqlite.exec(manifestUpsertSql(next));
+  assert.equal(f.sqlite.prepare('SELECT revision FROM photo_manifest').get().revision, 6);
+  f.store[photoObjectKey('cccccccccccccccc', 'thumb')] = tinyWebp;
+  const cookie = await f.login();
+  assert.deepEqual(await (await f.request('/api/photos', 'GET', cookie)).json(), { ...next, revision: 6 });
+  const image = await f.request('/api/photos/cccccccccccccccc/thumb', 'GET', cookie);
+  assert.equal(image.status, 200);
+  assert.deepEqual(new Uint8Array(await image.arrayBuffer()), tinyWebp);
+  assert.deepEqual(f.reads, [photoObjectKey('cccccccccccccccc', 'thumb')]);
+});
+
+test('CLI chunks a full CJK album below D1 statement limits and preserves ordered JSON', async () => {
+  const full = parsePhotoManifest({ version: 1, revision: 7, featured: [], photos: Array.from({ length: maxPhotos }, (_, i) =>
+    photo(i.toString(16).padStart(16, '0'), { title: '照'.repeat(maxPhotoTitleLength) })) });
+  assert.equal(full.photos.length, 2000);
+  const sql = manifestUpsertSql(full);
+  const statements = sql.trimEnd().split(';\n').map(statement => `${statement.replace(/;$/, '')};`);
+  assert.ok(statements.filter(statement => statement.startsWith('INSERT INTO photo_manifest_upload')).length > 1);
+  for (const statement of statements) assert.ok(Buffer.byteLength(statement, 'utf8') < 100_000);
+  const f = fixture({});
+  f.sqlite.exec(sql);
+  assert.equal(f.sqlite.prepare('SELECT manifest FROM photo_manifest WHERE id = 1').get().manifest, JSON.stringify(full));
+  assert.equal(f.sqlite.prepare("SELECT name FROM sqlite_master WHERE name = 'photo_manifest_upload'").get(), undefined);
+  const cookie = await f.login();
+  const response = await f.request('/api/photos', 'GET', cookie);
+  assert.equal(response.status, 200);
+  assert.deepEqual(await response.json(), full);
+});
+
+test('CLI single quotes round-trip exactly and staging is cleaned on insert and overwrite', () => {
+  const f = fixture({});
+  const quoted = parsePhotoManifest({ ...manifest, photos: manifest.photos.map(item => ({ ...item, title: "朋友的 '照片'; 一起听歌" })) });
+  for (let revision = 0; revision < 2; revision++) {
+    f.sqlite.exec(manifestUpsertSql(quoted));
+    assert.equal(f.sqlite.prepare('SELECT manifest FROM photo_manifest WHERE id = 1').get().manifest, JSON.stringify(quoted));
+    assert.equal(f.sqlite.prepare('SELECT revision FROM photo_manifest WHERE id = 1').get().revision, revision);
+    assert.equal(f.sqlite.prepare("SELECT name FROM sqlite_master WHERE name = 'photo_manifest_upload'").get(), undefined);
+  }
+});
+
+test('CLI flags validate local persistence and source selection without executing wrangler', () => {
+  assert.deepEqual(parseArgs(['--config', 'example.json']), { local: false, source: '.private-photos', config: 'example.json' });
+  assert.deepEqual(parseArgs(['--config', 'example.json', '--local', '--persist-to', 'scratch', '--source', 'images']), { local: true, source: 'images', config: 'example.json', 'persist-to': 'scratch' });
+  assert.throws(() => parseArgs(['--config', 'example.json', '--persist-to', 'scratch']), /requires --local/);
+  assert.throws(() => parseArgs(['--source']), /Missing value/);
+  assert.throws(() => parseArgs(['--unknown']), /Unknown option/);
 });

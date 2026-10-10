@@ -33,13 +33,14 @@
 
 ## 私密相册
 
-照片、标题和日期都在 Workers KV 里，不进 Git、不进静态资源：生产命名空间 `loveuhqq-photos`（`f2758069198e4a90896513225121d661`），预览 `loveuhqq-photos-preview`（`b74bb16196a048cc82b2c1c0feae90e9`），均以 `PHOTOS` 绑定；KV 没有公网地址，只能经 Worker 读取。账号未开通 R2，选用 Workers 自带的 KV（免费额度 1GB、每日 10 万次读取，单值上限 25MB）。Worker 的 `GET /api/photos`（清单）和 `GET /api/photos/<id>/<thumb|large>`（图片）都要求有效会话，图片以 `private, no-store` 返回；没有清单时相册为空，绑定缺失或清单损坏时返回 503。
+照片字节保存在 Workers KV，标题、日期、精选和清单版本保存在 D1，不进 Git、不进静态资源。KV 生产命名空间 `loveuhqq-photos`（`f2758069198e4a90896513225121d661`），预览 `loveuhqq-photos-preview`（`b74bb16196a048cc82b2c1c0feae90e9`），均以 `PHOTOS` 绑定；KV 没有公网地址，只能经 Worker 读取。账号未开通 R2，选用 Workers 自带的 KV（免费额度 1GB、每日 10 万次读取，单值上限 25MB）。Worker 的 `GET /api/photos`（清单）和 `GET /api/photos/<id>/<thumb|large>`（图片）都要求有效会话，图片以 `private, no-store` 返回；没有清单时相册为空，绑定缺失或清单损坏时返回 503。
 
 1. 本机处理（批量/纠错）：`npm run photos:prepare -- <照片文件夹> --featured "标题,标题,标题"`。文件名（去扩展名）是标题，EXIF 日期用于排序和显示；输出 800×1000 以内的缩略图与 1800px 以内的大图，全部去除 EXIF/GPS，写入 `.private-photos/`（已忽略）。照片 id 取原图哈希，换图即换地址。
 2. 命名空间已于 2026-10-05 经用户授权创建（`npx wrangler kv namespace create <名称>`）；重建时须同步更新两个 Wrangler 配置和 `check-production-config` 中的 id。
-3. CLI 上传：`npm run photos:upload:preview` 或 `npm run photos:upload:production`。先批量写入图片、再写 `manifest.json`；脚本只新增或覆盖，不删除已有键。整包覆盖会重置清单 `revision`，若站内已有增量，勿用过期的 `.private-photos/` 覆盖生产清单。KV 为最终一致，新上传内容在各地生效可能需要约一分钟。生产上传同样需要授权，并先通过 `check-production-config`。
-4. 站内上传：解锁后在 `/photos/` 点「贴一张」，客户端压成 thumb/large WebP 后 `POST /api/photos`；成功后墙与张数刷新，首页精选不变。预览只用测试图验收。
-5. 核验：未登录访问清单、图片与上传返回 401；登录后首页三张、相册全部可见且可贴一张；构建产物中不出现私密照片标题。
+3. 发布新版 Worker 前，必须先在获得对应环境授权后应用 `0002_photo_manifest.sql`：预览运行 `npx wrangler d1 migrations apply loveuhqq-notebook-preview --remote --config wrangler.preview.jsonc`，生产运行 `npx wrangler d1 migrations apply loveuhqq-notebook --remote --config wrangler.jsonc`。D1 的 `photo_manifest` 表是相册清单的唯一来源，revision 列用于条件更新（CAS）。部署后的首次 GET 会从已有 KV `manifest.json` 初始化 D1，保留照片、精选和版本；该 KV 键此后不再读取或写入，已有照片不会丢失。
+4. CLI 上传：`npm run photos:upload:preview` 或 `npm run photos:upload:production`。先批量写入 KV 图片，再写入 D1 清单；CLI 将清单分块暂存后一次性更新，以保持每条 SQL 低于 D1 的 100 KB 语句限制，不再写 KV `manifest.json`；覆盖清单时递增 D1 revision，使旧浏览器提交返回 409。脚本不删除已有图片键，勿用过期的 `.private-photos/` 覆盖站内增量。KV 图片为最终一致，各地生效可能需要约一分钟。生产上传仍须授权并先通过 `check-production-config`。本地测试可运行 `npm run photos:upload:local`，或添加 `--local --persist-to <目录> --source <照片目录>`；`--persist-to` 仅可与 `--local` 一起使用，本地数据库也须先应用两项迁移。
+5. 站内上传：解锁后在 `/photos/` 点「贴一张」，客户端压成 thumb/large WebP 后 `POST /api/photos`；成功后墙与张数刷新，首页精选不变。预览只用测试图验收。
+6. 核验：未登录访问清单、图片与上传返回 401；登录后首页三张、相册全部可见且可贴一张；构建产物中不出现私密照片标题。
 
 ## 私密百日信
 
