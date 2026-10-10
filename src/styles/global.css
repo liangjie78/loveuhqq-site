@@ -1061,6 +1061,112 @@ html.is-locked .gate, .gate.is-leaving { display: grid; }
 
 .polaroid-empty { background: transparent; box-shadow: none; outline: 1.5px dashed var(--line-strong); outline-offset: -1px; }
 .polaroid-slot { display: grid; place-items: center; aspect-ratio: 4 / 5; font: 400 1rem var(--serif); letter-spacing: .2em; color: var(--faint); }
+.polaroid-add {
+  display: grid;
+  width: 100%;
+  padding: 0;
+  border: 0;
+  color: inherit;
+  cursor: pointer;
+  text-align: center;
+  font: inherit;
+}
+.polaroid-add .polaroid-slot { gap: .45rem; align-content: center; }
+.polaroid-add-main { letter-spacing: .2em; color: var(--faint); transition: color .2s; }
+.polaroid-add-sub { font: 400 .72rem/1.4 var(--sans); letter-spacing: .12em; color: var(--faint); }
+.polaroid-add:hover { outline-color: var(--line-stronger); }
+.polaroid-add:hover .polaroid-add-main { color: var(--rose); }
+.polaroid-add:focus-visible { outline: 2px solid var(--rose); outline-offset: 4px; }
+
+.paste-dialog {
+  width: min(100%, 24rem);
+  max-height: min(90dvh, calc(100dvh - 2rem - env(safe-area-inset-top) - env(safe-area-inset-bottom)));
+  margin: auto;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--ink);
+  overflow: visible;
+}
+.paste-dialog[open] { display: block; animation: print-in .45s var(--ease-out) both; }
+.paste-dialog::backdrop { background: var(--backdrop); }
+.paste-card {
+  position: relative;
+  padding: 2.25rem 1.5rem 1.5rem;
+  background: var(--sheet);
+  box-shadow: var(--shadow-paper);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  max-height: inherit;
+}
+.paste-card > .tape { top: -.7rem; left: 50%; translate: -50% 0; rotate: -2deg; }
+.paste-card h2 {
+  margin: 0 0 1.25rem;
+  text-align: center;
+  font: 400 clamp(1.2rem, 4vw, 1.45rem)/1.5 var(--serif);
+  letter-spacing: .08em;
+}
+.paste-form { display: grid; gap: 1rem; }
+.paste-pick {
+  display: grid;
+  place-items: center;
+  width: 100%;
+  min-height: 12rem;
+  aspect-ratio: 4 / 5;
+  max-height: 18rem;
+  padding: .75rem;
+  border: 0;
+  outline: 1.5px dashed var(--line-strong);
+  outline-offset: -1px;
+  background: transparent;
+  cursor: pointer;
+  color: var(--muted);
+  font: 400 .95rem/1.6 var(--sans);
+}
+.paste-pick:hover { outline-color: var(--line-stronger); color: var(--rose); }
+.paste-pick:disabled { cursor: default; opacity: .72; }
+.paste-pick-preview {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: top;
+  background: var(--paper-2);
+}
+.paste-swap { justify-self: start; }
+.paste-field { display: grid; gap: .35rem; font-size: .85rem; color: var(--muted); }
+.paste-field input {
+  width: 100%;
+  min-height: 44px;
+  padding: .5rem 0;
+  border: 0;
+  border-bottom: 1px dashed var(--line-stronger);
+  border-radius: 0;
+  background: transparent;
+  color: var(--ink);
+  font: .95rem/1.5 var(--sans);
+}
+.paste-field input[type="date"] { font-size: 1rem; }
+.paste-field input::placeholder { color: var(--muted); }
+.paste-field input:disabled { color: var(--muted); }
+.paste-error {
+  min-height: 1.4rem;
+  margin: 0;
+  font-size: .88rem;
+  letter-spacing: .04em;
+  color: var(--rose);
+}
+.paste-error:empty,
+.paste-error[hidden] { display: none; }
+.paste-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: .75rem;
+  margin-top: .25rem;
+}
+@media (max-width: 720px) {
+  .paste-dialog { width: calc(100% - 2 * var(--gutter)); }
+}
 
 /* ---------- Lost page ---------- */
 

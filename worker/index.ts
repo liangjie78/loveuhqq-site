@@ -3,8 +3,12 @@ import type { CloudNotebook } from '../src/lib/notebook.ts';
 import { getAnniversaryDay } from '../src/lib/anniversary.ts';
 import { digest, isPasswordHash, randomToken, readSessionToken, sessionCookie, verifyPassword } from './auth.ts';
 import { hundredDayLetter, hundredDayLetterKey, parseLetter } from './letter.ts';
-import { emptyPhotoManifest, parsePhotoManifest, photoIdPattern, photoManifestKey, photoObjectKey, photoSizes } from '../src/lib/photos.ts';
-import type { PhotoSize } from '../src/lib/photos.ts';
+import {
+  emptyPhotoManifest, isPhotoDate, maxPhotoEdge, maxPhotos, maxPhotoLargeBytes, maxPhotoThumbBytes,
+  maxPhotoTitleLength, maxPhotoUploadBytes, parsePhotoManifest, photoIdPattern, photoManifestKey,
+  photoObjectKey, photoSizes, sortPhotos,
+} from '../src/lib/photos.ts';
+import type { PhotoSize, PrivatePhoto } from '../src/lib/photos.ts';
 
 type Env = Omit<Cloudflare.Env, "PHOTOS"> & { EDITOR_PASSWORD_HASH?: string; PHOTOS?: KVNamespace };
 type Entry = { kind: 'note' | 'wish'; entry_key: string; text: string; done: number; version: number; deleted: number };
@@ -153,6 +157,93 @@ async function photo(store: KVNamespace, id: string, size: string): Promise<Resp
     'Cache-Control': 'private, no-store', 'X-Content-Type-Options': 'nosniff', 'Cross-Origin-Resource-Policy': 'same-origin' } });
 }
 
+function isWebp(bytes: Uint8Array): boolean {
+  return bytes.byteLength >= 12
+    && bytes[0] === 0x52 && bytes[1] === 0x49 && bytes[2] === 0x46 && bytes[3] === 0x46
+    && bytes[8] === 0x57 && bytes[9] === 0x45 && bytes[10] === 0x42 && bytes[11] === 0x50;
+}
+
+async function readUploadPart(value: unknown, limit: number, label: string): Promise<Uint8Array> {
+  if (!(value instanceof Blob) || value.size === 0) throw new HttpError(400, `缺少${label}。`);
+  if (value.size > limit) throw new HttpError(413, '这张图有点大，压缩后再贴。');
+  const bytes = new Uint8Array(await value.arrayBuffer());
+  if (!isWebp(bytes)) throw new HttpError(415, '请贴 WebP 照片。');
+  return bytes;
+}
+
+function parseUploadDimension(raw: unknown, label: string): number {
+  if (typeof raw !== 'string' || !/^\d+$/.test(raw)) throw new HttpError(400, `${label}无效。`);
+  const value = Number(raw);
+  if (!Number.isInteger(value) || value < 1 || value > maxPhotoEdge) throw new HttpError(400, `${label}无效。`);
+  return value;
+}
+
+async function uploadPhoto(request: Request, store: KVNamespace): Promise<Response> {
+  const declared = request.headers.get('Content-Length');
+  if (declared && (!/^\d+$/.test(declared) || Number(declared) > maxPhotoUploadBytes)) {
+    throw new HttpError(413, '这张图有点大，压缩后再贴。');
+  }
+  if (!/multipart\/form-data/i.test(request.headers.get('Content-Type') ?? '')) {
+    throw new HttpError(415, '请使用表单上传。');
+  }
+  let form: FormData;
+  try { form = await request.formData(); }
+  catch { throw new HttpError(400, '内容格式无效。'); }
+
+  const titleRaw = form.get('title');
+  if (typeof titleRaw !== 'string') throw new HttpError(400, '给这张写个名字再贴。');
+  const title = titleRaw.trim();
+  if (!title || title.length > maxPhotoTitleLength) throw new HttpError(400, '给这张写个名字再贴。');
+
+  const dateRaw = form.get('date');
+  let date: string | null = null;
+  if (dateRaw !== null && dateRaw !== '') {
+    if (typeof dateRaw !== 'string' || !isPhotoDate(dateRaw)) throw new HttpError(400, '拍摄日期无效。');
+    date = dateRaw;
+  }
+
+  const idRaw = form.get('id');
+  if (typeof idRaw !== 'string' || !photoIdPattern.test(idRaw)) throw new HttpError(400, '照片编号无效。');
+  const id = idRaw;
+
+  const revisionRaw = form.get('expectedRevision');
+  if (typeof revisionRaw !== 'string' || !/^\d+$/.test(revisionRaw)) throw new HttpError(400, '版本号无效。');
+  const expectedRevision = Number(revisionRaw);
+  if (!Number.isSafeInteger(expectedRevision) || expectedRevision < 0) throw new HttpError(400, '版本号无效。');
+
+  const width = parseUploadDimension(form.get('width'), '宽度');
+  const height = parseUploadDimension(form.get('height'), '高度');
+  const thumb = await readUploadPart(form.get('thumb'), maxPhotoThumbBytes, '缩略图');
+  const large = await readUploadPart(form.get('large'), maxPhotoLargeBytes, '大图');
+  if (thumb.byteLength + large.byteLength > maxPhotoUploadBytes) {
+    throw new HttpError(413, '这张图有点大，压缩后再贴。');
+  }
+
+  // Images first, then CAS the manifest — same order as the CLI uploader.
+  await store.put(photoObjectKey(id, 'thumb'), thumb);
+  await store.put(photoObjectKey(id, 'large'), large);
+
+  const raw = await store.get(photoManifestKey, 'json');
+  const current = raw === null ? emptyPhotoManifest() : parsePhotoManifest(raw);
+  if (current.photos.some(photo => photo.id === id)) return json(current);
+  if (current.revision !== expectedRevision) {
+    throw new HttpError(409, '相册刚在其他设备更新，请刷新后再贴。');
+  }
+  if (current.photos.length >= maxPhotos) {
+    throw new HttpError(422, '相册已经贴满了，这本装不下更多了。');
+  }
+
+  const photos: PrivatePhoto[] = sortPhotos([...current.photos, { id, title, date, width, height }]);
+  const next = parsePhotoManifest({
+    version: 1,
+    revision: current.revision + 1,
+    featured: current.featured,
+    photos,
+  });
+  await store.put(photoManifestKey, JSON.stringify(next));
+  return json(next);
+}
+
 export default {
   async fetch(request: Request, env: Env): Promise<Response> {
     const path = new URL(request.url).pathname;
@@ -161,7 +252,13 @@ export default {
       const photoPath = path === '/api/photos' || /^\/api\/photos\/[^/]+\/[^/]+$/.test(path);
       const known = path === '/api/session' || path === '/api/notebook' || path === '/api/letter' || photoPath || /^\/api\/(notes|wishes)\/[^/]+$/.test(path);
       if (!known) return json({ error: '接口不存在。' }, 404);
-      if ((path === '/api/letter' || photoPath) && request.method !== 'GET') return json({ error: '方法不支持。' }, 405, { Allow: 'GET' });
+      if (path === '/api/letter' && request.method !== 'GET') return json({ error: '方法不支持。' }, 405, { Allow: 'GET' });
+      if (photoPath) {
+        const photoWrite = request.method === 'POST' && path === '/api/photos';
+        if (request.method !== 'GET' && !photoWrite) {
+          return json({ error: '方法不支持。' }, 405, { Allow: path === '/api/photos' ? 'GET, POST' : 'GET' });
+        }
+      }
       if (!['GET', 'HEAD', 'OPTIONS'].includes(request.method)) assertOrigin(request);
       const configured = !!env.DB && isPasswordHash(env.EDITOR_PASSWORD_HASH);
       if (path === '/api/session' && request.method === 'GET') {
@@ -186,6 +283,7 @@ export default {
       }
       if (photoPath) {
         if (!env.PHOTOS) return json({ error: '相册暂时打不开，请稍后再来。' }, 503);
+        if (path === '/api/photos' && request.method === 'POST') return await uploadPhoto(request, env.PHOTOS);
         if (path === '/api/photos') return await photoManifest(env.PHOTOS);
         const [, , , id, size] = path.split('/');
         return await photo(env.PHOTOS, id, size);
