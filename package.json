@@ -20,7 +20,8 @@
     "password:production": "node scripts/set-editor-password.mjs --config wrangler.jsonc",
     "preview": "astro preview",
     "deploy:preview": "npm run build && wrangler deploy --config wrangler.preview.jsonc",
-    "deploy": "node scripts/check-production-config.mjs && npm run build && wrangler deploy"
+    "deploy": "node scripts/check-production-config.mjs && npm run build && wrangler deploy",
+    "photos:upload:local": "node scripts/upload-photos.mjs --config wrangler.preview.jsonc --local"
   },
   "dependencies": {
     "astro": "7.3.2"

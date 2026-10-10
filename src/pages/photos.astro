@@ -29,5 +29,34 @@ import '../styles/album-transition.css';
       <button class="text-button" type="button" data-lock-site>上锁</button>
     </div>
   </footer>
+
+  <dialog class="paste-dialog" data-paste-photo aria-labelledby="paste-photo-title">
+    <div class="paste-card paper-card">
+      <span class="tape" aria-hidden="true"></span>
+      <h2 id="paste-photo-title">贴一张照片</h2>
+      <form class="paste-form" data-paste-form novalidate>
+        <input type="file" accept="image/*" data-paste-file hidden />
+        <button class="paste-pick" type="button" data-paste-pick>
+          <span class="paste-pick-empty" data-paste-empty>点这里选一张图</span>
+          <img class="paste-pick-preview" data-paste-preview alt="" hidden />
+        </button>
+        <button class="text-button paste-swap" type="button" data-paste-swap hidden>换一张</button>
+        <label class="paste-field">
+          <span>标题</span>
+          <input type="text" name="title" maxlength="80" placeholder="给这张写个名字" data-paste-title autocomplete="off" required />
+        </label>
+        <label class="paste-field">
+          <span>拍摄日期（可选）</span>
+          <input type="date" name="date" data-paste-date />
+        </label>
+        <p class="paste-error" data-paste-error role="status" hidden></p>
+        <div class="paste-actions">
+          <button class="text-button" type="button" data-paste-cancel>取消</button>
+          <button class="pencil-button" type="submit" data-paste-submit>贴上</button>
+        </div>
+      </form>
+    </div>
+  </dialog>
+
   <Lightbox />
 </Page>
