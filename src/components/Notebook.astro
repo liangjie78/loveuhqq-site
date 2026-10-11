@@ -5,7 +5,7 @@
     <button class="pencil-button" type="button" data-open-login data-needs-js>解锁手账</button>
   </div>
   <div class="notebook-loading" data-note-loading hidden>
-    <p data-note-loading-status role="status">正在打开云端手账…</p>
+    <p data-note-loading-status role="status">正在打开手账…</p>
     <button class="text-button" type="button" data-note-retry hidden>重新连接</button>
   </div>
   <div data-note-private hidden>
@@ -14,14 +14,14 @@
       <button class="pencil-button" type="button" data-note-edit><span data-note-edit-label>写一句</span> <span aria-hidden="true">↗</span></button>
     </div>
     <p class="day-back-text" data-note-text>这一天还空着。想记的时候，再写。</p>
-    <p class="paper-local">手账保存在云端，登录后可以查看和修改。</p>
+    <p class="paper-local">登录后，可以在手账里查看和修改。</p>
     <form data-note-form hidden class="note-editor">
       <label class="sr-only" for="day-note">这一天想记下的话</label>
       <textarea id="day-note" maxlength="2000" rows="4" placeholder="发生了什么，或只是今天的一句话。"></textarea>
       <div class="paper-actions"><button class="pencil-button" type="submit">收好这一句</button><button class="text-button" type="button" data-note-cancel>取消</button><button class="text-button" type="button" data-note-delete hidden>移除这一句</button></div>
     </form>
     <div class="note-conflict" data-note-conflict hidden>
-      <p>这一天在云端有新内容。草稿还在，可以先刷新对照。</p>
+      <p>这一天在手账里有新内容。草稿还在，可以先刷新对照。</p>
       <button class="text-button" type="button" data-note-refresh>刷新查看</button>
       <p class="note-conflict-latest" data-note-latest hidden></p>
     </div>

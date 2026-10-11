@@ -13,6 +13,7 @@ export interface Moment {
 export const moments: Moment[] = [
   // Before the calendar's first day, so it has no cell yet; kept as a confirmed date.
   { date: '2026-05-27', title: '通过游戏认识' },
+  { date: '2026-07-01', title: '第一天' },
   { date: '2026-09-06', title: '抖音火花 100 天' },
   { date: '2026-10-08', title: '恋爱 100 天纪念' },
 ];

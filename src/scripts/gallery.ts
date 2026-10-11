@@ -1,7 +1,7 @@
 import { dotted } from '../lib/anniversary';
 import { api, ApiError } from '../lib/cloud-notebook';
 import {
-  featuredPhotos, parsePhotoManifest, photoSummary, photoUrl, type PhotoManifest, type PrivatePhoto,
+  featuredPhotoCount, featuredPhotos, parsePhotoManifest, photoSummary, photoUrl, type PhotoManifest, type PrivatePhoto,
 } from '../lib/photos';
 import { getSession, onSessionChange, publishSession } from '../lib/session';
 
@@ -36,6 +36,21 @@ const pasteDate = pasteDialog?.querySelector<HTMLInputElement>('[data-paste-date
 const pasteError = pasteDialog?.querySelector<HTMLElement>('[data-paste-error]');
 const pasteCancel = pasteDialog?.querySelector<HTMLButtonElement>('[data-paste-cancel]');
 const pasteSubmit = pasteDialog?.querySelector<HTMLButtonElement>('[data-paste-submit]');
+const manageDialog = document.querySelector<HTMLDialogElement>('[data-photo-manage]');
+const editPanel = manageDialog?.querySelector<HTMLElement>('[data-photo-edit-panel]');
+const deletePanel = manageDialog?.querySelector<HTMLElement>('[data-photo-delete-panel]');
+const titleForm = manageDialog?.querySelector<HTMLFormElement>('[data-photo-title-form]');
+const titleInput = manageDialog?.querySelector<HTMLInputElement>('[data-photo-title-input]');
+const titleError = manageDialog?.querySelector<HTMLElement>('[data-photo-edit-error]');
+const titleSubmit = manageDialog?.querySelector<HTMLButtonElement>('[data-photo-title-submit]');
+const deleteCopy = manageDialog?.querySelector<HTMLElement>('[data-photo-delete-copy]');
+const deleteError = manageDialog?.querySelector<HTMLElement>('[data-photo-delete-error]');
+const deleteConfirm = manageDialog?.querySelector<HTMLButtonElement>('[data-photo-delete-confirm]');
+const lightboxManagement = dialog.querySelector<HTMLElement>('[data-lightbox-management]');
+const lightboxEdit = dialog.querySelector<HTMLButtonElement>('[data-lightbox-edit]');
+const lightboxFeature = dialog.querySelector<HTMLButtonElement>('[data-lightbox-feature]');
+const lightboxDelete = dialog.querySelector<HTMLButtonElement>('[data-lightbox-delete]');
+const albumPage = walls.some(wall => wall.dataset.photoWall === 'all');
 
 let authenticated = false;
 let loaded = false;
@@ -51,13 +66,49 @@ let trigger: HTMLElement | null = null;
 let touchStartX = 0;
 let touchStartY = 0;
 let revision = 0;
+let featuredIds = new Set<string>();
+let currentKind: 'all' | 'featured' = 'all';
 let pasteSource: File | null = null;
 let pastePreviewUrl = '';
 let titleDirty = false;
 let addTrigger: HTMLButtonElement | null = null;
 let uploading = false;
+let photoMutation: AbortController | null = null;
+let photoBusy = false;
+let managePhoto: PrivatePhoto | null = null;
+let manageTrigger: HTMLElement | null = null;
+let manageMode: 'title' | 'delete' | null = null;
 
 const dateLabel = (photo: PrivatePhoto) => (photo.date ? dotted(photo.date) : '');
+
+function makePhotoButton(label: string, action: () => void, className = 'text-button') {
+  const button = document.createElement('button');
+  button.type = 'button';
+  button.className = className;
+  button.textContent = label;
+  button.addEventListener('click', action);
+  return button;
+}
+
+function setImageTone(container: HTMLElement, source: HTMLImageElement) {
+  if (!source.complete || !source.naturalWidth || !source.naturalHeight) return;
+  try {
+    const sample = document.createElement('canvas');
+    sample.width = 8;
+    sample.height = 8;
+    const context = sample.getContext('2d', { willReadFrequently: true });
+    if (!context) return;
+    context.drawImage(source, 0, 0, sample.width, sample.height);
+    const pixels = context.getImageData(0, 0, sample.width, sample.height).data;
+    let luminance = 0;
+    for (let offset = 0; offset < pixels.length; offset += 4) {
+      luminance += (pixels[offset] * 0.2126 + pixels[offset + 1] * 0.7152 + pixels[offset + 2] * 0.0722) * pixels[offset + 3] / 255;
+    }
+    container.classList.toggle('is-dark-image', luminance / (sample.width * sample.height) < 86);
+  } catch {
+    container.classList.remove('is-dark-image');
+  }
+}
 
 function discardPendingImage() {
   const pending = pendingImage;
@@ -65,7 +116,7 @@ function discardPendingImage() {
   pending?.removeAttribute('src');
 }
 
-function card(photo: PrivatePhoto, list: PrivatePhoto[], position: number, pink: boolean): HTMLAnchorElement {
+function card(photo: PrivatePhoto, list: PrivatePhoto[], position: number, pink: boolean, manageable = false): HTMLElement {
   const link = document.createElement('a');
   link.className = 'polaroid polaroid-private';
   link.href = photoUrl(photo.id, 'large');
@@ -81,6 +132,7 @@ function card(photo: PrivatePhoto, list: PrivatePhoto[], position: number, pink:
   img.height = photo.height;
   img.loading = 'lazy';
   img.decoding = 'async';
+  img.addEventListener('load', () => setImageTone(link, img), { once: true });
   const caption = document.createElement('span');
   caption.className = 'polaroid-caption';
   const name = document.createElement('span');
@@ -98,9 +150,33 @@ function card(photo: PrivatePhoto, list: PrivatePhoto[], position: number, pink:
   link.addEventListener('click', event => {
     if (event.ctrlKey || event.metaKey || event.shiftKey || event.altKey) return;
     event.preventDefault();
-    open(list, position, link);
+    open(list, position, link, manageable ? 'all' : 'featured');
   });
-  return link;
+  if (!manageable) return link;
+
+  const entry = document.createElement('div');
+  entry.className = 'photo-entry';
+  entry.dataset.photoEntryId = photo.id;
+  const actions = document.createElement('div');
+  actions.className = 'photo-management';
+  const edit = makePhotoButton('改标题', () => openPhotoTitle(photo, edit));
+  const feature = makePhotoButton(featuredIds.has(photo.id) ? '从首页撤下' : '设为首页精选', () => void toggleFeatured(photo.id, !featuredIds.has(photo.id)));
+  const remove = makePhotoButton('从相册取下', () => openPhotoDelete(photo, remove), 'text-button photo-remove-button');
+  feature.disabled = !featuredIds.has(photo.id) && featuredIds.size >= featuredPhotoCount;
+  if (feature.disabled) feature.title = '首页已经留了三张，请先收下一张。';
+  edit.dataset.photoId = feature.dataset.photoId = remove.dataset.photoId = photo.id;
+  actions.append(edit, feature, remove);
+  entry.append(link, actions);
+  return entry;
+}
+
+function featuredEmptySlot(): HTMLElement {
+  const slot = document.createElement('div');
+  slot.className = 'polaroid polaroid-empty featured-empty';
+  slot.setAttribute('role', 'status');
+  slot.setAttribute('aria-label', '首页精选，留给下一张');
+  slot.innerHTML = '<span class="polaroid-slot"><span>留给下一张</span></span><span class="polaroid-caption"><span class="polaroid-title">&nbsp;</span></span>';
+  return slot;
 }
 
 function addSlot(): HTMLButtonElement {
@@ -241,11 +317,22 @@ async function applySelectedFile(file: File) {
 
 function applyManifest(manifest: PhotoManifest, focusId?: string) {
   revision = manifest.revision;
+  featuredIds = new Set(manifest.featured);
   loaded = true;
   render(manifest.photos, featuredPhotos(manifest));
   setStatus('');
-  if (focusId) {
-    const card = document.querySelector<HTMLElement>(`[data-photo-wall="all"] [data-photo-id="${focusId}"]`);
+  if (dialog.open) {
+    const activeId = current[index]?.id;
+    const updated = currentKind === 'all' ? manifest.photos : featuredPhotos(manifest);
+    if (updated.length === 0) dialog.close();
+    else {
+      const activeIndex = updated.findIndex(photo => photo.id === activeId);
+      current = updated;
+      void show(activeIndex >= 0 ? activeIndex : Math.min(index, updated.length - 1));
+    }
+  }
+  if (focusId && !manageDialog?.open) {
+    const card = document.querySelector<HTMLElement>(`[data-photo-wall="all"] a[data-photo-id="${focusId}"]`);
     card?.focus({ preventScroll: true });
   }
 }
@@ -258,13 +345,21 @@ function clearPhotos() {
   request = null;
   uploadRequest?.abort();
   uploadRequest = null;
+  photoMutation?.abort();
+  photoMutation = null;
+  photoBusy = false;
   loaded = false;
   revision = 0;
   if (dialog.open) dialog.close();
   closePaste(false);
+  closePhotoManage(false);
   image.removeAttribute('src');
+  print.classList.remove('is-dark-image');
+  if (lightboxManagement) lightboxManagement.hidden = true;
   title.textContent = meta.textContent = '';
   current = [];
+  currentKind = 'all';
+  featuredIds = new Set();
   for (const wall of walls) wall.replaceChildren(...placeholders.get(wall)!.map(node => node.cloneNode(true)));
   locked.forEach(element => { element.hidden = false; });
   if (summary) summary.textContent = lockedSummary;
@@ -275,11 +370,12 @@ function render(photos: PrivatePhoto[], featured: PrivatePhoto[]) {
   for (const wall of walls) {
     // Empty featured: keep the homepage placeholder prints; never invent picks from photos.
     if (wall.dataset.photoWall === 'featured' && featured.length === 0) {
-      wall.replaceChildren(...placeholders.get(wall)!.map(node => node.cloneNode(true)));
+      wall.replaceChildren(featuredEmptySlot());
       continue;
     }
     const list = wall.dataset.photoWall === 'featured' ? featured : photos;
-    const cards: HTMLElement[] = list.map((photo, position) => card(photo, list, position, position % 3 === 1));
+    const manageable = wall.dataset.photoWall === 'all';
+    const cards: HTMLElement[] = list.map((photo, position) => card(photo, list, position, position % 3 === 1, manageable));
     if (wall.dataset.photoWall === 'all') cards.push(addSlot());
     wall.replaceChildren(...cards);
   }
@@ -318,10 +414,14 @@ async function show(target: number) {
   const position = index;
   const currentImageGeneration = ++imageGeneration;
   discardPendingImage();
+  print.classList.remove('is-dark-image');
   const nextImage = new Image(photo.width, photo.height);
   pendingImage = nextImage;
   nextImage.dataset.lightboxImage = '';
   nextImage.alt = photo.title;
+  nextImage.addEventListener('load', () => {
+    if (imageGeneration === currentImageGeneration && image === nextImage) setImageTone(print, nextImage);
+  }, { once: true });
   nextImage.src = photoUrl(photo.id, 'large');
   if (dialog.open) {
     try {
@@ -340,17 +440,195 @@ async function show(target: number) {
   print.style.setProperty('--ratio', String(photo.width / photo.height));
   image.replaceWith(nextImage);
   image = nextImage;
+  setImageTone(print, nextImage);
   title.textContent = photo.title;
   meta.textContent = [dateLabel(photo), `${position + 1} / ${current.length}`].filter(Boolean).join(' · ');
+  if (lightboxManagement) lightboxManagement.hidden = !albumPage || !authenticated;
+  if (lightboxFeature) {
+    const isFeatured = featuredIds.has(photo.id);
+    lightboxFeature.textContent = isFeatured ? '从首页撤下' : featuredIds.size >= featuredPhotoCount ? '首页已留三张' : '设为首页精选';
+    lightboxFeature.disabled = !isFeatured && featuredIds.size >= featuredPhotoCount;
+    lightboxFeature.title = lightboxFeature.disabled ? '首页已经留了三张，请先收下一张。' : '';
+  }
 }
 
-function open(list: PrivatePhoto[], target: number, from: HTMLElement) {
+function open(list: PrivatePhoto[], target: number, from: HTMLElement, kind: 'all' | 'featured') {
   current = list;
+  currentKind = kind;
   trigger = from;
   previous.hidden = next.hidden = list.length < 2;
   show(target);
   dialog.showModal();
   root.classList.add('has-dialog');
+}
+
+function setManageError(target: HTMLElement | null | undefined, message: string) {
+  if (!target) return;
+  target.textContent = message;
+  target.hidden = !message;
+}
+
+function openPhotoTitle(photo: PrivatePhoto, from: HTMLElement) {
+  if (!manageDialog || !editPanel || !deletePanel || !titleInput || !authenticated || !loaded) return;
+  managePhoto = photo;
+  manageTrigger = from;
+  manageMode = 'title';
+  editPanel.hidden = false;
+  deletePanel.hidden = true;
+  titleInput.value = photo.title;
+  titleInput.disabled = false;
+  if (titleSubmit) { titleSubmit.disabled = false; titleSubmit.textContent = '收好标题'; }
+  setManageError(titleError, '');
+  setManageError(deleteError, '');
+  manageDialog.showModal();
+  root.classList.add('has-dialog');
+  titleInput.focus();
+  titleInput.select();
+}
+
+function openPhotoDelete(photo: PrivatePhoto, from: HTMLElement) {
+  if (!manageDialog || !editPanel || !deletePanel || !deleteCopy || !authenticated || !loaded) return;
+  managePhoto = photo;
+  manageTrigger = from;
+  manageMode = 'delete';
+  editPanel.hidden = true;
+  deletePanel.hidden = false;
+  deleteCopy.textContent = `要把「${photo.title}」从这本相册里取下来吗？首页精选也会一并撤下。`;
+  if (deleteConfirm) { deleteConfirm.disabled = false; deleteConfirm.textContent = '确认取下'; }
+  setManageError(titleError, '');
+  setManageError(deleteError, '');
+  manageDialog.showModal();
+  root.classList.add('has-dialog');
+  deletePanel.querySelector<HTMLButtonElement>('[data-photo-manage-cancel]')?.focus();
+}
+
+function closePhotoManage(restoreFocus = true) {
+  if (!manageDialog) return;
+  const from = manageTrigger;
+  if (manageDialog.open) manageDialog.close();
+  managePhoto = null;
+  manageTrigger = null;
+  manageMode = null;
+  if (titleInput) { titleInput.value = ''; titleInput.disabled = false; }
+  if (deleteCopy) deleteCopy.textContent = '';
+  if (titleSubmit) { titleSubmit.disabled = false; titleSubmit.textContent = '收好标题'; }
+  if (deleteConfirm) { deleteConfirm.disabled = false; deleteConfirm.textContent = '确认取下'; }
+  setManageError(titleError, '');
+  setManageError(deleteError, '');
+  if (!pasteDialog?.open && !dialog.open) root.classList.remove('has-dialog');
+  if (restoreFocus && !root.classList.contains('is-locked')) from?.focus({ preventScroll: true });
+}
+
+async function mutatePhoto(
+  id: string,
+  path: string,
+  method: 'PUT' | 'DELETE',
+  payload: Record<string, unknown>,
+  focusId?: string,
+): Promise<PhotoManifest | null> {
+  if (!authenticated || !loaded || photoBusy) return null;
+  photoBusy = true;
+  const requestGeneration = generation;
+  const controller = new AbortController();
+  photoMutation = controller;
+  try {
+    const manifest = parsePhotoManifest(await api<PhotoManifest>(path, {
+      method,
+      signal: controller.signal,
+      body: JSON.stringify(payload),
+    }));
+    if (!authenticated || generation !== requestGeneration) return null;
+    applyManifest(manifest, focusId);
+    return manifest;
+  } catch (error) {
+    if (!authenticated || generation !== requestGeneration) return null;
+    if (error instanceof ApiError && error.status === 401) {
+      clearPhotos();
+      publishSession({ authenticated: false, configured: true });
+      return null;
+    }
+    if (error instanceof ApiError && error.status === 409) {
+      loaded = false;
+      await loadPhotos();
+    }
+    throw error;
+  } finally {
+    if (photoMutation === controller) {
+      photoMutation = null;
+      photoBusy = false;
+    }
+  }
+}
+
+async function toggleFeatured(id: string, featured: boolean, focusCard = true) {
+  try {
+    await mutatePhoto(id, `/api/photos/${id}/featured`, 'PUT', { expectedRevision: revision, featured }, focusCard ? id : undefined);
+  } catch (error) {
+    if (authenticated) setStatus(error instanceof ApiError ? error.message : '这张暂时没能改好，请再试一次。', true);
+  }
+}
+
+async function submitPhotoTitle(event: Event) {
+  event.preventDefault();
+  if (!managePhoto || manageMode !== 'title' || !titleInput || !titleForm || !authenticated || photoBusy) return;
+  const photo = managePhoto;
+  const nextTitle = titleInput.value.trim();
+  if (!nextTitle || nextTitle.length > 80) {
+    setManageError(titleError, '标题要有内容，最多 80 个字。');
+    titleInput.focus();
+    return;
+  }
+  titleInput.disabled = true;
+  if (titleSubmit) { titleSubmit.disabled = true; titleSubmit.textContent = '正在收好…'; }
+  try {
+    const saved = await mutatePhoto(photo.id, `/api/photos/${photo.id}`, 'PUT', { expectedRevision: revision, title: nextTitle }, photo.id);
+    if (saved) {
+      closePhotoManage(false);
+      if (dialog.open) lightboxEdit?.focus({ preventScroll: true });
+      else document.querySelector<HTMLElement>(`[data-photo-wall="all"] a[data-photo-id="${photo.id}"]`)?.focus({ preventScroll: true });
+    }
+  } catch (error) {
+    if (!authenticated) return;
+    setManageError(titleError, error instanceof ApiError && error.status === 409
+      ? '相册刚有新变化，已经翻到最新一版；请核对标题后再收好。'
+      : error instanceof ApiError ? error.message : '标题暂时没能收好，请再试一次。');
+  } finally {
+    if (manageMode === 'title') {
+      titleInput.disabled = false;
+      if (titleSubmit) { titleSubmit.disabled = false; titleSubmit.textContent = '再收一次'; }
+    }
+  }
+}
+
+async function confirmPhotoDelete() {
+  if (!managePhoto || manageMode !== 'delete' || !authenticated || photoBusy) return;
+  const photo = managePhoto;
+  if (deleteConfirm) { deleteConfirm.disabled = true; deleteConfirm.textContent = '正在收起…'; }
+  try {
+    const removed = await mutatePhoto(photo.id, `/api/photos/${photo.id}`, 'DELETE', { expectedRevision: revision });
+    if (!removed) return;
+    closePhotoManage(false);
+    setStatus('这张照片已从相册收好。');
+    if (dialog.open) {
+      if (next.hidden && previous.hidden) dialog.querySelector<HTMLButtonElement>('[data-lightbox-close]')?.focus({ preventScroll: true });
+      else lightboxFeature?.focus({ preventScroll: true });
+    }
+    else {
+      const nextCard = document.querySelector<HTMLElement>('[data-photo-wall="all"] a[data-photo-id]')
+        ?? document.querySelector<HTMLElement>('[data-photo-wall="all"] .polaroid-add');
+      nextCard?.focus({ preventScroll: true });
+    }
+  } catch (error) {
+    if (!authenticated) return;
+    setManageError(deleteError, error instanceof ApiError && error.status === 409
+      ? '相册刚有新变化，已经翻到最新一版；确认后再取下这张。'
+      : error instanceof ApiError ? error.message : '照片暂时没能取下，请再试一次。');
+  } finally {
+    if (manageMode === 'delete' && deleteConfirm) {
+      deleteConfirm.disabled = false;
+      deleteConfirm.textContent = '确认取下';
+    }
+  }
 }
 
 async function submitPaste(event: Event) {
@@ -486,8 +764,36 @@ dialog.addEventListener('touchend', (event) => {
 dialog.addEventListener('close', () => {
   imageGeneration++;
   discardPendingImage();
-  if (!pasteDialog?.open) root.classList.remove('has-dialog');
+  if (!pasteDialog?.open && !manageDialog?.open) root.classList.remove('has-dialog');
   if (!root.classList.contains('is-locked')) trigger?.focus({ preventScroll: true });
+});
+
+if (manageDialog) {
+  manageDialog.querySelectorAll<HTMLButtonElement>('[data-photo-manage-cancel]').forEach(button => {
+    button.addEventListener('click', () => closePhotoManage(true));
+  });
+  titleForm?.addEventListener('submit', event => void submitPhotoTitle(event));
+  deleteConfirm?.addEventListener('click', () => void confirmPhotoDelete());
+  manageDialog.addEventListener('click', event => {
+    if (event.target === manageDialog) closePhotoManage(true);
+  });
+  manageDialog.addEventListener('cancel', event => {
+    event.preventDefault();
+    closePhotoManage(true);
+  });
+}
+
+lightboxEdit?.addEventListener('click', () => {
+  const photo = current[index];
+  if (photo) openPhotoTitle(photo, lightboxEdit);
+});
+lightboxFeature?.addEventListener('click', () => {
+  const photo = current[index];
+  if (photo) void toggleFeatured(photo.id, !featuredIds.has(photo.id), false);
+});
+lightboxDelete?.addEventListener('click', () => {
+  const photo = current[index];
+  if (photo) openPhotoDelete(photo, lightboxDelete);
 });
 
 if (pasteDialog && pasteForm && pasteFile && pastePick) {
@@ -508,7 +814,7 @@ if (pasteDialog && pasteForm && pasteFile && pastePick) {
     closePaste(true);
   });
   pasteDialog.addEventListener('close', () => {
-    if (!dialog.open) root.classList.remove('has-dialog');
+    if (!dialog.open && !manageDialog?.open) root.classList.remove('has-dialog');
   });
 }
 

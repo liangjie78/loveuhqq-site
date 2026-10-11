@@ -16,9 +16,11 @@ const timeline = [...entries]
   <ol class="moment-archive-list">
     {timeline.map(({ date, title }) => (
       <li class="memory-ticket">
-        <time data-moment-date datetime={date}>{dotted(date)}</time>
-        <p>{title}</p>
-        <span data-moment-status hidden>还没到</span>
+        <button class="memory-ticket-button" type="button" data-moment-ticket data-moment-ticket-date={date} aria-label={`${dotted(date)}，${title}`}>
+          <time data-moment-date datetime={date}>{dotted(date)}</time>
+          <span class="memory-ticket-title">{title}</span>
+          <span data-moment-status hidden>还没到</span>
+        </button>
       </li>
     ))}
   </ol>

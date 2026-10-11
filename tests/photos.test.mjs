@@ -105,6 +105,9 @@ test('photo manifest and images never leave KV without a session', async () => {
   assert.deepEqual(f.reads, []);
   const denied = await f.request('/api/photos', 'POST', undefined, { body: uploadForm() });
   assert.equal(denied.status, 401);
+  assert.equal((await f.request('/api/photos/aaaaaaaaaaaaaaaa', 'PUT', undefined, {
+    headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ expectedRevision: 0, title: '新标题' }),
+  })).status, 401);
   assert.deepEqual(f.writes, []);
 });
 
@@ -185,6 +188,109 @@ test('signed-in upload adds one photo without changing featured', async () => {
   assert.deepEqual(f.writes, ['thumb', 'large'].map(size => photoObjectKey('cccccccccccccccc', size)));
   assert.deepEqual(await (await f.request('/api/photos', 'GET', cookie)).json(), body);
   assert.equal(f.sqlite.prepare('SELECT revision FROM photo_manifest').get().revision, 1);
+});
+
+test('signed-in photo management edits titles and featured picks with revision checks', async () => {
+  const f = fixture();
+  const cookie = await f.login();
+  const headers = { 'Content-Type': 'application/json' };
+  const renamed = await f.request('/api/photos/aaaaaaaaaaaaaaaa', 'PUT', cookie, {
+    headers, body: JSON.stringify({ expectedRevision: 0, title: '改好的名字' }),
+  });
+  assert.equal(renamed.status, 200);
+  assert.equal((await renamed.json()).revision, 1);
+  assert.equal(f.sqlite.prepare('SELECT revision FROM photo_manifest WHERE id = 1').get().revision, 1);
+
+  const featured = await f.request('/api/photos/aaaaaaaaaaaaaaaa/featured', 'PUT', cookie, {
+    headers, body: JSON.stringify({ expectedRevision: 1, featured: true }),
+  });
+  assert.equal(featured.status, 200);
+  assert.deepEqual((await featured.json()).featured, ['bbbbbbbbbbbbbbbb', 'aaaaaaaaaaaaaaaa']);
+
+  const unfeatured = await f.request('/api/photos/bbbbbbbbbbbbbbbb/featured', 'PUT', cookie, {
+    headers, body: JSON.stringify({ expectedRevision: 2, featured: false }),
+  });
+  assert.equal(unfeatured.status, 200);
+  assert.deepEqual((await unfeatured.json()).featured, ['aaaaaaaaaaaaaaaa']);
+
+  const stale = await f.request('/api/photos/aaaaaaaaaaaaaaaa', 'PUT', cookie, {
+    headers, body: JSON.stringify({ expectedRevision: 2, title: '旧版本' }),
+  });
+  assert.equal(stale.status, 409);
+  assert.equal((await (await f.request('/api/photos', 'GET', cookie)).json()).photos.find(item => item.id === 'aaaaaaaaaaaaaaaa').title, '改好的名字');
+});
+
+test('photo management validates fields, the three-pick cap, and same-origin writes', async () => {
+  const full = {
+    version: 1, revision: 0,
+    featured: ['0000000000000000', '0000000000000001', '0000000000000002'],
+    photos: Array.from({ length: 4 }, (_, index) => photo(index.toString(16).padStart(16, '0'))),
+  };
+  const f = fixture({ 'manifest.json': JSON.stringify(full) });
+  const cookie = await f.login();
+  const headers = { 'Content-Type': 'application/json' };
+  assert.equal((await f.request('/api/photos/0000000000000003', 'PUT', cookie, {
+    headers, body: JSON.stringify({ expectedRevision: 0, title: '照'.repeat(81) }),
+  })).status, 400);
+  const capped = await f.request('/api/photos/0000000000000003/featured', 'PUT', cookie, {
+    headers, body: JSON.stringify({ expectedRevision: 0, featured: true }),
+  });
+  assert.equal(capped.status, 422);
+  const crossOrigin = await f.request('/api/photos/0000000000000003/featured', 'PUT', cookie, {
+    headers: { ...headers, Origin: 'https://elsewhere.example' },
+    body: JSON.stringify({ expectedRevision: 0, featured: true }),
+  });
+  assert.equal(crossOrigin.status, 403);
+  assert.equal(f.sqlite.prepare('SELECT revision FROM photo_manifest WHERE id = 1').get().revision, 0);
+});
+
+test('deleting a photo removes its KV objects, manifest entry, and featured pick', async () => {
+  const id = 'bbbbbbbbbbbbbbbb';
+  const objects = {
+    'manifest.json': JSON.stringify(manifest),
+    [photoObjectKey(id, 'thumb')]: tinyWebp,
+    [photoObjectKey(id, 'large')]: tinyWebp,
+  };
+  const f = fixture(objects);
+  const cookie = await f.login();
+  const response = await f.request(`/api/photos/${id}`, 'DELETE', cookie, {
+    headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ expectedRevision: 0 }),
+  });
+  assert.equal(response.status, 200);
+  const body = await response.json();
+  assert.equal(body.revision, 1);
+  assert.deepEqual(body.featured, []);
+  assert.deepEqual(body.photos.map(item => item.id), ['aaaaaaaaaaaaaaaa']);
+  assert.deepEqual(f.deletes, [photoObjectKey(id, 'thumb'), photoObjectKey(id, 'large')]);
+  assert.equal((await f.request(`/api/photos/${id}/thumb`, 'GET', cookie)).status, 404);
+  assert.equal((await f.request('/api/photos', 'GET', cookie)).status, 200);
+});
+
+test('a losing photo deletion restores objects while the photo remains in the latest manifest', async () => {
+  const id = 'bbbbbbbbbbbbbbbb';
+  const objects = {
+    'manifest.json': JSON.stringify(manifest),
+    [photoObjectKey(id, 'thumb')]: tinyWebp,
+    [photoObjectKey(id, 'large')]: tinyWebp,
+  };
+  const f = fixture(objects);
+  const cookie = await f.login();
+  await f.request('/api/photos', 'GET', cookie);
+  const remove = f.env.PHOTOS.delete;
+  f.env.PHOTOS.delete = async key => {
+    await remove(key);
+    if (key === photoObjectKey(id, 'large')) {
+      const concurrent = { ...manifest, revision: 1, photos: manifest.photos.map(item => item.id === id ? { ...item, title: '另一版标题' } : item) };
+      f.sqlite.prepare('UPDATE photo_manifest SET manifest = ?, revision = 1 WHERE id = 1').run(JSON.stringify(concurrent));
+    }
+  };
+  const response = await f.request(`/api/photos/${id}`, 'DELETE', cookie, {
+    headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ expectedRevision: 0 }),
+  });
+  assert.equal(response.status, 409);
+  assert.deepEqual(f.store[photoObjectKey(id, 'thumb')], tinyWebp);
+  assert.deepEqual(f.store[photoObjectKey(id, 'large')], tinyWebp);
+  assert.equal((await (await f.request('/api/photos', 'GET', cookie)).json()).photos.find(item => item.id === id).title, '另一版标题');
 });
 
 test('upload into an empty featured album never invents homepage picks', async () => {
