@@ -28,16 +28,20 @@
   --rose-2: #cc6f73;
   --rose-3: #dd9496;
   --blush: #f1d6d2;
-  --empty: rgb(42 31 27 / .075);
+  --empty: rgb(42 31 27 / .14);
   /* The hand-coloured calendar tones (data-tone 1-3) and the seal's sheen/depth. */
-  --rose-tone-1: #c55d63;
-  --rose-tone-2: #d4817f;
-  --rose-tone-3: #bd5159;
+  --rose-tone-1: #c96c70;
+  --rose-tone-2: #dc8b87;
+  --rose-tone-3: #ba5960;
+  --calendar-today: #8c2f38;
+  --calendar-milestone: #e8a5a4;
+  --calendar-milestone-past: #d27969;
+  --photo-dark: #1a1412;
   --rose-sheen: #d0707a;
   --rose-deep: #8c2f38;
   --ink-soft: #45352f;
   --paper-bright: #fbf4ec;
-  --backdrop: rgb(34 24 20 / .86);
+  --backdrop: rgb(24 17 14 / .94);
   --line-strong: rgb(42 31 27 / .2);
   --line-stronger: rgb(42 31 27 / .32);
 
@@ -545,19 +549,19 @@ html.fonts-pending .intro { animation-play-state: paused; }
   transition: background-color .3s, scale .3s var(--ease-out);
 }
 .year-cells > span:hover { scale: 1.3; }
-.year-cells > .is-past { background: var(--rose-2); }
+.year-cells > .is-past { background: var(--rose-tone-2); }
 .year-cells > .is-past[data-tone="1"] { background: var(--rose-tone-1); }
 .year-cells > .is-past[data-tone="2"] { background: var(--rose-tone-2); }
 .year-cells > .is-past[data-tone="3"] { background: var(--rose-tone-3); }
 .year-cells > .is-today {
-  background: var(--rose);
+  background: var(--calendar-today);
   box-shadow: 0 0 0 2px var(--sheet), 0 0 0 3.5px var(--rose);
   animation: today 2.6s ease-in-out infinite;
 }
 .year-cells > .is-hundred,
 .year-cells > .is-anniversary {
   border-radius: 0;
-  background: var(--rose-3);
+  background: var(--calendar-milestone);
   scale: 1.35;
   -webkit-mask: var(--heart) center / contain no-repeat;
   mask: var(--heart) center / contain no-repeat;
@@ -568,6 +572,9 @@ html.fonts-pending .intro { animation-play-state: paused; }
 .year-cells > .is-anniversary.is-past,
 .year-cells > .is-hundred.is-today,
 .year-cells > .is-anniversary.is-today { background: var(--rose); }
+.year-cells > .is-hundred.is-today,
+.year-cells > .is-anniversary.is-today { background: var(--calendar-today); }
+.year-cells > .is-moment.is-past:not(.is-today) { background: var(--calendar-milestone-past); }
 .year-cells > .is-hundred.is-today,
 .year-cells > .is-anniversary.is-today { box-shadow: none; animation: heart-pulse 1.8s ease-in-out infinite; }
 .year-cells > .is-picked { outline: 1.5px solid var(--ink); outline-offset: 1.5px; }
@@ -618,7 +625,7 @@ html.fonts-pending .intro { animation-play-state: paused; }
   border-radius: 28%;
   background: var(--empty);
 }
-.year-legend .is-past { background: var(--rose-2); }
+.year-legend .is-past { background: var(--rose-tone-2); }
 .year-legend .is-mark {
   border-radius: 0;
   background: var(--rose);
@@ -678,7 +685,7 @@ html.fonts-pending .intro { animation-play-state: paused; }
 .polaroids .polaroid:nth-child(2) { margin-top: 2.75rem; }
 .polaroids .polaroid:nth-child(3) { margin-top: .75rem; }
 a.polaroid:hover, a.polaroid:focus-visible { rotate: 0deg; translate: 0 -8px; box-shadow: var(--shadow-lift); }
-.polaroid img { width: 100%; aspect-ratio: 4 / 5; object-fit: cover; background: var(--paper-2); filter: saturate(.9) contrast(1.02); }
+.polaroid img { width: 100%; aspect-ratio: 4 / 5; object-fit: cover; background: var(--paper-2); opacity: 1; filter: saturate(.98) contrast(1.02); }
 .polaroid .tape { top: -.8rem; left: 50%; translate: -50% 0; rotate: -4deg; }
 .polaroid:nth-child(3n + 2) .tape { rotate: 3deg; }
 
@@ -706,10 +713,22 @@ a.polaroid:hover, a.polaroid:focus-visible { rotate: 0deg; translate: 0 -8px; bo
 
 /* Real photos keep their own shape; very tall screenshots are cut from the top on the wall. */
 .polaroid-private img { height: auto; aspect-ratio: auto; max-height: 150cqi; object-fit: cover; object-position: center top; }
+.polaroid-private img { opacity: 1; }
+.polaroid-private.is-dark-image img,
+.lightbox-print.is-dark-image img { background: var(--photo-dark); }
 .polaroid-private .polaroid-caption { align-items: flex-start; }
 /* Private captions never reach the public serif subset, so they use the system face. */
 .polaroid-private .polaroid-title { font-family: var(--sans); font-size: clamp(.88rem, 1.2vw, .98rem); white-space: normal; }
 .polaroid-private .polaroid-tag { padding-top: .2rem; font-variant-numeric: tabular-nums; }
+.photo-entry { display: grid; min-width: 0; align-content: start; }
+.photo-entry .polaroid { width: 100%; }
+.photo-management { display: flex; flex-wrap: wrap; justify-content: center; gap: .15rem .55rem; }
+.photo-entry > .photo-management { margin-top: .35rem; border-top: 1px dashed var(--line-strong); }
+.photo-management .text-button { min-height: 44px; padding-inline: .15rem; color: var(--muted); font-size: .72rem; }
+.photo-management .text-button:hover { color: var(--rose); }
+.photo-management .text-button:disabled { color: var(--faint); cursor: default; }
+.photo-management .photo-remove-button { color: var(--rose-deep); }
+.featured-empty { grid-column: 1 / -1; justify-self: center; width: min(18rem, 60%); }
 
 .photos-locked { display: grid; justify-items: center; gap: 1rem; margin-top: 2.5rem; text-align: center; color: var(--muted); line-height: 1.85; }
 .photos-locked[hidden] { display: none; }
@@ -921,7 +940,7 @@ a.polaroid:hover, a.polaroid:focus-visible { rotate: 0deg; translate: 0 -8px; bo
   rotate: -1deg;
 }
 .lightbox[open] .lightbox-print { animation: print-in .6s var(--ease-out) both; }
-.lightbox-print img { width: 100%; height: auto; background: var(--paper-2); }
+.lightbox-print img { width: 100%; height: auto; background: var(--paper-2); opacity: 1; }
 .lightbox-print figcaption {
   display: flex;
   align-items: baseline;
@@ -931,6 +950,8 @@ a.polaroid:hover, a.polaroid:focus-visible { rotate: 0deg; translate: 0 -8px; bo
 }
 .lightbox-title { font: 400 1.02rem/1.5 var(--sans); letter-spacing: .04em; }
 .lightbox-meta { flex: none; font-size: .75rem; letter-spacing: .06em; color: var(--muted); font-variant-numeric: tabular-nums; }
+.lightbox-management { justify-content: flex-start; padding: 0 .15rem .65rem; border-top: 1px dashed var(--line-strong); }
+.lightbox-management .text-button { font-size: .76rem; }
 @container (max-width: 20rem) {
   .lightbox-print figcaption { flex-direction: column; align-items: flex-start; gap: .25rem; }
   .lightbox-title { font-size: 1rem; }
@@ -1058,6 +1079,8 @@ html.is-locked .gate, .gate.is-leaving { display: grid; }
 }
 .album-wall .polaroid:nth-child(even) { translate: 0 1.5rem; }
 .album-wall a.polaroid:nth-child(even):hover { translate: 0 calc(1.5rem - 8px); }
+.album-wall .photo-entry:nth-child(even) { translate: 0 1.5rem; }
+.album-wall .photo-entry:nth-child(even) .polaroid:hover { translate: 0 calc(1.5rem - 8px); }
 
 .polaroid-empty { background: transparent; box-shadow: none; outline: 1.5px dashed var(--line-strong); outline-offset: -1px; }
 .polaroid-slot { display: grid; place-items: center; aspect-ratio: 4 / 5; font: 400 1rem var(--serif); letter-spacing: .2em; color: var(--faint); }
@@ -1077,6 +1100,26 @@ html.is-locked .gate, .gate.is-leaving { display: grid; }
 .polaroid-add:hover { outline-color: var(--line-stronger); }
 .polaroid-add:hover .polaroid-add-main { color: var(--rose); }
 .polaroid-add:focus-visible { outline: 2px solid var(--rose); outline-offset: 4px; }
+
+.photo-manage-dialog {
+  width: min(calc(100% - 2 * var(--gutter)), 26rem);
+  max-height: calc(100dvh - 2rem - env(safe-area-inset-top) - env(safe-area-inset-bottom));
+  margin: auto;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--ink);
+  overflow: visible;
+}
+.photo-manage-dialog[open] { display: block; animation: print-in .4s var(--ease-out) both; }
+.photo-manage-dialog::backdrop { background: var(--backdrop); }
+.photo-manage-card { position: relative; padding: 2.25rem 1.5rem 1.5rem; background: var(--sheet); box-shadow: var(--shadow-paper); }
+.photo-manage-card > .tape { top: -.7rem; left: 50%; translate: -50% 0; rotate: -2deg; }
+.photo-manage-card h2 { margin: 0 0 1.25rem; text-align: center; font: 400 clamp(1.2rem, 4vw, 1.45rem)/1.5 var(--serif); letter-spacing: .08em; }
+.photo-manage-form { display: grid; gap: 1rem; }
+.photo-delete-copy { line-height: 1.9; color: var(--muted); }
+.photo-manage-card .paste-actions { margin-top: 1.2rem; }
+.photo-manage-card .photo-remove-button { color: var(--rose-deep); }
 
 .paste-dialog {
   width: min(100%, 24rem);
@@ -1301,13 +1344,19 @@ html.is-locked .gate, .gate.is-leaving { display: grid; }
 
 /* On narrow screens the year turns on its side: months become columns. */
 @media (max-width: 640px) {
-  .site-nav a { padding: 0 .5rem; font-size: .85rem; }
+  :root { --header: 3.5rem; }
+  .home .site-header { flex-wrap: nowrap; gap: .2rem; padding-inline: max(.65rem, env(safe-area-inset-left)) max(.65rem, env(safe-area-inset-right)); }
+  .home .wordmark { flex: none; font-size: clamp(.82rem, 3.4vw, 1.08rem); }
+  .home .site-nav { flex: 1; min-width: 0; justify-content: space-between; gap: 0; margin-left: auto; }
+  .home .site-nav a { flex: 1; min-width: 0; padding: 0 .08rem; font-size: clamp(.56rem, 1.9vw, .78rem); letter-spacing: 0; }
+  .home .header-guest { gap: .2rem; font-size: clamp(.56rem, 1.9vw, .72rem); letter-spacing: 0; }
+  .home .header-guest button { min-height: 2.75rem; font-size: inherit; }
 
   .year { padding: 2rem .9rem 1.25rem; }
   .year .tape-corner { top: -.35rem; left: -1rem; width: 4.75rem; }
   .year-ends, .year-hint, .year-feedback, .year-legend { padding-left: 0; }
   .year-ends { margin-bottom: 1rem; }
-  .year-feedback { position: sticky; top: calc(var(--header) + env(safe-area-inset-top)); z-index: 3; padding-block: .5rem; }
+  .year-feedback { position: sticky; top: calc(var(--header) + env(safe-area-inset-top)); z-index: 3; min-height: 3rem; margin-bottom: .5rem; padding-block: .25rem; }
   .year-grid { touch-action: pan-y; }
   .year-grid {
     grid-template-columns: repeat(var(--months), minmax(0, 1fr));
@@ -1339,9 +1388,11 @@ html.is-locked .gate, .gate.is-leaving { display: grid; }
 }
 
 @media (max-width: 380px) {
-  .site-header { gap: .5rem; padding-inline: max(1rem, env(safe-area-inset-left)) max(1rem, env(safe-area-inset-right)); }
-  .wordmark { flex: none; font-size: 1rem; }
-  .site-nav a { min-width: 2.75rem; padding: 0 .25rem; font-size: .8rem; letter-spacing: .04em; }
+  .home .site-header { gap: .12rem; padding-inline: max(.5rem, env(safe-area-inset-left)) max(.5rem, env(safe-area-inset-right)); }
+  .home .wordmark { font-size: .78rem; }
+  .home .site-nav a { padding-inline: 0; font-size: .6rem; }
+  .home .header-guest { gap: .1rem; font-size: .52rem; }
+  .home .header-guest button { font-size: .56rem; }
   .gate-slots { gap: 1.25rem; }
   .gate-slot { width: 2.6rem; }
 }

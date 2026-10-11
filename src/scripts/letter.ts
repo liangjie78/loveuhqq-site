@@ -14,6 +14,8 @@ const retry = dialog.querySelector<HTMLButtonElement>('[data-letter-retry]')!;
 const count = document.querySelector<HTMLElement>('[data-letter-count]')!;
 const wait = document.querySelector<HTMLElement>('[data-letter-wait]')!;
 const ready = document.querySelector<HTMLElement>('[data-letter-ready]')!;
+const guestCopy = document.querySelector<HTMLElement>('[data-letter-guest-copy]')!;
+const openCopy = document.querySelector<HTMLElement>('[data-letter-open-copy]')!;
 const stamp = document.querySelector<HTMLElement>('[data-letter-stamp]')!;
 let authenticated = false;
 let pendingLogin = false;
@@ -104,7 +106,7 @@ async function loadLetter() {
     if (error instanceof ApiError && error.status === 401) {
       closeLetter();
       publishSession({ authenticated: false, configured: true });
-      showNote('登录已失效，请重新解锁后拆信。');
+      showNote('钥匙好像过期了，再打开一次手账再拆信。');
       return;
     }
     status.textContent = error instanceof ApiError && error.status === 403
@@ -164,6 +166,8 @@ dialog.addEventListener('close', () => {
 onSessionChange(state => {
   const revoked = authenticated && !state.authenticated;
   authenticated = state.authenticated;
+  guestCopy.hidden = authenticated;
+  openCopy.hidden = !authenticated;
   if (authenticated) envelope.removeAttribute('data-open-login');
   if (!authenticated) closeLetter();
   if (revoked) pendingLogin = false;

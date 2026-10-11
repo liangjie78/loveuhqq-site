@@ -2,6 +2,7 @@ import { dotted, relationshipStartDate } from '../lib/anniversary';
 import { api, ApiError, emptyCloudNotebook, type CloudNotebook, type SessionState } from '../lib/cloud-notebook';
 import { getSession, onSessionChange, publishSession } from '../lib/session';
 import { isCalendarDate, parseNotebook, type Wish } from '../lib/notebook';
+import { momentTitles } from '../data/moments';
 
 const $ = <T extends HTMLElement = HTMLElement>(selector: string) => document.querySelector<T>(selector)!;
 const noteGuest = $('[data-note-guest]');
@@ -182,7 +183,15 @@ function dispatchNotebookChanged() {
 function renderNote() {
   if (!ready || !authenticated) return;
   $('[data-note-date]').textContent = dotted(date);
-  $('[data-note-text]').textContent = book.notes[date] ?? '这一天还空着。想记的时候，再写。';
+  const noteText = $('[data-note-text]');
+  const savedNote = book.notes[date];
+  const momentTitle = momentTitles.get(date);
+  if (savedNote?.trim()) noteText.textContent = savedNote;
+  else if (momentTitle) {
+    const title = document.createElement('strong');
+    title.textContent = momentTitle;
+    noteText.replaceChildren('这一天我们记下了：', title, '。想写一句的时候，再写。');
+  } else noteText.textContent = '这一天还空着。想记的时候，再写。';
   $('[data-note-edit-label]').textContent = book.notes[date] ? '改一改' : '写一句';
   if (!noteEditing) {
     noteForm.hidden = true;
@@ -190,7 +199,8 @@ function renderNote() {
     $('[data-note-text]').hidden = false;
     $('[data-note-delete]').hidden = !book.notes[date];
   }
-  $('[data-notes-count]').textContent = String(Object.keys(book.notes).length);
+  const writtenDates = Object.entries(book.notes).filter(([, text]) => text.trim()).length;
+  $('[data-notes-count]').textContent = String(writtenDates);
   const focused = document.activeElement instanceof HTMLElement ? document.activeElement : null;
   const focusedDate = focused?.dataset.noteDate;
   const index = $('[data-notes-list]');
@@ -214,18 +224,18 @@ function showNoteConflict() {
   const panel = $('[data-note-conflict]');
   panel.hidden = false;
   panel.querySelector<HTMLElement>('p')!.textContent = noteEditing
-    ? '这一天在云端有新内容。草稿还在，可以先刷新对照。'
-    : '这一天在云端有新内容，请先刷新查看。';
+    ? '这一天在手账里有新内容。草稿还在，可以先刷新对照。'
+    : '这一天在手账里有新内容，请先刷新查看。';
   $('[data-note-latest]').hidden = true;
 }
 
 function setNoteLatest() {
   const latest = $('[data-note-latest]');
-  latest.textContent = book.notes[date] ? `云端目前写着：${book.notes[date]}` : '云端目前没有这一天的记录。';
+  latest.textContent = book.notes[date] ? `手账里目前写着：${book.notes[date]}` : '手账里目前没有这一天的记录。';
   latest.hidden = false;
   noteEditVersion = revisionOf(book.revisions.notes, date);
   noteEditOriginal = book.notes[date] ?? '';
-  showStatus('note', '最新内容已显示，草稿仍保留。确认后保存会替换云端这一版。');
+  showStatus('note', '最新内容已显示，草稿仍保留。确认后保存会替换手账里的这一版。');
 }
 
 function renderWishConflict(message: string) {
@@ -375,7 +385,7 @@ function updateWishConflict() {
   const latest = book.wishes.find(({ id }) => id === wishEditing!.id);
   const revision = revisionOf(book.revisions.wishes, wishEditing.id);
   if (revision === wishEditing.expectedVersion) return;
-  const text = latest ? `云端已有更新：${latest.text}${latest.done ? '（已完成）' : ''}` : '云端已移除这件事。';
+  const text = latest ? `手账里已有更新：${latest.text}${latest.done ? '（已完成）' : ''}` : '手账里已移除这件事。';
   renderWishConflict(`${text} 草稿还在，可以先刷新对照。`);
   const refresh = wishList.querySelector<HTMLButtonElement>('[data-wish-action="refresh"]');
   if (refresh) refresh.hidden = false;
@@ -395,8 +405,8 @@ function applyCloud(value: unknown, explicitRefresh?: 'note' | 'wish') {
     const latest = book.wishes.find(({ id }) => id === wishEditing!.id);
     wishEditing.expectedVersion = revisionOf(book.revisions.wishes, wishEditing.id);
     wishEditing.original = latest ? { ...latest } : { id: wishEditing.id, text: '', done: false };
-    const note = latest ? `最新云端内容：${latest.text}${latest.done ? '（已完成）' : ''}。` : '最新云端内容：这件事已被移除。';
-    renderWishConflict(`${note} 草稿仍保留，确认后保存会替换云端这一版。`);
+    const note = latest ? `手账里的新内容：${latest.text}${latest.done ? '（已完成）' : ''}。` : '手账里的这件事已被移除。';
+    renderWishConflict(`${note} 草稿仍保留，确认后保存会替换手账里的这一版。`);
     showStatus('wish', '最新内容已显示，草稿仍保留。');
   }
   dispatchNotebookChanged();
@@ -411,12 +421,12 @@ function reportError(area: 'note' | 'wish', error: unknown) {
   if (error instanceof ApiError && error.status === 409) {
     if (area === 'note') showNoteConflict();
     if (area === 'wish' && wishEditing) updateWishConflict();
-    showStatus(area, '云端已有更新，草稿还在。先刷新查看，再决定怎么收好。');
+    showStatus(area, '手账里已有更新，草稿还在。先刷新查看，再决定怎么收好。');
     if (area === 'wish' && ready) wishRefresh.hidden = false;
     if (area === 'wish' && !ready) wishRetry.hidden = false;
     return;
   }
-  const message = '暂时没能连接云端手账。输入还在，可以重新连接。';
+  const message = '暂时没能连上手账。输入还在，可以重新连接。';
   showStatus(area, message);
   if (area === 'note') noteRetry.hidden = false;
   if (area === 'wish' && ready) wishRefresh.hidden = false;
@@ -535,7 +545,7 @@ noteForm.addEventListener('submit', async (event) => {
     clearNoteDraft(key);
     if (noteUndo?.date === key) { noteUndo = null; noteUndoButton.hidden = true; }
     finishNoteEdit(false);
-    showStatus('note', '收好了，云端已保存。');
+    showStatus('note', '收好了。');
     $('[data-note-edit]').focus();
   } finally { if (noteEditing && noteEditSession === editSession) controls.forEach((control) => { control.disabled = false; }); }
 });
@@ -566,7 +576,7 @@ noteUndoButton.addEventListener('click', async () => {
   const saved = await mutateKey('note', action.date, `/api/notes/${encodeURIComponent(action.date)}`, 'PUT', noteBody(action.expectedVersion, action.text));
   if (!saved) return;
   noteUndo = null; noteUndoButton.hidden = true;
-  showStatus('note', '已放回云端。');
+  showStatus('note', '已放回手账里。');
 });
 
 function wishPath(id: string) { return `/api/wishes/${encodeURIComponent(id)}`; }
@@ -636,7 +646,7 @@ wishForm.addEventListener('submit', async (event) => {
       const drafts = getDrafts(); drafts.wishText = ''; saveDrafts();
       wishInput.value = '';
     }
-    showStatus('wish', '记上了，云端已保存。');
+    showStatus('wish', '记上了。');
     wishInput.focus();
   } finally { wishAdding = false; wishInput.disabled = false; submit.disabled = false; }
 });
@@ -671,7 +681,7 @@ async function saveWishEdit(id: string) {
     clearWishDraft(id);
     wishEditing = null;
     wishEditSession++;
-    showStatus('wish', '收好了，云端已保存。');
+    showStatus('wish', '收好了。');
     renderWishes();
     wishList.querySelector<HTMLElement>(`[data-wish-id="${CSS.escape(id)}"][data-wish-action="edit"]`)?.focus({ preventScroll: true });
   } finally {

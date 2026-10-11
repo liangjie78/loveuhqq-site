@@ -5,10 +5,10 @@ import { digest, isPasswordHash, randomToken, readSessionToken, sessionCookie, v
 import { hundredDayLetter, hundredDayLetterKey, parseLetter } from './letter.ts';
 import {
   emptyPhotoManifest, isPhotoDate, maxPhotoEdge, maxPhotos, maxPhotoLargeBytes, maxPhotoThumbBytes,
-  maxPhotoTitleLength, maxPhotoUploadBytes, parsePhotoManifest, photoIdPattern, photoManifestKey,
+  featuredPhotoCount, maxPhotoTitleLength, maxPhotoUploadBytes, parsePhotoManifest, photoIdPattern, photoManifestKey,
   photoObjectKey, photoSizes, sortPhotos,
 } from '../src/lib/photos.ts';
-import type { PhotoSize, PrivatePhoto } from '../src/lib/photos.ts';
+import type { PhotoManifest, PhotoSize, PrivatePhoto } from '../src/lib/photos.ts';
 
 type Env = Omit<Cloudflare.Env, "PHOTOS"> & { EDITOR_PASSWORD_HASH?: string; PHOTOS?: KVNamespace };
 type Entry = { kind: 'note' | 'wish'; entry_key: string; text: string; done: number; version: number; deleted: number };
@@ -162,8 +162,100 @@ async function photoManifest(db: D1Database, store: KVNamespace): Promise<Respon
   return json(await readPhotoManifest(db, store));
 }
 
-async function photo(store: KVNamespace, id: string, size: string): Promise<Response> {
+function expectedPhotoRevision(value: unknown): number {
+  if (!Number.isSafeInteger(value) || Number(value) < 0 || Number(value) >= Number.MAX_SAFE_INTEGER) {
+    throw new HttpError(400, '相册版本号无效。');
+  }
+  return Number(value);
+}
+
+function currentPhoto(manifest: PhotoManifest, id: string): PrivatePhoto {
+  if (!photoIdPattern.test(id)) throw new HttpError(404, '照片不存在。');
+  const found = manifest.photos.find(photo => photo.id === id);
+  if (!found) throw new HttpError(404, '照片不存在。');
+  return found;
+}
+
+async function commitPhotoManifest(db: D1Database, expectedRevision: number, next: PhotoManifest): Promise<Response> {
+  const result = await db.prepare('UPDATE photo_manifest SET manifest = ?, revision = revision + 1 WHERE id = 1 AND revision = ?')
+    .bind(JSON.stringify(next), expectedRevision).run();
+  if (result.meta.changes !== 1) throw new HttpError(409, '相册刚在其他设备更新，请刷新后再改。');
+  return json(next);
+}
+
+async function updatePhotoTitle(request: Request, db: D1Database, store: KVNamespace, id: string): Promise<Response> {
+  const value = await body(request, ['expectedRevision', 'title'], 4096);
+  const expectedRevision = expectedPhotoRevision(value.expectedRevision);
+  if (typeof value.title !== 'string') throw new HttpError(400, '标题要有内容，最多 80 个字。');
+  const title = value.title.trim();
+  if (!title || title.length > maxPhotoTitleLength) throw new HttpError(400, '标题要有内容，最多 80 个字。');
+  const current = await readPhotoManifest(db, store);
+  if (current.revision !== expectedRevision) throw new HttpError(409, '相册刚在其他设备更新，请刷新后再改。');
+  currentPhoto(current, id);
+  const photos = sortPhotos(current.photos.map(photo => photo.id === id ? { ...photo, title } : photo));
+  return commitPhotoManifest(db, expectedRevision, parsePhotoManifest({ ...current, revision: expectedRevision + 1, photos }));
+}
+
+async function setPhotoFeatured(request: Request, db: D1Database, store: KVNamespace, id: string): Promise<Response> {
+  const value = await body(request, ['expectedRevision', 'featured'], 2048);
+  const expectedRevision = expectedPhotoRevision(value.expectedRevision);
+  if (typeof value.featured !== 'boolean') throw new HttpError(400, '请选好这张照片要不要留在首页。');
+  const current = await readPhotoManifest(db, store);
+  if (current.revision !== expectedRevision) throw new HttpError(409, '相册刚在其他设备更新，请刷新后再改。');
+  currentPhoto(current, id);
+  const alreadyFeatured = current.featured.includes(id);
+  if (alreadyFeatured === value.featured) return json(current);
+  if (value.featured && current.featured.length >= featuredPhotoCount) {
+    throw new HttpError(422, '首页已经留了三张，先收下一张再选吧。');
+  }
+  const featured = value.featured ? [...current.featured, id] : current.featured.filter(item => item !== id);
+  return commitPhotoManifest(db, expectedRevision, parsePhotoManifest({
+    ...current, revision: expectedRevision + 1, featured,
+  }));
+}
+
+async function restorePhotoObjects(store: KVNamespace, keys: string[], snapshots: Array<Uint8Array | null>) {
+  await Promise.allSettled(keys.map((key, index) => {
+    const bytes = snapshots[index];
+    return bytes ? store.put(key, bytes) : Promise.resolve();
+  }));
+}
+
+async function deletePhoto(request: Request, db: D1Database, store: KVNamespace, id: string): Promise<Response> {
+  const value = await body(request, ['expectedRevision'], 2048);
+  const expectedRevision = expectedPhotoRevision(value.expectedRevision);
+  const current = await readPhotoManifest(db, store);
+  if (current.revision !== expectedRevision) throw new HttpError(409, '相册刚在其他设备更新，请刷新后再取下。');
+  currentPhoto(current, id);
+  const keys = [photoObjectKey(id, 'thumb'), photoObjectKey(id, 'large')];
+  const snapshots = await Promise.all(keys.map(async key => {
+    const bytes = await store.get(key, 'arrayBuffer');
+    return bytes ? new Uint8Array(bytes) : null;
+  }));
+  const next = parsePhotoManifest({
+    ...current,
+    revision: expectedRevision + 1,
+    featured: current.featured.filter(item => item !== id),
+    photos: current.photos.filter(photo => photo.id !== id),
+  });
+  try {
+    await Promise.all(keys.map(key => store.delete(key)));
+    return await commitPhotoManifest(db, expectedRevision, next);
+  } catch (error) {
+    // If another deletion already won, do not recreate its objects. Otherwise restore
+    // the snapshots before returning the storage/CAS error.
+    try {
+      const fresh = await readPhotoManifest(db, store);
+      if (fresh.photos.some(photo => photo.id === id)) await restorePhotoObjects(store, keys, snapshots);
+    } catch { /* Best effort when D1 is unavailable. */ }
+    throw error;
+  }
+}
+
+async function photo(db: D1Database, store: KVNamespace, id: string, size: string): Promise<Response> {
   if (!photoIdPattern.test(id) || !photoSizes.includes(size as PhotoSize)) return json({ error: '照片不存在。' }, 404);
+  const manifest = await readPhotoManifest(db, store);
+  if (!manifest.photos.some(item => item.id === id)) return json({ error: '照片不存在。' }, 404);
   const bytes = await store.get(photoObjectKey(id, size as PhotoSize), 'arrayBuffer');
   if (!bytes) return json({ error: '照片不存在。' }, 404);
   // Private and never stored: after logout the browser must ask the Worker again.
@@ -274,15 +366,17 @@ export default {
     const path = new URL(request.url).pathname;
     if (path !== '/api' && !path.startsWith('/api/')) return env.ASSETS.fetch(request);
     try {
-      const photoPath = path === '/api/photos' || /^\/api\/photos\/[^/]+\/[^/]+$/.test(path);
+      const photoPath = path === '/api/photos' || /^\/api\/photos\/[^/]+(?:\/[^/]+)?$/.test(path);
       const known = path === '/api/session' || path === '/api/notebook' || path === '/api/letter' || photoPath || /^\/api\/(notes|wishes)\/[^/]+$/.test(path);
       if (!known) return json({ error: '接口不存在。' }, 404);
       if (path === '/api/letter' && request.method !== 'GET') return json({ error: '方法不支持。' }, 405, { Allow: 'GET' });
       if (photoPath) {
-        const photoWrite = request.method === 'POST' && path === '/api/photos';
-        if (request.method !== 'GET' && !photoWrite) {
-          return json({ error: '方法不支持。' }, 405, { Allow: path === '/api/photos' ? 'GET, POST' : 'GET' });
-        }
+        const [, , , photoId, action] = path.split('/');
+        const allowed = path === '/api/photos' ? ['GET', 'POST']
+          : !action && photoId ? ['PUT', 'DELETE']
+            : action === 'featured' ? ['PUT']
+              : ['GET'];
+        if (!allowed.includes(request.method)) return json({ error: '方法不支持。' }, 405, { Allow: allowed.join(', ') });
       }
       if (!['GET', 'HEAD', 'OPTIONS'].includes(request.method)) assertOrigin(request);
       const configured = !!env.DB && isPasswordHash(env.EDITOR_PASSWORD_HASH);
@@ -310,8 +404,12 @@ export default {
         if (!env.PHOTOS) return json({ error: '相册暂时打不开，请稍后再来。' }, 503);
         if (path === '/api/photos' && request.method === 'POST') return await uploadPhoto(request, env.DB, env.PHOTOS);
         if (path === '/api/photos') return await photoManifest(env.DB, env.PHOTOS);
-        const [, , , id, size] = path.split('/');
-        return await photo(env.PHOTOS, id, size);
+        const [, , , id, action] = path.split('/');
+        if (!action) return request.method === 'PUT'
+          ? await updatePhotoTitle(request, env.DB, env.PHOTOS, id)
+          : await deletePhoto(request, env.DB, env.PHOTOS, id);
+        if (action === 'featured') return await setPhotoFeatured(request, env.DB, env.PHOTOS, id);
+        return await photo(env.DB, env.PHOTOS, id, action);
       }
       if (path === '/api/notebook') {
         return request.method === 'GET' ? json(await notebook(env.DB)) : json({ error: '方法不支持。' }, 405, { Allow: 'GET' });

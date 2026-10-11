@@ -21,6 +21,15 @@ const hundredthDay = 100;
 const $ = <T extends Element = HTMLElement>(selector: string) => document.querySelector<T>(selector);
 const $$ = <T extends Element = HTMLElement>(selector: string) => [...document.querySelectorAll<T>(selector)];
 
+function setMomentSelection(date: string | null) {
+  for (const ticket of $$<HTMLButtonElement>('[data-moment-ticket]')) {
+    const selected = ticket.dataset.momentTicketDate === date;
+    ticket.classList.toggle('is-selected', selected);
+    if (selected) ticket.setAttribute('aria-current', 'date');
+    else ticket.removeAttribute('aria-current');
+  }
+}
+
 const yearLabel = (year: number) => (year <= 10 ? `第${numerals[year - 1]}年` : `第 ${year} 年`);
 const anniversaryLabel = (year: number) =>
   year === 2 ? '两周年' : year <= 10 ? `${numerals[year - 1]}周年` : `${year} 周年`;
@@ -142,7 +151,10 @@ function showReadout(day = today, updateNotebook = false) {
   // While another year is on screen today is not one of its cells, so the control stays live.
   if (returnToday) returnToday.disabled = inView && day === today;
   const date = cellDates.get(day);
-  if (date && updateNotebook) document.dispatchEvent(new CustomEvent('journal:date', { detail: date }));
+  if (updateNotebook) {
+    setMomentSelection(date ?? null);
+    if (date) document.dispatchEvent(new CustomEvent('journal:date', { detail: date }));
+  }
 }
 
 function paintGrid() {
@@ -272,7 +284,7 @@ if (grid) {
   });
   document.addEventListener('click', (event) => {
     const target = event.target as Element;
-    if (pickedCell && !grid.contains(target) && !target.closest('.day-back') && !target.closest('[data-note-jump]')) release();
+    if (pickedCell && !grid.contains(target) && !target.closest('.day-back') && !target.closest('[data-note-jump]') && !target.closest('[data-moment-ticket]')) release();
   });
   noteJump?.addEventListener('click', () => {
     document.querySelector<HTMLElement>('.day-back')?.scrollIntoView({
@@ -307,6 +319,38 @@ if (grid) {
     }
     event.preventDefault();
   });
+
+  for (const ticket of $$<HTMLButtonElement>('[data-moment-ticket]')) {
+    ticket.addEventListener('click', () => {
+      const date = ticket.dataset.momentTicketDate;
+      if (!date) return;
+      const year = getRelationshipYear(new Date(`${date}T12:00:00.000Z`));
+      if (year >= 1 && year <= currentYear && year !== viewYear) switchYear(year);
+      const entry = [...cellDates].find(([, cellDate]) => cellDate === date);
+      const cell = entry ? grid.querySelector<HTMLElement>(`[data-day="${entry[0]}"]`) : null;
+      if (cell) {
+        pinned = true;
+        pick(cell, true);
+        grid.focus({ preventScroll: true });
+      } else {
+        pickedCell?.classList.remove('is-picked');
+        pickedCell = null;
+        pinned = true;
+        setMomentSelection(date);
+        if (readout) {
+          readout.textContent = `${dotted(date)} · ${momentTitles.get(date) ?? ''}`;
+          readout.classList.add('is-picked');
+        }
+        if (returnToday) returnToday.disabled = false;
+        if (noteJump) noteJump.hidden = false;
+        document.dispatchEvent(new CustomEvent('journal:date', { detail: date }));
+      }
+      document.querySelector<HTMLElement>('.day-back')?.scrollIntoView({
+        behavior: reducedMotion.matches ? 'auto' : 'smooth',
+        block: 'start',
+      });
+    });
+  }
 }
 
 /* ---------- Reviewing another year ---------- */
@@ -319,6 +363,7 @@ function switchYear(year: number) {
   if (year < 1 || year > currentYear || year === viewYear) return;
   viewYear = year;
   prepareYear(viewYear);
+  setMomentSelection(null);
   paintGrid();
   updateYearStats();
   updateYearNav();

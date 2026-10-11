@@ -58,5 +58,34 @@ import '../styles/album-transition.css';
     </div>
   </dialog>
 
+  <dialog class="photo-manage-dialog" data-photo-manage aria-label="相册里的照片">
+    <div class="photo-manage-card paper-card">
+      <span class="tape" aria-hidden="true"></span>
+      <section data-photo-edit-panel hidden>
+        <h2 id="photo-manage-title">改标题</h2>
+        <form class="photo-manage-form" data-photo-title-form novalidate>
+          <label class="paste-field">
+            <span>给这张换个名字</span>
+            <input type="text" maxlength="80" data-photo-title-input autocomplete="off" required />
+          </label>
+          <p class="paste-error" data-photo-edit-error role="status" hidden></p>
+          <div class="paste-actions">
+            <button class="text-button" type="button" data-photo-manage-cancel>先不改</button>
+            <button class="pencil-button" type="submit" data-photo-title-submit>收好标题</button>
+          </div>
+        </form>
+      </section>
+      <section data-photo-delete-panel hidden>
+        <h2>从相册取下</h2>
+        <p class="photo-delete-copy" data-photo-delete-copy></p>
+        <p class="paste-error" data-photo-delete-error role="status" hidden></p>
+        <div class="paste-actions">
+          <button class="text-button" type="button" data-photo-manage-cancel>再留一会儿</button>
+          <button class="pencil-button photo-remove-button" type="button" data-photo-delete-confirm>确认取下</button>
+        </div>
+      </section>
+    </div>
+  </dialog>
+
   <Lightbox />
 </Page>
