@@ -1,0 +1,69 @@
+/* Paper layers follow native scroll progress; reading and editing stay still. */
+@supports (animation-timeline: view()) {
+  @media (prefers-reduced-motion: no-preference) {
+    .home { --paper-drift-scale: 1; }
+    .hero { view-timeline-name: --cover-scroll; }
+    .photos { view-timeline-name: --photos-scroll; }
+    .note { view-timeline-name: --note-scroll; }
+    .letter { view-timeline-name: --letter-scroll; }
+
+    .hero-keepsake,
+    .hero-words,
+    .home .polaroids > .polaroid,
+    .note-stack::before,
+    .envelope img {
+      animation: paper-drift linear both;
+    }
+
+    .hero-keepsake {
+      --drift-from: 0px;
+      --drift-to: -44px;
+      animation-timeline: --cover-scroll;
+      animation-range: exit 0% exit 100%;
+    }
+    .hero-words {
+      --drift-from: 0px;
+      --drift-to: 24px;
+      animation-timeline: --cover-scroll;
+      animation-range: exit 0% exit 100%;
+    }
+
+    .home .polaroids > .polaroid {
+      --drift-from: 22px;
+      --drift-to: -22px;
+      animation-timeline: --photos-scroll;
+      animation-range: entry 0% exit 100%;
+    }
+    .home .polaroids > .polaroid:nth-child(2) {
+      --drift-from: -14px;
+      --drift-to: 14px;
+    }
+    .home .polaroids > .polaroid:nth-child(3) {
+      --drift-from: 32px;
+      --drift-to: -32px;
+    }
+
+    /* Only the back sheet moves; text and its tape stay attached and readable. */
+    .note-stack::before {
+      --drift-from: -12px;
+      --drift-to: 12px;
+      animation-timeline: --note-scroll;
+      animation-range: entry 0% exit 100%;
+    }
+    .envelope img {
+      --drift-from: 16px;
+      --drift-to: -16px;
+      animation-timeline: --letter-scroll;
+      animation-range: entry 0% exit 100%;
+    }
+
+    @media (max-width: 720px) {
+      .home { --paper-drift-scale: .35; }
+    }
+  }
+}
+
+@keyframes paper-drift {
+  from { transform: translateY(calc(var(--drift-from) * var(--paper-drift-scale))); }
+  to { transform: translateY(calc(var(--drift-to) * var(--paper-drift-scale))); }
+}
