@@ -79,12 +79,12 @@ function discardShownContent() {
   $('[data-story-detail]').hidden = $('[data-letter-detail]').hidden = true;
   $('[data-memory-identity]').hidden = true;
   $('[data-memory-identity-unselected]').hidden = true;
-  $('.memory-nav').hidden = true;
-  for (const section of all<HTMLElement>('.memory-section', privateRoot)) section.hidden = true;
+  all<HTMLElement>('[data-section-locked]').forEach(node => { node.hidden = false; });
+  all<HTMLElement>('[data-section-private]').forEach(node => { node.hidden = true; });
+  all<HTMLElement>('[data-needs-member]').forEach(node => { node.hidden = true; });
 }
 function clearPrivate() {
   discardShownContent();
-  privateRoot.hidden = true;
   $('[data-memory-locked]').hidden = false;
   status.textContent = '';
 }
@@ -203,7 +203,7 @@ async function selectIdentity(id: string) {
   }
 }
 function render() {
-  privateRoot.hidden = false; $('[data-memory-locked]').hidden = true;
+  $('[data-memory-locked]').hidden = true;
   const member = book.member;
   const identityBar = $('[data-memory-identity]');
   const unselectedCard = $('[data-memory-identity-unselected]');
@@ -215,14 +215,18 @@ function render() {
     switchBtn.textContent = `换成${memberName(otherId)}`;
     identityBar.hidden = false;
     unselectedCard.hidden = true;
+    all<HTMLElement>('[data-section-locked]').forEach(node => { node.hidden = true; });
+    all<HTMLElement>('[data-section-private]').forEach(node => { node.hidden = false; });
+    all<HTMLElement>('[data-needs-member]').forEach(node => { node.hidden = false; });
   } else {
     identityBar.hidden = true;
     unselectedCard.hidden = false;
     resetMedia(); stopScreening(); screening = []; screeningIndex = 0; desk.clear();
+    all<HTMLElement>('[data-section-locked]').forEach(node => { node.hidden = false; });
+    all<HTMLElement>('[data-section-private]').forEach(node => { node.hidden = true; });
+    all<HTMLElement>('[data-needs-member]').forEach(node => { node.hidden = true; });
   }
   all<HTMLOptionElement>('option', field(letterForm, 'recipientId')).forEach(option => { option.textContent = memberName(option.value); });
-  for (const section of all<HTMLElement>('.memory-section', privateRoot)) section.hidden = !member;
-  $('.memory-nav').hidden = !member;
   if (!member) {
     all<HTMLElement>('[data-story-list], [data-story-detail], [data-letter-list], [data-letter-detail], [data-place-list], [data-screening-options], [data-screening-order]').forEach(node => node.replaceChildren());
     storyForm.hidden = letterForm.hidden = placeForm.hidden = true; return;
@@ -231,14 +235,13 @@ function render() {
   desk.update({ member, stories: book.stories, photos });
   jumpToHash();
 }
-// Sections only exist after unlock, so the browser cannot honour /memories/#places itself; do it once they are shown.
 let pendingHash = location.hash.slice(1);
 function jumpToHash() {
   if (!pendingHash) return;
   let target: HTMLElement | null = null;
   try { target = document.getElementById(decodeURIComponent(pendingHash)); } catch { /* A malformed hash is simply ignored. */ }
   pendingHash = '';
-  if (target && !target.hidden) target.scrollIntoView({ behavior: 'auto', block: 'start' });
+  if (target && !target.hidden) target.scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
 function matchesFilter(story: MemoryStory) {
   const search = $<HTMLInputElement>('[data-story-search]').value.trim().toLocaleLowerCase();
@@ -600,6 +603,28 @@ window.setInterval(() => { if (authenticated && !switching && document.visibilit
 for (const form of [storyForm, letterForm, placeForm]) form.addEventListener('input', () => { form.dataset.dirty = 'yes'; });
 all<HTMLButtonElement>('[data-select-identity]').forEach(button => button.addEventListener('click', () => { void selectIdentity(button.dataset.selectIdentity ?? ''); }));
 $('[data-switch-identity]').addEventListener('click', () => { void selectIdentity($<HTMLButtonElement>('[data-switch-identity]').dataset.switchTo ?? ''); });
-void getSession().catch(report);
-
 document.addEventListener('memory:identity-changed', () => scheduleRemote(false));
+
+function initNavObserver() {
+  const links = all<HTMLAnchorElement>('.site-nav a');
+  if (!links.length || !('IntersectionObserver' in window)) return;
+  const sections = links.map(link => document.querySelector<HTMLElement>(link.hash)).filter((s): s is HTMLElement => !!s);
+  if (!sections.length) return;
+  const current = new Set<Element>();
+  const navObserver = new IntersectionObserver(entries => {
+    for (const entry of entries) {
+      if (entry.isIntersecting) current.add(entry.target);
+      else current.delete(entry.target);
+    }
+    const active = sections.find(section => current.has(section));
+    for (const link of links) {
+      if (active && link.hash === `#${active.id}`) link.setAttribute('aria-current', 'location');
+      else link.removeAttribute('aria-current');
+    }
+  }, { rootMargin: '-40% 0px -45% 0px' });
+  sections.forEach(section => navObserver.observe(section));
+}
+
+void getSession().catch(report);
+initNavObserver();
+jumpToHash();
