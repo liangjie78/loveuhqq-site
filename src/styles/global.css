@@ -1435,7 +1435,63 @@ html.is-locked .gate, .gate.is-leaving { display: grid; }
   }
 }
 
-.signature-choice { position: relative; z-index: 2; margin: 84px auto 0; padding: 12px 20px; max-width: 1080px; display: flex; align-items: center; flex-wrap: wrap; gap: 12px; border-bottom: 1px solid var(--line, #d7c9bb); }
-.signature-choice[hidden] { display: none; }
-.signature-choice button[aria-pressed="true"] { color: var(--red, #963e3e); text-decoration: underline; text-underline-offset: 5px; }
-.signature-choice [role="status"] { font-size: .85rem; }
+/* ---------- Signature choice ---------- */
+
+html.signature-room .hero {
+  padding-top: calc(var(--header) + env(safe-area-inset-top) + 5.4rem);
+}
+
+.signature-choice {
+  position: absolute;
+  z-index: 4;
+  top: calc(var(--header) + env(safe-area-inset-top) + .55rem);
+  left: 50%;
+  translate: -50% 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: .35rem .5rem;
+  width: max-content;
+  max-width: calc(100% - 2rem);
+  margin: 0;
+  padding: .2rem .35rem .2rem .85rem;
+  background: var(--sheet);
+  border: 1px solid var(--line-strong);
+  border-radius: 99px;
+  font-size: .88rem;
+}
+
+html.is-locked .signature-choice,
+.signature-choice[hidden] { display: none !important; }
+
+.signature-label {
+  color: var(--muted);
+  letter-spacing: .06em;
+  user-select: none;
+}
+
+.signature-options { display: inline-flex; flex-wrap: wrap; align-items: center; gap: .35rem; }
+
+.signature-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 44px;
+  min-width: 4.5rem;
+  padding: .3rem .9rem;
+  border: 1px solid var(--line-strong);
+  border-radius: 99px;
+  background: var(--paper);
+  color: var(--ink);
+  font-size: .88rem;
+  letter-spacing: .06em;
+  cursor: pointer;
+}
+
+.signature-btn:hover { color: var(--rose); border-color: var(--rose); }
+.signature-btn[aria-pressed="true"] { background: var(--rose); border-color: var(--rose); color: var(--sheet); cursor: default; }
+.signature-btn[aria-pressed="true"]:hover { color: var(--sheet); }
+.signature-btn:disabled { opacity: .6; cursor: default; }
+.signature-status:empty { display: none; }
+.signature-status { flex-basis: 100%; margin: 0; text-align: center; font-size: .82rem; color: var(--muted); }

@@ -21,6 +21,17 @@ import '../styles/memory-tools.css';
     <p class="memory-status" data-memory-status role="status" aria-live="polite"></p>
     <button class="text-button" type="button" data-memory-retry hidden>重新连接</button>
     <div data-memory-private hidden>
+      <div class="memory-identity-bar" data-memory-identity hidden>
+        <span>当前身份：<strong data-current-identity></strong></span>
+        <button type="button" class="text-button" data-switch-identity>换成</button>
+      </div>
+      <div class="memory-unselected-card" data-memory-identity-unselected hidden>
+        <p>请选择身份</p>
+        <div class="signature-options">
+          <button type="button" class="pencil-button" data-select-identity="one">男生</button>
+          <button type="button" class="pencil-button" data-select-identity="two">女生</button>
+        </div>
+      </div>
       <nav class="memory-nav" aria-label="回忆册导航"><a href="#stories">故事</a><a href="#wishes">往后与后来</a><a href="#post-office">未来邮局</a><a href="#screening">放映室</a><a href="#places">地点</a><a href="#shared-desk">共同桌面</a></nav>
       <section id="stories" class="memory-section" aria-labelledby="stories-title">
         <header class="memory-section-heading"><div><p class="paper-label">把经历收成一页</p><h2 id="stories-title">我们的故事</h2></div><button class="pencil-button" type="button" data-story-new>写一篇故事</button></header>

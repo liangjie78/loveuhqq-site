@@ -31,6 +31,14 @@ let inkIndex = 0;
   <SiteHeader home />
   <main id="main" tabindex="-1">
     <section class="hero" id="top" aria-labelledby="hero-title">
+      <div class="signature-choice" data-signature-choice hidden>
+        <p class="signature-label" data-signature-label aria-hidden="true">请选择身份</p>
+        <div class="signature-options" role="group" aria-label="请选择身份">
+          <button type="button" class="signature-btn" data-signature="one" aria-pressed="false">男生</button>
+          <button type="button" class="signature-btn" data-signature="two" aria-pressed="false">女生</button>
+        </div>
+        <p class="signature-status" data-signature-status role="status"></p>
+      </div>
       <div class="hero-inner">
         <div class="hero-words">
           <h1 class="hero-title" id="hero-title" aria-label="爱你，何青青。">
@@ -201,4 +209,5 @@ let inkIndex = 0;
   </dialog>
   <script src="../scripts/journal.ts"></script>
   <script src="../scripts/letter.ts"></script>
+  <script src="../scripts/signature-choice.ts"></script>
 </Page>

@@ -4,8 +4,13 @@
 .memory-heading p, .memory-section > p { color: var(--ink-2); line-height: 1.8; }
 .memory-locked { border: 1px dashed var(--line-stronger); padding: 2rem; }
 .memory-status { min-height: 1.6em; color: var(--rose); white-space: pre-line; }
-.memory-identity { display: grid; gap: 1rem; }
-.memory-identity h2 { font-size: 1.5rem; }
+.memory-identity-bar { display: inline-flex; align-items: center; flex-wrap: wrap; gap: .85rem; padding: .4rem 1rem; margin-block: .5rem 1rem; background: var(--sheet); border: 1px solid var(--line); border-radius: 99px; font-size: .88rem; }
+.memory-identity-bar strong { color: var(--rose); }
+.memory-identity-bar[hidden], .memory-unselected-card[hidden] { display: none !important; }
+.memory-unselected-card { margin-block: .5rem 1.5rem; padding: 1.15rem 1.25rem; background: var(--sheet); border: 1px dashed var(--line-stronger); }
+.memory-unselected-card p { margin: 0 0 .85rem; font-size: 1rem; color: var(--ink); }
+.memory-unselected-card .signature-options { display: flex; flex-wrap: wrap; }
+
 .memory-nav { display: flex; flex-wrap: wrap; gap: .3rem 1.1rem; padding-block: 1rem; margin-block: 1rem 3rem; border-bottom: 1px solid var(--line-stronger); }
 .memory-nav a { display: inline-flex; align-items: center; min-height: 44px; color: var(--ink); text-underline-offset: .35em; }
 .memory-section { margin-block: 4rem; scroll-margin-top: 6rem; }
