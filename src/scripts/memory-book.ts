@@ -229,6 +229,16 @@ function render() {
   }
   renderStoryList(); renderStory(); renderWishes(); renderLetters(); renderLetter(); renderScreeningOptions(); renderPlaces();
   desk.update({ member, stories: book.stories, photos });
+  jumpToHash();
+}
+// Sections only exist after unlock, so the browser cannot honour /memories/#places itself; do it once they are shown.
+let pendingHash = location.hash.slice(1);
+function jumpToHash() {
+  if (!pendingHash) return;
+  let target: HTMLElement | null = null;
+  try { target = document.getElementById(decodeURIComponent(pendingHash)); } catch { /* A malformed hash is simply ignored. */ }
+  pendingHash = '';
+  if (target && !target.hidden) target.scrollIntoView({ behavior: 'auto', block: 'start' });
 }
 function matchesFilter(story: MemoryStory) {
   const search = $<HTMLInputElement>('[data-story-search]').value.trim().toLocaleLowerCase();

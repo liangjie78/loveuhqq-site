@@ -1,0 +1,33 @@
+---
+// The homepage's door into /memories/. Copy is reused from the memory book's own
+// headings so the two pages speak with one voice; the contents list mirrors the
+// book's `.memory-nav`. Nothing private is read here — the page itself stays a
+// public shell and the book asks for the shared passphrase on its own.
+const contents = [
+  { href: '/memories/#stories', title: '我们的故事', note: '把经历收成一页' },
+  { href: '/memories/#wishes', title: '往后与后来', note: '从想一起做，到一起做过' },
+  { href: '/memories/#post-office', title: '未来邮局', note: '留到约好的日子' },
+  { href: '/memories/#screening', title: '回忆放映室', note: '慢慢翻，也可以放着看' },
+  { href: '/memories/#places', title: '地点备忘', note: '以后再慢慢记' },
+  { href: '/memories/#shared-desk', title: '共同桌面', note: '一起摆一摆' },
+];
+---
+
+<section class="section memories" id="memories" aria-labelledby="memories-title">
+  <div class="section-inner memories-spread">
+    <header class="memories-intro" data-reveal>
+      <p class="paper-label">写下来，再一起翻看</p>
+      <h2 id="memories-title">共同回忆册</h2>
+      <p>日子、照片和往后的想法，都可以在这里接着写。</p>
+      <a class="pencil-button memories-open" href="/memories/">翻开共同回忆册 <span aria-hidden="true">↗</span></a>
+    </header>
+    <nav class="memories-contents" aria-label="回忆册目录" data-reveal>
+      <span class="tape tape-corner" aria-hidden="true"></span>
+      <ol>
+        {contents.map(({ href, title, note }) => (
+          <li><a href={href}><span class="contents-title">{title}</span><span class="contents-note">{note}</span></a></li>
+        ))}
+      </ol>
+    </nav>
+  </div>
+</section>

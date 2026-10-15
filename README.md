@@ -10,7 +10,7 @@
 
 - 正式网址：[loveuhqq.x23.shop](https://loveuhqq.x23.shop)
 - 唯一正式源码：[liangjie78/loveuhqq-site](https://github.com/liangjie78/loveuhqq-site)（Private）
-- 页面结构：封面、日子、照片、心里话、往后、信、页脚，自然连续滚动；另有相册页 `/photos/` 和 404 页（`dist/404.html` 由 `wrangler.jsonc` 的 `not_found_handling: "404-page"` 送出，缺这项时 Workers 只回空 404）。
+- 页面结构：封面、日子、照片、心里话、往后、共同回忆册入口、信、页脚，自然连续滚动；另有相册页 `/photos/` 和 404 页（`dist/404.html` 由 `wrangler.jsonc` 的 `not_found_handling: "404-page"` 送出，缺这项时 Workers 只回空 404）。
 - 视觉与交互：暖色纸面、蜡封红、思源宋体竖排标题；纸心与邮戳、按月排列的“一天一格”日历、胶带拍立得、横线信纸和可点的信封。支持拍立得灯箱（键盘与滑动）、日历点选与方向键翻看读数、进入第二年后的往年回看（“← 上一年 / 下一年 →”）、门禁日期格和减少动态效果偏好。详见 [设计说明](docs/DESIGN.md)。
 - 纪念时间：从 2026-07-01 开始，当天算第 1 天，按北京时间自动更新；JavaScript 不可用时保留文案和起始日期。
 - 下一纪念日：第 100 天之后转向下一周年，纪念日当天显示“今天”，跨日和返回页面时自动刷新。
@@ -20,7 +20,7 @@
 
 界面截图：[桌面封面](docs/previews/journal-desktop.webp) · [桌面日历](docs/previews/journal-days-desktop.webp) · [手机封面](docs/previews/journal-mobile.webp) · [手机日历](docs/previews/journal-days-mobile.webp) · [门禁](docs/previews/journal-gate-mobile.webp)。截图用于展示源码界面，日期计数表示截图时的状态；实际页面按访问当天更新。顶部项目标识插画不作为当前页面截图。上述内容描述当前源码，不能据此判断正式网址已更新。
 
-共同回忆册入口为 `/memories/`：连接故事、双人版本、未来信件、愿望、声音、地点备忘、浏览器放映和实时桌面。地点目前只保留名称、年份与关联记录，坐标可留空，不加载地图。源码与隔离预览的实施状态、规则和验收记录见 [共同回忆册路线图](docs/product/ROADMAP-shared-memory-book.md)；正式站生效仍需单独合并、迁移及部署。
+共同回忆册入口为 `/memories/`（首页在“往后”与“信”之间有入口，目录项可直达各分区）：连接故事、双人版本、未来信件、愿望、声音、地点备忘、浏览器放映和实时桌面。地点目前只保留名称、年份与关联记录，坐标可留空，不加载地图。源码与隔离预览的实施状态、规则和验收记录见 [共同回忆册路线图](docs/product/ROADMAP-shared-memory-book.md)；正式站生效仍需单独合并、迁移及部署。
 
 ## 本地开发
 
