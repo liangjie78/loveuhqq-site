@@ -20,6 +20,8 @@
 
 界面截图：[桌面封面](docs/previews/journal-desktop.webp) · [桌面日历](docs/previews/journal-days-desktop.webp) · [手机封面](docs/previews/journal-mobile.webp) · [手机日历](docs/previews/journal-days-mobile.webp) · [门禁](docs/previews/journal-gate-mobile.webp)。截图用于展示源码界面，日期计数表示截图时的状态；实际页面按访问当天更新。顶部项目标识插画不作为当前页面截图。上述内容描述当前源码，不能据此判断正式网址已更新。
 
+后续开发准备：[共同回忆册的八个可行改进方向](docs/product/ROADMAP-shared-memory-book.md)，包含首版范围、实现依赖、验收标准与推荐顺序；这些方向尚未实施。
+
 ## 本地开发
 
 使用满足 `package.json` 引擎要求的 Node.js 和 npm。依赖版本由 `package-lock.json` 固定：
