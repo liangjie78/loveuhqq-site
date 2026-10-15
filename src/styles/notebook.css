@@ -8,6 +8,7 @@
 .day-back-heading { display: flex; align-items: center; justify-content: space-between; gap: 1rem; }
 .day-back h3 { margin-top: .3rem; font: 400 1.35rem/1.4 var(--serif); font-variant-numeric: tabular-nums; }
 .day-back-text { padding: 1rem 0 .25rem; font-size: .95rem; line-height: 2; white-space: pre-wrap; overflow-wrap: anywhere; }
+.day-back-text:empty { display: none; }
 .note-editor { margin-top: 1rem; }
 .note-editor textarea { display: block; width: 100%; resize: vertical; min-height: 8rem; border: 0; padding: .3rem .75rem; color: var(--ink); font: 1rem/2 var(--sans); background: repeating-linear-gradient(transparent 0, transparent calc(2em - 1px), var(--line) calc(2em - 1px), var(--line) 2em); }
 .note-editor .paper-actions { margin-top: 1rem; }

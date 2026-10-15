@@ -1,4 +1,4 @@
-import { dotted, getShanghaiDate, relationshipStartDate } from '../lib/anniversary';
+import { dotted, getShanghaiDate } from '../lib/anniversary';
 import { api, ApiError, emptyCloudNotebook, type CloudNotebook, type SessionState } from '../lib/cloud-notebook';
 import { getSession, onSessionChange, publishSession } from '../lib/session';
 import { isCalendarDate, parseNotebook, type Wish } from '../lib/notebook';
@@ -50,9 +50,8 @@ let ready = false;
 let generation = 0;
 const pendingRefreshes = new Set<number>();
 const queuedExplicitRefreshes = new Map<number, 'note' | 'wish'>();
-let date = relationshipStartDate;
+let date = getShanghaiDate(new Date());
 let noteEditing = false;
-let writeTodayPending = false;
 let noteEditSession = 0;
 let noteEditVersion = 0;
 let noteEditOriginal = '';
@@ -195,7 +194,7 @@ function renderNote() {
     const title = document.createElement('strong');
     title.textContent = momentTitle;
     noteText.replaceChildren('这一天我们记下了：', title, '。想写一句的时候，再写。');
-  } else noteText.textContent = '这一天还空着。想记的时候，再写。';
+  } else noteText.textContent = '';
   $('[data-note-edit-label]').textContent = book.notes[date] ? '改一改' : '写一句';
   if (!noteEditing) {
     noteForm.hidden = true;
@@ -371,35 +370,6 @@ function beginNoteEdit() {
   noteInput.focus();
 }
 
-function writeToday() {
-  if (noteEditing) {
-    showStatus('note', '先收好或取消正在写的这一句。');
-    noteInput.focus();
-    return;
-  }
-  if (!authenticated) {
-    writeTodayPending = true;
-    noteGuest.querySelector<HTMLButtonElement>('[data-open-login]')!.click();
-    return;
-  }
-  if (!ready) {
-    writeTodayPending = true;
-    showStatus('note', '正在打开手账，稍等就能写。');
-    void refreshCloud();
-    return;
-  }
-  writeTodayPending = false;
-  $('[data-return-today]').click();
-  date = getShanghaiDate(new Date());
-  renderNote();
-  beginNoteEdit();
-  noteForm.scrollIntoView({ block: 'center' });
-}
-
-function resumeTodayWriting() {
-  if (writeTodayPending && authenticated && ready && !document.documentElement.classList.contains('is-locked')) writeToday();
-}
-
 function finishNoteEdit(cancelled: boolean) {
   noteEditSession++;
   noteEditing = false;
@@ -478,7 +448,6 @@ function applyCloud(value: unknown, explicitRefresh?: 'note' | 'wish') {
   ready = true;
   if (!wasReady && authenticated) wishInput.value = getDrafts().wishText;
   render();
-  resumeTodayWriting();
   if (noteEditing && revisionOf(book.revisions.notes, date) !== noteEditVersion) showNoteConflict();
   if (wishEditing) updateWishConflict();
   if (explicitRefresh === 'note' && noteEditing) setNoteLatest();
@@ -570,7 +539,6 @@ function setSession(state: SessionState) {
   noteRetry.hidden = true; wishRetry.hidden = true;
   if (wasAuthenticated && !authenticated) draftsCache = null;
   if (!authenticated) {
-    writeTodayPending = false;
     noteInput.value = ''; wishInput.value = '';
     $('[data-note-conflict]').hidden = true;
     $('[data-note-latest]').hidden = true;
@@ -617,11 +585,6 @@ noteRandom.addEventListener('click', () => {
   const dates = writtenDates();
   const candidates = dates.length > 1 ? dates.filter(key => key !== date) : dates;
   if (candidates.length) openSavedNote(candidates[Math.floor(Math.random() * candidates.length)]);
-});
-document.addEventListener('journal:write-today', writeToday);
-document.addEventListener('gate:open', () => {
-  if (!authenticated) writeTodayPending = false;
-  else resumeTodayWriting();
 });
 $('[data-note-cancel]').addEventListener('click', () => { finishNoteEdit(true); $('[data-note-edit]').focus(); });
 $('[data-note-refresh]').addEventListener('click', () => void refreshCloud('note'));

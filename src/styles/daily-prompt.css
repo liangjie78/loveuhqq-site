@@ -1,41 +1,18 @@
 .daily-prompt {
-  position: relative;
   display: flex;
   align-items: center;
-  gap: 1rem;
-  margin: 1.75rem 2.5rem 0;
-  padding: 1.25rem 1.5rem;
-  border-block: 1px solid var(--line);
-  background: var(--paper-bright);
+  flex-wrap: wrap;
+  gap: .25rem .6rem;
+  padding-block: .35rem .7rem;
 }
-.daily-prompt::after {
-  content: '';
-  position: absolute;
-  inset: .45rem .45rem .45rem auto;
-  border-right: 1px dashed var(--line-strong);
-  pointer-events: none;
-}
-.daily-prompt-flower { flex: 0 0 4.5rem; color: var(--rose); rotate: -8deg; }
+.daily-prompt-flower { flex: 0 0 1.9rem; color: var(--rose); rotate: -8deg; }
 .daily-prompt-flower svg { display: block; width: 100%; stroke: currentColor; stroke-width: 1.4; stroke-linecap: round; stroke-linejoin: round; }
 .daily-prompt-ring { stroke-dasharray: 2 4; opacity: .6; }
-.daily-prompt-copy { flex: 1; min-width: 0; }
-.daily-prompt-heading { display: flex; align-items: baseline; flex-wrap: wrap; gap: .35rem 1rem; }
-.daily-prompt-heading h3 { font: 400 1.15rem/1.5 var(--serif); }
-.daily-prompt-heading time { color: var(--muted); font-size: .7rem; letter-spacing: .06em; font-variant-numeric: tabular-nums; }
-.daily-prompt-question { margin-top: .4rem; font-size: .87rem; line-height: 1.85; color: var(--ink-2); overflow-wrap: anywhere; }
-.daily-prompt-actions { display: flex; flex-direction: column; align-items: stretch; gap: .15rem; flex: none; }
-.daily-prompt-actions button { min-height: 44px; padding-inline: .65rem; font-size: .78rem; white-space: nowrap; }
+.daily-prompt-question { flex: 1 1 12rem; min-width: 0; margin: 0; font-size: .82rem; line-height: 1.8; color: var(--muted); overflow-wrap: anywhere; }
+.daily-prompt-shuffle { flex: none; min-height: 44px; margin-left: auto; padding-inline: .35rem; font-size: .75rem; white-space: nowrap; }
 .daily-prompt-shuffle span { display: inline-block; margin-left: .3rem; color: var(--rose); }
-.daily-prompt-write { color: var(--rose-deep); }
 .daily-prompt-question.is-turning { animation: daily-prompt-ink .3s ease-out both; }
 @keyframes daily-prompt-ink { from { opacity: .25; transform: translateY(3px); } to { opacity: 1; transform: translateY(0); } }
-@media (max-width: 720px) {
-  .daily-prompt { flex-wrap: wrap; gap: .65rem .75rem; margin-inline: .5rem; padding: 1rem; }
-  .daily-prompt-flower { flex-basis: 3.25rem; }
-  .daily-prompt-copy { flex-basis: calc(100% - 4rem); }
-  .daily-prompt-question { min-height: 3.7em; }
-  .daily-prompt-actions { flex-direction: row; flex-wrap: wrap; justify-content: flex-end; width: 100%; gap: .35rem .75rem; }
-}
 @media (prefers-reduced-motion: reduce) {
   .daily-prompt-question.is-turning { animation: none; }
 }
