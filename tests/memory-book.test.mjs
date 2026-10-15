@@ -9,7 +9,6 @@ import { Miniflare, convertV4MiniflareOptions } from 'miniflare';
 import { fileURLToPath } from 'node:url';
 
 const origin = 'https://memory.example';
-const ownPassword = 'synthetic-personal-password';
 async function fixture() {
   const sqlite = new DatabaseSync(':memory:');
   for (const file of ['0001_cloud_notebook.sql', '0002_photo_manifest.sql', '0003_shared_memory_book.sql', '0004_optional_place_coordinates.sql']) sqlite.exec(readFileSync(new URL(`../migrations/${file}`, import.meta.url), 'utf8'));
@@ -31,35 +30,36 @@ async function fixture() {
     method, headers: { Origin: origin, 'Content-Type': 'application/json', Cookie: cookies[who], ...headers },
     ...(value === undefined ? {} : { body: value instanceof Uint8Array ? value : JSON.stringify(value) }),
   }), env);
-  const register = async (who) => { const response = await request('/identity', 'POST', { action: 'register', id: who, name: `合成${who}`, password: ownPassword }, who); assert.equal(response.status, 200, await response.clone().text()); cookies[who] += `; ${response.headers.get('Set-Cookie').split(';')[0]}`; return response; };
+  const register = async (who) => { const response = await request('/identity', 'POST', { id: who }, who); assert.equal(response.status, 200, await response.clone().text()); cookies[who] += `; ${response.headers.get('Set-Cookie').split(';')[0]}`; return response; };
   return { sqlite, env, objects, reads, parents, cookies, request, register };
 }
 const story = (extra = {}) => ({ expectedVersion: 0, title: '合成故事', date: '2026-10-15', text: '公开给双方的故事正文', photoIds: [], wishIds: [], layout: 'journal', revealTogether: true, ...extra });
 const part = (text, extra = {}) => ({ expectedVersion: 0, text, reply: '', submitted: false, audioIds: [], ...extra });
 const letter = (extra = {}) => ({ expectedVersion: 0, title: '合成信件', text: 'SYNTHETIC_SECRET_LETTER', recipientId: 'two', openDate: '2099-01-01', pairKey: '', audioIds: [], ...extra });
 
-test('personal identity binds to a live parent session; registration cannot replace a claimed identity', async () => {
+test('signature selection binds to a live parent session and supports switching without a password', async () => {
   const f = await fixture();
   assert.deepEqual((await (await f.request('/bootstrap')).json()).member, null);
   assert.equal((await f.request('/stories/a', 'PUT', story())).status, 403);
   await f.register('one');
   assert.equal((await (await f.request('/bootstrap')).json()).member.id, 'one');
-  assert.equal((await f.request('/identity', 'POST', { action: 'register', id: 'one', name: '冒领', password: ownPassword }, 'two')).status, 409);
-  assert.equal((await f.request('/identity', 'POST', { action: 'login', id: 'one', password: 'incorrect-password' }, 'two')).status, 401);
+  const switched = await f.request('/identity', 'POST', { id: 'two' });
+  assert.equal(switched.status, 200); assert.equal((await switched.json()).member.name, '女生');
+  f.cookies.one = `${sessionCookieName}=${f.parents.one}; ${switched.headers.get('Set-Cookie').split(';')[0]}`;
   const request = new Request(origin, { headers: { Cookie: f.cookies.one } });
-  assert.equal((await memoryActor(request, f.env.DB)).id, 'one');
+  assert.equal((await memoryActor(request, f.env.DB)).id, 'two');
   const personal = f.cookies.one.split('; ')[1];
   assert.equal(await memoryActor(new Request(origin, { headers: { Cookie: `${f.cookies.two}; ${personal}` } }), f.env.DB), null);
   f.sqlite.prepare('DELETE FROM sessions WHERE token_hash = ?').run(await digest(f.parents.one));
   assert.equal(await memoryActor(request, f.env.DB), null);
 });
 
-test('independent personal login and logout preserve the other member and clear personal permissions', async () => {
+test('signature selection and clearing preserve the other shared session', async () => {
   const f = await fixture(); await f.register('one'); await f.register('two');
   assert.equal((await f.request('/identity', 'DELETE')).status, 200);
   assert.equal((await (await f.request('/bootstrap')).json()).member, null);
   assert.equal((await (await f.request('/bootstrap', 'GET', undefined, 'two')).json()).member.id, 'two');
-  const login = await f.request('/identity', 'POST', { action: 'login', id: 'one', password: ownPassword });
+  const login = await f.request('/identity', 'POST', { id: 'one' });
   assert.equal(login.status, 200); assert.equal((await login.json()).member.id, 'one');
 });
 
@@ -184,17 +184,19 @@ test('place memos keep omitted coordinates null, validate optional pairs and pre
   assert.equal((await (await f.request('/bootstrap')).json()).places[0].lat, null);
 });
 
-test('all mutations require same origin and strict payloads; personal brute force is bounded', async () => {
+test('all mutations including signature selection require same origin and strict payloads', async () => {
   const f = await fixture(); await f.register('one');
   assert.equal((await f.request('/stories/a', 'PUT', story(), 'one', { Origin: 'https://other.example' })).status, 403);
   assert.equal((await f.request('/stories/a', 'PUT', { ...story(), extra: true })).status, 400);
   assert.equal((await f.request('/stories/a', 'PUT', story({ date: '2026-02-30' }))).status, 400);
   assert.equal((await f.request('/stories/a', 'PUT', story({ text: 'x'.repeat(70000) }))).status, 413);
-  for (let i = 0; i < 9; i++) assert.equal((await f.request('/identity', 'POST', { action: 'login', id: 'one', password: 'wrong-password' })).status, 401);
-  assert.equal((await f.request('/identity', 'POST', { action: 'login', id: 'one', password: ownPassword })).status, 429);
+  assert.equal((await f.request('/identity', 'POST', { id: 'other' })).status, 400);
+  assert.equal((await f.request('/identity', 'POST', { id: 'one', password: 'obsolete' })).status, 400);
+  assert.equal((await f.request('/identity', 'POST', { id: 'two' }, 'one', { Origin: 'https://other.example' })).status, 403);
+
 });
 
-test('actual workerd D1 and KV run individual identity, private revelation and authenticated audio', async () => {
+test('actual workerd D1 and KV run signature selection, revelation and authenticated audio', async () => {
   const built = await build({ stdin: { contents: "import { handleMemoryRequest } from './worker/memory-book.ts'; export default { fetch: handleMemoryRequest };", resolveDir: fileURLToPath(new URL('../', import.meta.url)) }, bundle: true, write: false, format: 'esm', platform: 'browser' });
   const mf = new Miniflare(convertV4MiniflareOptions({ modules: true, script: built.outputFiles[0].text, compatibilityDate: '2026-09-12', d1Databases: ['DB'], kvNamespaces: ['PHOTOS'] }));
   try {
@@ -210,7 +212,7 @@ test('actual workerd D1 and KV run individual identity, private revelation and a
     }
     const request = (path, method = 'GET', value, who = 'one', headers = {}) => mf.dispatchFetch(origin + '/api/memory' + path, { method, headers: { Origin: origin, Cookie: cookies[who], 'Content-Type': 'application/json', ...headers }, ...(value === undefined ? {} : { body: value instanceof Uint8Array ? value : JSON.stringify(value) }) });
     for (const id of ['one', 'two']) {
-      const response = await request('/identity', 'POST', { action: 'register', id, name: `runtime-${id}`, password: ownPassword }, id);
+      const response = await request('/identity', 'POST', { id }, id);
       assert.equal(response.status, 200, await response.clone().text()); cookies[id] += `; ${response.headers.get('Set-Cookie').split(';')[0]}`;
     }
     assert.equal((await request('/stories/runtime-story', 'PUT', story())).status, 200);

@@ -21,16 +21,6 @@ import '../styles/memory-tools.css';
     <p class="memory-status" data-memory-status role="status" aria-live="polite"></p>
     <button class="text-button" type="button" data-memory-retry hidden>重新连接</button>
     <div data-memory-private hidden>
-      <section class="memory-identity paper-card" aria-labelledby="identity-title">
-        <div><h2 id="identity-title">这一页，由谁来写</h2><p data-member-label>先打开自己的写作身份。</p></div>
-        <form data-identity-form class="memory-form">
-          <label>身份<select name="memberId"><option value="one">第一位</option><option value="two">第二位</option></select></label>
-          <label>称呼<input name="name" maxlength="30" autocomplete="nickname" placeholder="第一次使用时填写" /></label>
-          <label>个人口令<input name="password" type="password" minlength="8" maxlength="128" autocomplete="current-password" required /></label>
-          <div class="paper-actions"><button class="pencil-button" type="submit" name="action" value="login">打开自己的身份</button><button class="text-button" type="submit" name="action" value="register">建立这个身份</button></div>
-        </form>
-        <button class="text-button" type="button" data-identity-leave hidden>收起自己的身份</button>
-      </section>
       <nav class="memory-nav" aria-label="回忆册导航"><a href="#stories">故事</a><a href="#wishes">往后与后来</a><a href="#post-office">未来邮局</a><a href="#screening">放映室</a><a href="#places">地点</a><a href="#shared-desk">共同桌面</a></nav>
       <section id="stories" class="memory-section" aria-labelledby="stories-title">
         <header class="memory-section-heading"><div><p class="paper-label">把经历收成一页</p><h2 id="stories-title">我们的故事</h2></div><button class="pencil-button" type="button" data-story-new>写一篇故事</button></header>

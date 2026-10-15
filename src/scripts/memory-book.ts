@@ -14,7 +14,6 @@ const privateRoot = $('[data-memory-private]');
 const storyForm = $<HTMLFormElement>('[data-story-form]');
 const letterForm = $<HTMLFormElement>('[data-letter-form]');
 const placeForm = $<HTMLFormElement>('[data-place-form]');
-const identityForm = $<HTMLFormElement>('[data-identity-form]');
 const field = (form: HTMLFormElement, name: string) => form.elements.namedItem(name) as HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement;
 const value = (form: HTMLFormElement, name: string) => field(form, name).value;
 const set = (form: HTMLFormElement, name: string, content: string) => { field(form, name).value = content; };
@@ -54,7 +53,6 @@ function clearSelectors() {
   $<HTMLSelectElement>('[data-place-story]').replaceChildren(new Option('暂不关联', ''));
   $<HTMLSelectElement>('[data-place-wish]').replaceChildren(new Option('暂不关联', ''));
   $<HTMLSelectElement>('[data-place-year]').replaceChildren(new Option('所有年份', '')); selectedPlaceYear = '';
-  all<HTMLOptionElement>('option', field(identityForm, 'memberId')).forEach(option => { option.textContent = option.value === 'one' ? '第一位' : '第二位'; });
   all<HTMLOptionElement>('option', field(letterForm, 'recipientId')).forEach(option => { option.textContent = option.value === 'one' ? '第一位' : '第二位'; });
 }
 function clearPrivate() {
@@ -72,7 +70,6 @@ function clearPrivate() {
   $('[data-screening-progress]').textContent = '';
   $<HTMLInputElement>('[data-story-search]').value = '';
   clearSelectors();
-  $('[data-member-label]').textContent = '先打开自己的写作身份。';
   $('[data-story-filter-hint]').textContent = '';
   all<HTMLImageElement>('img', privateRoot).forEach(image => image.removeAttribute('src'));
   storyForm.hidden = letterForm.hidden = placeForm.hidden = true;
@@ -129,7 +126,7 @@ async function submit(form: HTMLFormElement, task: () => Promise<void>) {
   feedback.textContent = '正在收好…';
   try { await task(); feedback.textContent = status.textContent || '这次操作已完成。'; } finally { delete form.dataset.busy; all<HTMLButtonElement>('button', form).forEach(control => { control.disabled = false; }); }
 }
-function memberName(id: string) { return book.members.find(member => member.id === id)?.name ?? (id === 'one' ? '第一位' : '第二位'); }
+function memberName(id: string) { return id === 'one' ? '男生' : '女生'; }
 function conflictReview(form: HTMLFormElement, latest: () => { text: string; accept: () => void }) {
   if (!lastWriteConflict || form.querySelector('[data-conflict-review]')) return;
   const section = el('section'); section.dataset.conflictReview = '';
@@ -142,9 +139,6 @@ function conflictReview(form: HTMLFormElement, latest: () => { text: string; acc
 function render() {
   privateRoot.hidden = false; $('[data-memory-locked]').hidden = true;
   const member = book.member;
-  $('[data-member-label]').textContent = member ? `现在是 ${member.name} 在写。个人口令只用于打开自己的内容。` : '共同密码打开手账，个人口令打开各自的草稿。首次使用请选择一个身份并建立口令（至少 8 位）。';
-  identityForm.hidden = !!member; $('[data-identity-leave]').hidden = !member;
-  all<HTMLOptionElement>('option', field(identityForm, 'memberId')).forEach(option => { option.textContent = `${memberName(option.value)}${book.members.some(item => item.id === option.value) ? '（已建立）' : '（待建立）'}`; });
   all<HTMLOptionElement>('option', field(letterForm, 'recipientId')).forEach(option => { option.textContent = memberName(option.value); });
   for (const section of all<HTMLElement>('.memory-section', privateRoot)) section.hidden = !member;
   $('.memory-nav').hidden = !member;
@@ -435,12 +429,11 @@ function openPlace(place?: MemoryPlace) {
 placeForm.addEventListener('submit', event => { event.preventDefault(); void submit(placeForm, async () => { const storyId = value(placeForm, 'storyId'); const wishId = value(placeForm, 'wishId'); const id = value(placeForm, 'id'); const latitude = value(placeForm, 'latitude').trim(); const longitude = value(placeForm, 'longitude').trim(); if (await write(`/places/${id}`, 'PUT', { expectedVersion: placeEditVersion, name: value(placeForm, 'name'), lat: latitude === '' ? null : Number(latitude), lng: longitude === '' ? null : Number(longitude), year: Number(value(placeForm, 'year')), storyIds: storyId ? [storyId] : [], wishIds: wishId ? [wishId] : [] })) placeForm.hidden = true; else conflictReview(placeForm, () => { const latest = book.places.find(item => item.id === id); return { text: latest ? `${latest.name} · ${latest.year}${latest.lat == null ? ' · 未填坐标' : ` · ${latest.lat}, ${latest.lng}`}` : '地点暂时不存在。', accept() { placeEditVersion = latest?.version ?? 0; } }; }); }); });
 
 const identityChanges = typeof BroadcastChannel !== 'undefined' ? new BroadcastChannel('loveuhqq_member') : null;
-function identityChanged() { identityChanges?.postMessage('changed'); try { localStorage.setItem('loveuhqq_member_changed', String(Date.now())); } catch { /* Cross-tab fallback is optional. */ } }
+
 function receiveIdentityChange() { clearPrivate(); if (authenticated) void load(); }
 identityChanges?.addEventListener('message', receiveIdentityChange);
 window.addEventListener('storage', event => { if (event.key === 'loveuhqq_member_changed') receiveIdentityChange(); });
-identityForm.addEventListener('submit', event => { event.preventDefault(); const submitter = (event as SubmitEvent).submitter as HTMLButtonElement; void submit(identityForm, async () => { const token = generation; try { await api(`${memoryApiRoot}/identity`, { method: 'POST', body: JSON.stringify({ action: submitter?.value ?? 'login', id: value(identityForm, 'memberId'), name: value(identityForm, 'name'), password: value(identityForm, 'password') }) }); if (token !== generation) return; set(identityForm, 'password', ''); identityChanged(); clearPrivate(); authenticated = true; await load(); } catch (error) { if (token === generation) { set(identityForm, 'password', ''); if (error instanceof ApiError && error.status === 401) { status.textContent = error.message; let hint = identityForm.querySelector<HTMLElement>('[data-form-status]'); if (!hint) { hint = el('p', '', 'memory-status'); hint.dataset.formStatus = ''; hint.setAttribute('role', 'status'); identityForm.append(hint); } hint.textContent = error.message; } else report(error); } } }); });
-$('[data-identity-leave]').addEventListener('click', () => { void (async () => { try { await api(`${memoryApiRoot}/identity`, { method: 'DELETE' }); identityChanged(); clearPrivate(); authenticated = true; await load(); } catch (error) { report(error); } })(); });
+
 $('[data-memory-retry]').addEventListener('click', () => { void load(); });
 $('[data-story-new]').addEventListener('click', () => openStoryForm());
 $('[data-story-cancel]').addEventListener('click', () => { storyForm.hidden = true; });
@@ -458,3 +451,5 @@ window.addEventListener('pageshow', event => { if (event.persisted) { clearPriva
 document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden') stopScreening(); else if (authenticated) void load(); });
 window.setInterval(() => { if (authenticated && document.visibilityState === 'visible' && !mutations.size) void load(); }, 10_000);
 void getSession().catch(report);
+
+document.addEventListener('memory:identity-changed', receiveIdentityChange);

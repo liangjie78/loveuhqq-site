@@ -1,4 +1,4 @@
-import { digest, hex, passwordIterations, randomToken, readSessionToken, verifyPassword } from './auth.ts';
+import { digest, randomToken, readSessionToken } from './auth.ts';
 import { isCalendarDate } from '../src/lib/notebook.ts';
 import { audioMaxBytes, audioMaxSeconds } from '../src/lib/memory-book.ts';
 import type { MemoryBootstrap, MemoryLetter, MemoryMember, MemoryStory, MemberId, StoryPart } from '../src/lib/memory-book.ts';
@@ -37,7 +37,7 @@ export async function memoryActor(request: Request, db: D1Database): Promise<Mem
   const sessionHash = await digest(token);
   const row = await db.prepare(`SELECT m.id, m.name, s.expires_at FROM memory_sessions s JOIN memory_members m ON m.id = s.member_id
     WHERE s.token_hash = ? AND s.parent_hash = ? AND s.expires_at > ?`).bind(sessionHash, parent.hash, Date.now()).first<Row>();
-  return row ? { id: row.id, name: row.name, sessionHash, parentHash: parent.hash, expiresAt: Math.min(row.expires_at, parent.expiresAt) } : null;
+  return row ? { id: row.id, name: row.id === 'one' ? '男生' : '女生', sessionHash, parentHash: parent.hash, expiresAt: Math.min(row.expires_at, parent.expiresAt) } : null;
 }
 function text(value: unknown, max: number, empty = false): string {
   if (typeof value !== 'string' || value.length > max || (!empty && !value.trim())) fail(400, '文字为空或过长。');
@@ -112,7 +112,7 @@ function projectedLetter(row: Row, all: Row[], actor: MemoryActor): MemoryLetter
 }
 export async function memoryBootstrap(request: Request, db: D1Database): Promise<MemoryBootstrap> {
   const actor = await memoryActor(request, db);
-  const members = await rows(db, 'SELECT id,name FROM memory_members ORDER BY id') as MemoryMember[];
+  const members = await rows(db, "SELECT id, CASE id WHEN 'one' THEN '男生' ELSE '女生' END AS name FROM memory_members ORDER BY id") as MemoryMember[];
   if (!actor) return { member: null, members, stories: [], letters: [], places: [], wishPlans: [] };
   const [stories, parts, letters, places, plans] = await Promise.all([
     rows(db, 'SELECT * FROM memory_stories ORDER BY date DESC,id'), rows(db, 'SELECT * FROM memory_parts'), rows(db, 'SELECT * FROM memory_letters ORDER BY open_date,id'),
@@ -124,12 +124,6 @@ export async function memoryBootstrap(request: Request, db: D1Database): Promise
     places: places.map(place => ({ id: place.id, version: place.version, name: place.name, lat: place.lat, lng: place.lng, year: place.year, storyIds: arr(place.story_ids), wishIds: arr(place.wish_ids) })),
     wishPlans: plans.map(plan => ({ id: plan.id, version: plan.version, plannedDate: plan.planned_date, storyId: plan.story_id })) };
 }
-async function passwordHash(password: string) {
-  const salt = crypto.getRandomValues(new Uint8Array(16));
-  const key = await crypto.subtle.importKey('raw', new TextEncoder().encode(password), 'PBKDF2', false, ['deriveBits']);
-  const hash = await crypto.subtle.deriveBits({ name: 'PBKDF2', salt, iterations: passwordIterations, hash: 'SHA-256' }, key, 256);
-  return `pbkdf2$${passwordIterations}$${hex(salt)}$${hex(new Uint8Array(hash))}`;
-}
 async function identity(request: Request, db: D1Database): Promise<Response> {
   if (request.method === 'GET') return json(await memoryBootstrap(request, db));
   if (request.method === 'DELETE') {
@@ -140,25 +134,11 @@ async function identity(request: Request, db: D1Database): Promise<Response> {
   if (request.method !== 'POST') return fail(405, '方法不支持。');
   const parent = await parentSession(request, db);
   if (!parent) return fail(401, '请先登录手账。');
-  // Use the existing atomic rate-limit table, independently from shared-password attempts.
-  const now = Date.now(); const client = request.headers.get('CF-Connecting-IP')?.trim() || 'unknown';
-  const permitted = await db.prepare(`INSERT INTO login_limits(client_hash,window_until,attempts) VALUES(?,?,1) ON CONFLICT(client_hash) DO UPDATE SET
-    window_until = CASE WHEN window_until <= ? THEN excluded.window_until ELSE window_until END,
-    attempts = CASE WHEN window_until <= ? THEN 1 ELSE attempts + 1 END WHERE window_until <= ? OR attempts < 10 RETURNING attempts`)
-    .bind(await digest(`memory-login:${client}`), now + 900000, now, now, now).first();
-  if (!permitted) return fail(429, '尝试次数过多，请 15 分钟后再试。');
-  const value = await body(request, ['action', 'id', 'password'], ['name']);
-  if (!memberId(value.id) || !['register', 'login'].includes(value.action)) return fail(400, '身份操作无效。');
-  const password = text(value.password, 128);
-  if (password.length < 8) return fail(400, '个人口令应为 8–128 个字符。');
-  if (value.action === 'register') {
-    const name = text(value.name, 30).trim();
-    const created = await db.prepare('INSERT INTO memory_members(id,name,password_hash) VALUES(?,?,?) ON CONFLICT(id) DO NOTHING RETURNING id').bind(value.id, name, await passwordHash(password)).first();
-    if (!created) return fail(409, '这个身份已设置，请用个人口令登录。');
-  } else {
-    const member = await one(db, 'SELECT password_hash FROM memory_members WHERE id = ?', value.id);
-    if (!member || !await verifyPassword(password, member.password_hash)) return fail(401, '身份或个人口令不正确。');
-  }
+  const now = Date.now();
+  const value = await body(request, ['id']);
+  if (!memberId(value.id)) return fail(400, '请选择男生或女生。');
+  // These are selectable signatures within the shared gate, not separate security identities.
+  await db.batch(['one', 'two'].map(id => db.prepare('INSERT INTO memory_members(id,name,password_hash) VALUES(?,?,?) ON CONFLICT(id) DO UPDATE SET name=excluded.name').bind(id, id === 'one' ? '男生' : '女生', 'disabled')));
   const token = randomToken(); const hash = await digest(token); const age = Math.max(0, Math.floor((parent.expiresAt - now) / 1000));
   await db.batch([db.prepare('DELETE FROM memory_sessions WHERE parent_hash = ? OR expires_at <= ?').bind(parent.hash, now),
     db.prepare('INSERT INTO memory_sessions(token_hash,parent_hash,member_id,expires_at) VALUES(?,?,?,?)').bind(hash, parent.hash, value.id, parent.expiresAt)]);

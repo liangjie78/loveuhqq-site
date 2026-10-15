@@ -8,7 +8,6 @@ import { Miniflare, convertV4MiniflareOptions } from 'miniflare';
 
 const origin = 'https://desktop.example';
 const sharedPassword = 'synthetic-desktop-shared-password';
-const personalPassword = 'synthetic-desktop-personal-password';
 const salt = '00112233445566778899aabbccddeeff';
 const credential = `pbkdf2$100000$${salt}$${pbkdf2Sync(sharedPassword, Buffer.from(salt, 'hex'), 100000, 32, 'sha256').toString('hex')}`;
 
@@ -71,7 +70,7 @@ test('real shared desktop WebSockets persist, coordinate CAS, reconnect and revo
     for (const id of ['one', 'two']) {
       const shared = await request('/api/session', 'POST', { password: sharedPassword, remember: false });
       assert.equal(shared.status, 200); cookies[id] = shared.headers.get('Set-Cookie').split(';')[0];
-      const personal = await request('/api/memory/identity', 'POST', { action: 'register', id, name: `synthetic-${id}`, password: personalPassword }, id);
+      const personal = await request('/api/memory/identity', 'POST', { id }, id);
       assert.equal(personal.status, 200); cookies[id] += `; ${personal.headers.get('Set-Cookie').split(';')[0]}`;
     }
     assert.equal((await request('/api/memory/desktop', 'GET', undefined, undefined, { Upgrade: 'websocket' })).status, 401);
