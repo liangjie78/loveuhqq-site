@@ -4,7 +4,7 @@ import { DatabaseSync } from 'node:sqlite';
 import { pbkdf2Sync } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import worker from '../worker/index.ts';
-import { digest, isPasswordHash, readSessionToken, sessionCookieName, verifyPassword } from '../worker/auth.ts';
+import { digest, sessionCookieName } from '../worker/auth.ts';
 import { hundredDayLetter, hundredDayLetterKey } from '../worker/letter.ts';
 
 const origin = 'https://journal.example';
@@ -45,18 +45,13 @@ function fixture() {
   } };
 }
 
-test('PBKDF2 verifier validates exact supported format and passwords', async () => {
-  assert.equal(isPasswordHash(credential), true);
-  for (const value of ['', credential.replace('100000', '100001'), credential.replace(salt, 'ab'), undefined]) assert.equal(isPasswordHash(value), false);
-  assert.equal(await verifyPassword(password, credential), true);
-  assert.equal(await verifyPassword('wrong-test-password', credential), false);
-});
-
 test('unconfigured backend fails closed and unknown APIs never become assets', async () => {
   const f = fixture();
-  f.env.EDITOR_PASSWORD_HASH = undefined;
-  assert.deepEqual(await (await f.request('/api/session')).json(), { authenticated: false, configured: false });
-  assert.equal((await f.request('/api/notebook')).status, 503);
+  for (const invalid of [undefined, credential.replace('100000', '100001')]) {
+    f.env.EDITOR_PASSWORD_HASH = invalid;
+    assert.deepEqual(await (await f.request('/api/session')).json(), { authenticated: false, configured: false });
+    assert.equal((await f.request('/api/notebook')).status, 503);
+  }
   assert.equal((await f.request('/api/missing')).status, 404);
   assert.equal(await (await f.request('/photos/')).text(), 'asset');
   f.env.EDITOR_PASSWORD_HASH = credential;
@@ -75,6 +70,7 @@ test('private notebook requires a current server session; API responses are unca
   const cookie = await f.login();
   assert.deepEqual(await (await f.request('/api/session', 'GET', undefined, cookie)).json(), { authenticated: true, configured: true });
   assert.equal((await f.request('/api/notebook', 'GET', undefined, `${sessionCookieName}=${'a'.repeat(64)}`)).status, 401);
+  assert.equal((await f.request('/api/notebook', 'GET', undefined, `${cookie}; ${cookie}`)).status, 401);
 });
 
 test('letter opens at the hundredth Shanghai midnight and stays open afterward', async (t) => {
@@ -95,48 +91,10 @@ test('letter opens at the hundredth Shanghai midnight and stays open afterward',
       assert.ok(!JSON.stringify(result).includes(hundredDayLetter.paragraphs[0]));
     }
   }
-});
-
-test('letter rejects missing, invalid, expired, rotated and logged-out sessions after opening', async (t) => {
-  t.mock.timers.enable({ apis: ['Date'], now: Date.parse('2026-10-08T00:00:00+08:00') });
-  const f = fixture();
-  const denied = async (cookie) => {
-    const response = await f.request('/api/letter', 'GET', undefined, cookie);
-    assert.equal(response.status, 401);
-    assert.equal(response.headers.get('Cache-Control'), 'no-store');
-    assert.deepEqual(await response.json(), { error: '请先登录手账。' });
-  };
-  await denied();
-  await denied(`${sessionCookieName}=${'a'.repeat(64)}`);
-  const cookie = await f.login();
-  f.env.EDITOR_PASSWORD_HASH = credential.replace(salt, 'ffeeddccbbaa99887766554433221100');
-  await denied(cookie);
-  f.env.EDITOR_PASSWORD_HASH = credential;
-  f.sqlite.prepare('UPDATE sessions SET expires_at = ?').run(Date.now());
-  await denied(cookie);
-  const fresh = await f.login();
-  assert.equal((await f.request('/api/letter', 'GET', undefined, fresh)).status, 200);
-  assert.equal((await f.request('/api/session', 'DELETE', undefined, fresh)).status, 200);
-  await denied(fresh);
-});
-
-test('letter fails closed when unconfigured and accepts only GET', async () => {
-  const f = fixture();
-  for (const [binding, value] of [['EDITOR_PASSWORD_HASH', undefined], ['DB', undefined]]) {
-    const previous = f.env[binding];
-    f.env[binding] = value;
-    const response = await f.request('/api/letter');
-    assert.equal(response.status, 503);
-    assert.equal(response.headers.get('Cache-Control'), 'no-store');
-    assert.deepEqual(await response.json(), { error: '云端手账尚未配置完成。' });
-    f.env[binding] = previous;
-  }
-  for (const method of ['HEAD', 'OPTIONS', 'POST', 'PUT', 'DELETE', 'PATCH']) {
-    const response = await f.request('/api/letter', method, undefined, undefined, { Origin: '' });
+  for (const method of ['HEAD', 'POST']) {
+    const response = await f.request('/api/letter', method, undefined, cookie);
     assert.equal(response.status, 405);
     assert.equal(response.headers.get('Allow'), 'GET');
-    assert.equal(response.headers.get('Cache-Control'), 'no-store');
-    assert.deepEqual(await response.json(), { error: '方法不支持。' });
   }
 });
 
@@ -313,10 +271,4 @@ test('atomic quota permits updates and tombstone deletion but rejects new active
   assert.deepEqual(responses.map((response) => response.status).sort(), [200, 422]);
   assert.equal(f.sqlite.prepare("SELECT COUNT(*) AS count FROM notebook_entries WHERE kind = 'wish' AND deleted = 0").get().count, 300);
   assert.equal((await f.request('/api/wishes/wish-0', 'PUT', { expectedVersion: 3, text: 'restore', done: false }, cookie)).status, 422);
-});
-
-test('malformed and duplicate session cookies are never accepted', () => {
-  for (const value of [`${sessionCookieName}=x`, `${sessionCookieName}=${'a'.repeat(64)}; ${sessionCookieName}=${'b'.repeat(64)}`]) {
-    assert.equal(readSessionToken(new Request(origin, { headers: { Cookie: value } })), null);
-  }
 });

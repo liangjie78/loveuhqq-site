@@ -34,6 +34,8 @@ npm run preview
 
 新增可见文案后运行 `npm run subset:font` 重新生成宋体子集并连同字符清单一起提交，否则 `tests/font-subset.test.mjs` 会失败、页面会回退到系统字体。
 
+`npm test` 保留日期边界、会话与私密访问、保存冲突、相册并发及上传工具的行为测试，并用一条真实 Worker/D1 链路检查运行时兼容性。日期等边界在轻量测试中验证；界面布局和交互通过真实浏览器验收，不用源码关键词或历史截图检查代替。
+
 构建输出在 `dist/`，不提交到 Git。当前页面入口是 [`src/pages/index.astro`](src/pages/index.astro)，样式入口是 [`src/styles/global.css`](src/styles/global.css)。
 
 相册照片不进仓库：用 `npm run photos:prepare -- <照片文件夹> --featured "标题,标题,标题"` 在本机生成去除 EXIF 的 WebP 和清单（输出到已忽略的 `.private-photos/`，文件名即标题），再用 `npm run photos:upload:preview` 或 `photos:upload:production` 上传到对应的 KV 命名空间，详见 [部署说明](docs/DEPLOYMENT.md#私密相册)。日期仍只修改 `src/lib/anniversary.ts` 中的来源，不在页面写死天数。
