@@ -2,7 +2,7 @@
 import '../styles/daily-prompt.css';
 ---
 
-<aside class="daily-prompt" data-daily-prompt data-needs-js aria-labelledby="daily-prompt-title">
+<aside class="daily-prompt" data-daily-prompt data-needs-js aria-label="写作灵感">
   <div class="daily-prompt-flower" aria-hidden="true">
     <svg viewBox="0 0 80 80" fill="none" focusable="false">
       <path class="daily-prompt-ring" d="M69 41c1 17-12 29-29 29C23 71 10 58 10 40 9 23 23 10 40 11c17-1 30 12 29 30Z" />
@@ -11,17 +11,8 @@ import '../styles/daily-prompt.css';
       <circle cx="40" cy="41" r="5" />
     </svg>
   </div>
-  <div class="daily-prompt-copy">
-    <div class="daily-prompt-heading">
-      <h3 id="daily-prompt-title">今天这一页</h3>
-      <time data-daily-prompt-date></time>
-    </div>
-    <p class="daily-prompt-question" data-daily-prompt-question aria-live="polite" aria-atomic="true">今天有什么小事，想留在这一页？</p>
-  </div>
-  <div class="daily-prompt-actions">
-    <button class="text-button daily-prompt-shuffle" type="button" data-daily-prompt-next>换个话头 <span aria-hidden="true">↻</span></button>
-    <button class="pencil-button daily-prompt-write" type="button" data-daily-prompt-write>记下今天 <span aria-hidden="true">↗</span></button>
-  </div>
+  <p class="daily-prompt-question" data-daily-prompt-question aria-live="polite" aria-atomic="true">这一天有什么小事，想留在这一页？</p>
+  <button class="text-button daily-prompt-shuffle" type="button" data-daily-prompt-next>换个话头 <span aria-hidden="true">↻</span></button>
 </aside>
 
 <script src="../scripts/daily-prompt.ts"></script>

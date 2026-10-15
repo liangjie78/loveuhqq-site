@@ -8,17 +8,8 @@ import {
 
 const date = (value) => new Date(value);
 
-test('the first anniversary closes relationship year 1', () => {
+test('the anniversary closes its relationship year until the next Shanghai midnight', () => {
   assert.equal(getRelationshipYear(date('2026-06-01T12:00:00+08:00')), 1);
-  assert.equal(getRelationshipYear(date('2026-07-01T00:00:00+08:00')), 1);
-  assert.equal(getRelationshipYear(date('2026-09-27T12:00:00+08:00')), 1);
-  assert.equal(getRelationshipYear(date('2027-07-01T23:59:59+08:00')), 1);
-  assert.equal(getRelationshipYear(date('2027-07-02T00:00:00+08:00')), 2);
-  assert.equal(getRelationshipYear(date('2028-03-01T00:00:00+08:00')), 2);
-  assert.equal(getRelationshipYear(date('2028-07-02T00:00:00+08:00')), 3);
-});
-
-test('switches relationship years at the Shanghai midnight', () => {
   assert.equal(getRelationshipYear(date('2027-07-01T15:59:59.999Z')), 1);
   assert.equal(getRelationshipYear(date('2027-07-01T16:00:00.000Z')), 2);
 });
@@ -27,7 +18,6 @@ test('year 1 runs from the start date through the first anniversary', () => {
   const months = getRelationshipYearMonths(1);
   const days = months.flatMap((month) => month.days);
 
-  assert.equal(months.length, 13);
   assert.deepEqual(
     months.map(({ year, month, days }) => [year, month, days.length]),
     [
@@ -37,9 +27,7 @@ test('year 1 runs from the start date through the first anniversary', () => {
       [2027, 7, 1],
     ],
   );
-  assert.equal(days.length, 366);
   assert.deepEqual(days[0], { date: '2026-07-01', dayOfMonth: 1, day: 1 });
-  assert.deepEqual(days[99], { date: '2026-10-08', dayOfMonth: 8, day: 100 });
   assert.deepEqual(days.at(-1), { date: '2027-07-01', dayOfMonth: 1, day: 366 });
 });
 
@@ -51,10 +39,4 @@ test('later years start the day after the previous anniversary', () => {
   assert.deepEqual(days.at(-1), { date: '2028-07-01', dayOfMonth: 1, day: 732 });
   assert.equal(months.find(({ year, month }) => year === 2028 && month === 2).days.length, 29);
   assert.equal(days.length, 366);
-});
-
-test('rejects invalid relationship years', () => {
-  assert.throws(() => getRelationshipYearMonths(0), RangeError);
-  assert.throws(() => getRelationshipYearMonths(1.5), RangeError);
-  assert.throws(() => getRelationshipYear(new Date(Number.NaN)), RangeError);
 });

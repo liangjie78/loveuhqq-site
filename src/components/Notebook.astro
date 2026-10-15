@@ -1,4 +1,8 @@
-<section class="day-back" aria-label="日子的背面" data-needs-js>
+---
+import DailyPrompt from './DailyPrompt.astro';
+---
+
+<section class="day-back" id="daily-prompt-title" aria-label="日子的背面" data-needs-js>
   <div class="notebook-guest" data-note-guest>
     <p class="paper-label">日子的背面</p>
     <p>解锁后，翻看我们的记录</p>
@@ -13,11 +17,11 @@
       <div><p class="paper-label">日子的背面</p><h3 id="day-back-title" data-note-date tabindex="-1">给今天留一句</h3></div>
       <button class="pencil-button" type="button" data-note-edit><span data-note-edit-label>写一句</span> <span aria-hidden="true">↗</span></button>
     </div>
+    <DailyPrompt />
     <p class="day-back-text" data-note-text>这一天还空着。想记的时候，再写。</p>
-    <p class="paper-local">登录后，可以在手账里查看和修改。</p>
     <form data-note-form hidden class="note-editor">
       <label class="sr-only" for="day-note">这一天想记下的话</label>
-      <textarea id="day-note" maxlength="2000" rows="4" placeholder="发生了什么，或只是今天的一句话。"></textarea>
+      <textarea id="day-note" maxlength="2000" rows="4" placeholder="写在这里。"></textarea>
       <div class="paper-actions"><button class="pencil-button" type="submit">收好这一句</button><button class="text-button" type="button" data-note-cancel>取消</button><button class="text-button" type="button" data-note-delete hidden>移除这一句</button></div>
     </form>
     <div class="note-conflict" data-note-conflict hidden>

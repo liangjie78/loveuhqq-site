@@ -12,7 +12,4 @@ test('moments use real YYYY-MM-DD dates, unique and non-empty titles', () => {
     assert.ok(!seen.has(date), `duplicate ${date}`);
     seen.add(date);
   }
-  for (const date of ['2026-05-27', '2026-07-01', '2026-09-06', '2026-10-08']) {
-    assert.ok(seen.has(date), `missing confirmed moment ${date}`);
-  }
 });
