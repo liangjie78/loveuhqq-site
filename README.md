@@ -20,7 +20,7 @@
 
 界面截图：[桌面封面](docs/previews/journal-desktop.webp) · [桌面日历](docs/previews/journal-days-desktop.webp) · [手机封面](docs/previews/journal-mobile.webp) · [手机日历](docs/previews/journal-days-mobile.webp) · [门禁](docs/previews/journal-gate-mobile.webp)。截图用于展示源码界面，日期计数表示截图时的状态；实际页面按访问当天更新。顶部项目标识插画不作为当前页面截图。上述内容描述当前源码，不能据此判断正式网址已更新。
 
-共同回忆册入口为 `/memories/`：连接故事、双人版本、未来信件、愿望、声音、地点、浏览器放映和实时桌面。源码与隔离预览的实施状态、规则和验收记录见 [共同回忆册路线图](docs/product/ROADMAP-shared-memory-book.md)；正式站生效仍需单独合并、迁移及部署。
+共同回忆册入口为 `/memories/`：连接故事、双人版本、未来信件、愿望、声音、地点备忘、浏览器放映和实时桌面。地点目前只保留名称、年份与关联记录，坐标可留空，不加载地图。源码与隔离预览的实施状态、规则和验收记录见 [共同回忆册路线图](docs/product/ROADMAP-shared-memory-book.md)；正式站生效仍需单独合并、迁移及部署。
 
 ## 本地开发
 

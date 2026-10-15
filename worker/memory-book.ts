@@ -220,7 +220,10 @@ async function letterAction(request: Request, db: D1Database, actor: MemoryActor
 async function savePlace(request: Request, db: D1Database, id: string) {
   const value = await body(request, ['expectedVersion', 'name', 'lat', 'lng', 'year', 'storyIds', 'wishIds']);
   const expected = version(value.expectedVersion); const name = text(value.name, 120);
-  if (!Number.isFinite(value.lat) || Math.abs(value.lat) > 90 || !Number.isFinite(value.lng) || Math.abs(value.lng) > 180 || !Number.isInteger(value.year) || value.year < 1900 || value.year > 9999) fail(400, '地点坐标或年份无效。');
+  const coordinatesValid = value.lat === null && value.lng === null ||
+    typeof value.lat === 'number' && Number.isFinite(value.lat) && Math.abs(value.lat) <= 90 &&
+    typeof value.lng === 'number' && Number.isFinite(value.lng) && Math.abs(value.lng) <= 180;
+  if (!coordinatesValid || !Number.isInteger(value.year) || value.year < 1900 || value.year > 9999) fail(400, '地点坐标或年份无效。');
   const stories = ids(value.storyIds); const wishes = ids(value.wishIds); await checkStories(db, stories); await checkWishes(db, wishes);
   await cas(db, 'memory_places', id, expected, { name, lat: value.lat, lng: value.lng, year: value.year, story_ids: JSON.stringify(stories), wish_ids: JSON.stringify(wishes) });
 }

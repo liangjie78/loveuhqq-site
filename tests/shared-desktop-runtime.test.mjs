@@ -59,7 +59,7 @@ test('real shared desktop WebSockets persist, coordinate CAS, reconnect and revo
   const sockets = [];
   try {
     const db = await mf.getD1Database('DB');
-    for (const file of ['0001_cloud_notebook.sql', '0002_photo_manifest.sql', '0003_shared_memory_book.sql']) {
+    for (const file of ['0001_cloud_notebook.sql', '0002_photo_manifest.sql', '0003_shared_memory_book.sql', '0004_optional_place_coordinates.sql']) {
       const migration = readFileSync(new URL(`../migrations/${file}`, import.meta.url), 'utf8');
       await db.batch(migration.split(';').map(sql => sql.trim()).filter(Boolean).map(sql => db.prepare(sql)));
     }

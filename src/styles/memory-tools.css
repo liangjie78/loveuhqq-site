@@ -1,12 +1,4 @@
-.memory-tool-actions { display: flex; flex-wrap: wrap; gap: .4rem 1rem; align-items: center; margin: .7rem 0; }
 .memory-tool-hint { font-family: var(--sans); font-size: .88rem; color: var(--ink-light, #766658); line-height: 1.8; }
-.memory-map { position: relative; height: clamp(280px, 48vw, 440px); overflow: hidden; background: #e9e2d3; border: 1px solid var(--line, #d6c9b7); touch-action: none; isolation: isolate; }
-.memory-map-tiles, .memory-map-pins { position: absolute; inset: 0; }
-.memory-map-tiles img { position: absolute; top: 0; left: 0; width: 256px; height: 256px; max-width: none; }
-.memory-map-pins { pointer-events: none; }
-.memory-map-pin { position: absolute; transform: translate(-50%, -50%); border: 0; border-radius: 50%; background: var(--paper); color: var(--rose); width: 44px; height: 44px; pointer-events: auto; cursor: pointer; box-shadow: 0 2px 8px #382d2229; }
-.memory-map-attribution { position: absolute; bottom: 0; right: 0; background: #fffef5ee; padding: 3px 7px; font: 11px/1.5 var(--sans); color: #4c443b; z-index: 2; }
-.memory-map-detail { font-family: var(--sans); line-height: 1.8; padding-top: .7rem; }
 .memory-desk { position: relative; height: 480px; width: 100%; border: 1px solid var(--line, #d6c9b7); background: var(--paper-2, #eee4d5); overflow: hidden; touch-action: pan-y; }
 .memory-desk-item { position: absolute; width: 145px; min-height: 95px; max-height: 200px; overflow: hidden; background: var(--paper, #faf4e8); padding: 9px; box-shadow: 1px 3px 8px #33221520; border: 1px solid #dccfba; font-family: var(--sans); touch-action: none; cursor: grab; }
 .memory-desk-item:focus-within { z-index: 2; }

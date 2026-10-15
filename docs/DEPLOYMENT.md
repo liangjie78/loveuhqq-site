@@ -71,7 +71,7 @@
 
 ## 共同回忆册发布
 
-八项功能通过 `worker/runtime.ts` 导出 HTTP handler 与 `SharedDesktop` Durable Object。`wrangler.jsonc`、原预览配置和本任务隔离预览配置均声明相同的 SQLite 类迁移 `shared-memory-v1`，实际 DO 命名空间按 Worker 隔离。D1 增量迁移为 `0003_shared_memory_book.sql`，只新增独立表，不修改或批量迁移旧日记、愿望、相册和百日信。
+回忆册通过 `worker/runtime.ts` 导出 HTTP handler 与 `SharedDesktop` Durable Object。`wrangler.jsonc`、原预览配置和本任务隔离预览配置均声明相同的 SQLite 类迁移 `shared-memory-v1`，实际 DO 命名空间按 Worker 隔离。D1 增量迁移为 `0003_shared_memory_book.sql` 和 `0004_optional_place_coordinates.sql`：前者新增独立表，后者完整复制地点记录后移除坐标的非空要求；旧坐标、版本与关联均保留，不改动原日记、愿望、相册和百日信。
 
 本任务验收使用 `wrangler.memory-preview.jsonc`、Worker `loveuhqq-memory-book-preview`、全新 D1/KV，只保存合成内容。部署使用项目 Wrangler：
 

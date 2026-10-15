@@ -12,7 +12,7 @@ const origin = 'https://memory.example';
 const ownPassword = 'synthetic-personal-password';
 async function fixture() {
   const sqlite = new DatabaseSync(':memory:');
-  for (const file of ['0001_cloud_notebook.sql', '0002_photo_manifest.sql', '0003_shared_memory_book.sql']) sqlite.exec(readFileSync(new URL(`../migrations/${file}`, import.meta.url), 'utf8'));
+  for (const file of ['0001_cloud_notebook.sql', '0002_photo_manifest.sql', '0003_shared_memory_book.sql', '0004_optional_place_coordinates.sql']) sqlite.exec(readFileSync(new URL(`../migrations/${file}`, import.meta.url), 'utf8'));
   const DB = {
     prepare(sql) {
       const statement = sqlite.prepare(sql); let values = [];
@@ -145,6 +145,45 @@ test('places and wish plans validate relations, use CAS, and preserve stories af
   assert.equal(book.wishPlans[0].storyId, 'story-a'); assert.equal(book.stories[0].id, 'story-a'); assert.equal(book.places[0].storyIds[0], 'story-a');
 });
 
+test('optional-place migration preserves existing coordinates, versions and associations', () => {
+  const sqlite = new DatabaseSync(':memory:');
+  try {
+    sqlite.exec(readFileSync(new URL('../migrations/0003_shared_memory_book.sql', import.meta.url), 'utf8'));
+    const original = { id: 'legacy-place', version: 7, name: '已有地点', lat: 23.1, lng: 113.2, year: 2026, story_ids: '["story-a"]', wish_ids: '["wish-a"]' };
+    sqlite.prepare('INSERT INTO memory_places VALUES(?,?,?,?,?,?,?,?)').run(...Object.values(original));
+    sqlite.exec('BEGIN');
+    try { sqlite.exec(readFileSync(new URL('../migrations/0004_optional_place_coordinates.sql', import.meta.url), 'utf8')); sqlite.exec('COMMIT'); }
+    catch (error) { sqlite.exec('ROLLBACK'); throw error; }
+    assert.deepEqual({ ...sqlite.prepare('SELECT * FROM memory_places').get() }, original);
+    sqlite.prepare('INSERT INTO memory_places VALUES(?,?,?,?,?,?,?,?)').run('no-coordinates', 1, '地点备忘', null, null, 2026, '[]', '[]');
+    assert.equal(sqlite.prepare("SELECT lat FROM memory_places WHERE id='no-coordinates'").get().lat, null);
+    assert.equal(sqlite.prepare("SELECT name FROM sqlite_master WHERE name='memory_places_optional'").get(), undefined);
+  } finally { sqlite.close(); }
+});
+
+test('place memos keep omitted coordinates null, validate optional pairs and preserve associations under concurrent CAS', async () => {
+  const f = await fixture(); await f.register('one');
+  f.sqlite.prepare("INSERT INTO notebook_entries VALUES('wish','memo-wish','合成愿望',0,1,0)").run();
+  await f.request('/stories/memo-story', 'PUT', story());
+  const memo = { expectedVersion: 0, name: '以后想去的地方', lat: null, lng: null, year: 2027, storyIds: ['memo-story'], wishIds: ['memo-wish'] };
+  const saved = await f.request('/places/memo', 'PUT', memo);
+  assert.equal(saved.status, 200); const initial = (await saved.json()).places[0];
+  assert.equal(initial.lat, null); assert.equal(initial.lng, null);
+  for (const coords of [{ lat: null, lng: 113.2 }, { lat: 23.1, lng: null }, { lat: '23.1', lng: 113.2 }, { lat: 91, lng: 113.2 }, { lat: 23.1, lng: -181 }]) {
+    assert.equal((await f.request('/places/invalid', 'PUT', { ...memo, ...coords })).status, 400);
+  }
+  assert.equal((await f.request('/places/missing-story', 'PUT', { ...memo, storyIds: ['missing'] })).status, 404);
+  assert.equal((await f.request('/places/missing-wish', 'PUT', { ...memo, wishIds: ['missing'] })).status, 400);
+  const updates = await Promise.all(['第一种备忘', '第二种备忘'].map(name => f.request('/places/memo', 'PUT', { ...memo, expectedVersion: 1, name })));
+  assert.deepEqual(updates.map(response => response.status).sort(), [200, 409]);
+  const current = (await (await f.request('/bootstrap')).json()).places[0];
+  assert.equal(current.version, 2); assert.equal(current.lat, null); assert.equal(current.lng, null);
+  assert.deepEqual(current.storyIds, ['memo-story']); assert.deepEqual(current.wishIds, ['memo-wish']);
+  assert.equal((await f.request('/places/memo', 'PUT', { ...memo, expectedVersion: 2, lat: 23.1, lng: 113.2 })).status, 200);
+  assert.equal((await f.request('/places/memo', 'PUT', { ...memo, expectedVersion: 3 })).status, 200);
+  assert.equal((await (await f.request('/bootstrap')).json()).places[0].lat, null);
+});
+
 test('all mutations require same origin and strict payloads; personal brute force is bounded', async () => {
   const f = await fixture(); await f.register('one');
   assert.equal((await f.request('/stories/a', 'PUT', story(), 'one', { Origin: 'https://other.example' })).status, 403);
@@ -160,7 +199,7 @@ test('actual workerd D1 and KV run individual identity, private revelation and a
   const mf = new Miniflare(convertV4MiniflareOptions({ modules: true, script: built.outputFiles[0].text, compatibilityDate: '2026-09-12', d1Databases: ['DB'], kvNamespaces: ['PHOTOS'] }));
   try {
     const db = await mf.getD1Database('DB');
-    for (const file of ['0001_cloud_notebook.sql', '0002_photo_manifest.sql', '0003_shared_memory_book.sql']) {
+    for (const file of ['0001_cloud_notebook.sql', '0002_photo_manifest.sql', '0003_shared_memory_book.sql', '0004_optional_place_coordinates.sql']) {
       const migration = readFileSync(new URL(`../migrations/${file}`, import.meta.url), 'utf8');
       await db.batch(migration.split(';').map(sql => sql.trim()).filter(Boolean).map(sql => db.prepare(sql)));
     }
@@ -175,6 +214,8 @@ test('actual workerd D1 and KV run individual identity, private revelation and a
       assert.equal(response.status, 200, await response.clone().text()); cookies[id] += `; ${response.headers.get('Set-Cookie').split(';')[0]}`;
     }
     assert.equal((await request('/stories/runtime-story', 'PUT', story())).status, 200);
+    const memo = await request('/places/runtime-memo', 'PUT', { expectedVersion: 0, name: '没有坐标的地点备忘', lat: null, lng: null, year: 2027, storyIds: ['runtime-story'], wishIds: [] });
+    assert.equal(memo.status, 200); assert.equal((await memo.json()).places[0].lat, null);
     const wav = new Uint8Array([82, 73, 70, 70, 4, 0, 0, 0, 87, 65, 86, 69]);
     const upload = await request('/audio?storyId=runtime-story', 'POST', wav, 'one', { 'Content-Type': 'audio/wav', 'X-Audio-Duration': '1' });
     assert.equal(upload.status, 201, await upload.clone().text()); const audio = await upload.json();

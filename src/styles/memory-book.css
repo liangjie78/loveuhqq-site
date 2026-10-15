@@ -53,7 +53,6 @@ button.memory-card { cursor: pointer; min-height: 6rem; }
 .memory-audio-card { padding-block: .8rem; }
 .memory-recording-status { color: var(--ink-2); min-height: 1.6em; }
 .memory-coordinates { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
-.memory-map { min-height: 18rem; margin-block: 1rem; border: 1px solid var(--line); background: var(--paper-2); overflow: hidden; position: relative; }
 .memory-footer { padding-top: 2rem; border-top: 1px solid var(--line); text-align: center; }
 .memory-wish-plan { border-top: 1px dashed var(--line); margin-top: 1rem; padding-top: 1rem; }
 .memory-wishes { display: grid; gap: 1rem; }

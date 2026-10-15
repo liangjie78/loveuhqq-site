@@ -73,13 +73,14 @@ import '../styles/memory-tools.css';
         <p data-screening-progress></p><div class="paper-actions"><button class="text-button" type="button" data-screening-prev>上一页</button><button class="pencil-button" type="button" data-screening-play>自动播放</button><button class="text-button" type="button" data-screening-next>下一页</button><button class="text-button" type="button" data-screening-restart>从头再看</button></div>
       </section>
       <section id="places" class="memory-section" aria-labelledby="places-title">
-        <header class="memory-section-heading"><div><p class="paper-label">由我们自己标记</p><h2 id="places-title">回忆里的地点</h2></div><button class="pencil-button" type="button" data-place-new>记一个地方</button></header>
+        <header class="memory-section-heading"><div><p class="paper-label">以后再慢慢记</p><h2 id="places-title">地点备忘</h2></div><button class="pencil-button" type="button" data-place-new>记一个地方</button></header>
+        <p>先留一个地点名，想好后再关联故事或愿望。不用填写坐标。</p>
         <label>按年份翻看<select data-place-year><option value="">所有年份</option></select></label>
-        <div data-memory-map aria-label="回忆地图"></div><div data-place-list class="memory-place-list"></div>
+        <div data-place-list class="memory-place-list"></div>
         <form data-place-form class="memory-form paper-card" hidden><h3>记一个地方</h3><input name="id" type="hidden" />
           <label>地点名<input name="name" maxlength="120" required /></label><label>年份<input name="year" type="number" min="1900" max="2200" required /></label>
-          <div class="memory-coordinates"><label>纬度<input name="latitude" type="number" min="-85" max="85" step="any" required /></label><label>经度<input name="longitude" type="number" min="-180" max="180" step="any" required /></label></div>
-          <p>填写主动选好的坐标，不会读取设备定位。</p><label>关联故事<select name="storyId" data-place-story><option value="">暂不关联</option></select></label><label>关联愿望<select name="wishId" data-place-wish><option value="">暂不关联</option></select></label>
+          <label>关联故事<select name="storyId" data-place-story><option value="">暂不关联</option></select></label><label>关联愿望<select name="wishId" data-place-wish><option value="">暂不关联</option></select></label>
+          <details><summary>坐标（选填）</summary><p>留空也能保存，不会读取设备定位。</p><div class="memory-coordinates"><label>纬度<input name="latitude" type="number" min="-90" max="90" step="any" /></label><label>经度<input name="longitude" type="number" min="-180" max="180" step="any" /></label></div></details>
           <div class="paper-actions"><button class="pencil-button" type="submit">收好地点</button><button class="text-button" type="button" data-place-cancel>先不记</button></div></form>
       </section>
       <section id="shared-desk" class="memory-section" data-shared-desktop aria-labelledby="desk-title"><header><p class="paper-label">一起摆一摆</p><h2 id="desk-title">共同桌面</h2></header></section>

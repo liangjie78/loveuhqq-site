@@ -3,7 +3,6 @@ import { getSession, onSessionChange, publishSession, refreshSession } from '../
 import { parsePhotoManifest, photoUrl, type PrivatePhoto } from '../lib/photos';
 import type { CloudNotebook, Wish } from '../lib/notebook';
 import { audioMaxBytes, audioMaxSeconds, memoryApiRoot, memoryAudioUrl, type MemoryBootstrap, type MemoryStory, type MemoryLetter, type MemoryPlace, type StoryInput, type LetterInput, type PartInput } from '../lib/memory-book';
-import { createMemoryMap } from './memory-map';
 import { createSharedDesktop } from './shared-desktop';
 
 const $ = <T extends HTMLElement = HTMLElement>(selector: string, parent: ParentNode = document) => parent.querySelector<T>(selector)!;
@@ -41,10 +40,6 @@ let filter = new URLSearchParams(location.search);
 let selectedPlaceYear = '';
 let loading: Promise<void> | null = null;
 let lastWriteConflict = false;
-const map = createMemoryMap($('[data-memory-map]'), {
-  onPick(lat, lng) { if (!book.member) return; if (placeForm.hidden) openPlace(); set(placeForm, 'latitude', String(lat)); set(placeForm, 'longitude', String(lng)); },
-  onOpenStory: openStory,
-});
 const desk = createSharedDesktop($('[data-shared-desktop]'), { onOpenStory: openStory, onUnauthorized: unauthorized });
 
 function report(error: unknown) {
@@ -69,7 +64,7 @@ function clearPrivate() {
   mutations.forEach(controller => controller.abort()); mutations.clear();
   loading = null;
   stopScreening(); screening = []; screeningIndex = 0;
-  resetMedia(); map.clear(); desk.clear();
+  resetMedia(); desk.clear();
   book = empty(); photos = []; notebook = null; selectedLetter = null;
   all<HTMLFormElement>('form', privateRoot).forEach(form => form.reset());
   for (const selector of ['[data-story-list]', '[data-story-detail]', '[data-story-photos]', '[data-story-wishes]', '[data-memory-wishes]', '[data-letter-list]', '[data-letter-detail]', '[data-screening-options]', '[data-screening-order]', '[data-place-list]']) $(selector).replaceChildren();
@@ -97,7 +92,7 @@ async function load() {
       const next = await api<MemoryBootstrap>(`${memoryApiRoot}/bootstrap`, { signal: controller.signal });
       if (token !== generation || !authenticated) return;
       if (book.member?.id !== next.member?.id) {
-        resetMedia(); stopScreening(); screening = []; screeningIndex = 0; desk.clear(); map.clear();
+        resetMedia(); stopScreening(); screening = []; screeningIndex = 0; desk.clear();
         all<HTMLFormElement>('form', privateRoot).forEach(form => form.reset());
         clearSelectors();
         all<HTMLElement>('[data-story-detail], [data-letter-detail], [data-screening-stage], [data-screening-order]', privateRoot).forEach(node => node.replaceChildren());
@@ -235,7 +230,7 @@ function renderStory() {
     card.append(edit); detail.append(card);
   }
   const locations = book.places.filter(place => place.storyIds.includes(story.id));
-  if (locations.length) { const area = el('section'); area.append(el('h4', '这一页里的地点')); locations.forEach(place => area.append(button(`${place.name} · 在地图上看`, () => { map.focus(place); $('#places').scrollIntoView({ block: 'start' }); }))); detail.append(area); }
+  if (locations.length) { const area = el('section'); area.append(el('h4', '这一页里的地点')); locations.forEach(place => area.append(button(`${place.name} · 查看地点`, () => { selectedPlaceYear = String(place.year); renderPlaces(); $('#places').scrollIntoView({ block: 'start' }); document.querySelector<HTMLElement>(`[data-place-id="${CSS.escape(place.id)}"]`)?.focus({ preventScroll: true }); }))); detail.append(area); }
 }
 function labeledTextarea(text: string, initial: string, maxLength = 10000) { const label = el('label', text); const input = el('textarea'); input.rows = 5; input.maxLength = maxLength; input.value = initial; label.append(input); return { label, input }; }
 function openStoryForm(story?: MemoryStory) {
@@ -421,22 +416,23 @@ function renderPlaces() {
   const year = $<HTMLSelectElement>('[data-place-year]'); year.replaceChildren(new Option('所有年份', ''));
   [...new Set(book.places.map(place => place.year))].sort((a, b) => b - a).forEach(item => year.add(new Option(String(item), String(item)))); year.value = selectedPlaceYear;
   const places = book.places.filter(place => !selectedPlaceYear || String(place.year) === selectedPlaceYear); const list = $('[data-place-list]'); list.replaceChildren();
-  if (!places.length) list.append(el('p', book.places.length ? '这一年还没有标记地点。' : '把真正去过、或想一起去的地方标在这里。'));
+  if (!places.length) list.append(el('p', book.places.length ? '这一年还没有记下地点。' : '有想记的地方时，再写下来。暂时留空也没关系。'));
   for (const place of places) {
-    const card = el('article', '', 'memory-card'); card.append(el('h3', place.name), el('p', `${place.year} · ${place.lat.toFixed(4)}, ${place.lng.toFixed(4)}`, 'memory-meta'), button('在地图上找它', () => map.focus(place)), button('改这个地点', () => openPlace(place)));
+    const card = el('article', '', 'memory-card'); card.dataset.placeId = place.id; card.tabIndex = -1;
+    card.append(el('h3', place.name), el('p', String(place.year), 'memory-meta'), button('改这个地点', () => openPlace(place)));
     place.storyIds.forEach(id => { const story = book.stories.find(item => item.id === id); if (story) card.append(button(`翻开：${story.title}`, () => openStory(id))); });
     place.wishIds.forEach(id => { const wish = notebook?.wishes.find(item => item.id === id); if (wish) card.append(button(`往后的小事：${wish.text}`, () => { $('#wishes').scrollIntoView({ block: 'start' }); })); }); list.append(card);
   }
-  map.render(places, book.stories, selectedPlaceYear ? Number(selectedPlaceYear) : undefined);
 }
 function openPlace(place?: MemoryPlace) {
   all<HTMLElement>('[data-conflict-review]', placeForm).forEach(node => node.remove());
-  placeForm.reset(); placeEditVersion = place?.version ?? 0; set(placeForm, 'id', place?.id ?? crypto.randomUUID()); set(placeForm, 'name', place?.name ?? ''); set(placeForm, 'year', String(place?.year ?? Number(today().slice(0, 4)))); set(placeForm, 'latitude', place ? String(place.lat) : ''); set(placeForm, 'longitude', place ? String(place.lng) : '');
+  placeForm.querySelector('details')?.removeAttribute('open');
+  placeForm.reset(); placeEditVersion = place?.version ?? 0; set(placeForm, 'id', place?.id ?? crypto.randomUUID()); set(placeForm, 'name', place?.name ?? ''); set(placeForm, 'year', String(place?.year ?? Number(today().slice(0, 4)))); set(placeForm, 'latitude', place?.lat == null ? '' : String(place.lat)); set(placeForm, 'longitude', place?.lng == null ? '' : String(place.lng));
   const stories = $<HTMLSelectElement>('[data-place-story]'); stories.replaceChildren(new Option('暂不关联', '')); book.stories.forEach(story => stories.add(new Option(story.title, story.id))); stories.value = place?.storyIds[0] ?? selectedStory ?? '';
   const wishes = $<HTMLSelectElement>('[data-place-wish]'); wishes.replaceChildren(new Option('暂不关联', '')); notebook?.wishes.forEach(wish => wishes.add(new Option(wish.text, wish.id))); wishes.value = place?.wishIds[0] ?? filter.get('wish') ?? '';
   placeForm.hidden = false; placeForm.scrollIntoView({ block: 'start' }); field(placeForm, 'name').focus();
 }
-placeForm.addEventListener('submit', event => { event.preventDefault(); void submit(placeForm, async () => { const storyId = value(placeForm, 'storyId'); const wishId = value(placeForm, 'wishId'); const id = value(placeForm, 'id'); if (await write(`/places/${id}`, 'PUT', { expectedVersion: placeEditVersion, name: value(placeForm, 'name'), lat: Number(value(placeForm, 'latitude')), lng: Number(value(placeForm, 'longitude')), year: Number(value(placeForm, 'year')), storyIds: storyId ? [storyId] : [], wishIds: wishId ? [wishId] : [] })) placeForm.hidden = true; else conflictReview(placeForm, () => { const latest = book.places.find(item => item.id === id); return { text: latest ? `${latest.name} · ${latest.year} · ${latest.lat}, ${latest.lng}` : '地点暂时不存在。', accept() { placeEditVersion = latest?.version ?? 0; } }; }); }); });
+placeForm.addEventListener('submit', event => { event.preventDefault(); void submit(placeForm, async () => { const storyId = value(placeForm, 'storyId'); const wishId = value(placeForm, 'wishId'); const id = value(placeForm, 'id'); const latitude = value(placeForm, 'latitude').trim(); const longitude = value(placeForm, 'longitude').trim(); if (await write(`/places/${id}`, 'PUT', { expectedVersion: placeEditVersion, name: value(placeForm, 'name'), lat: latitude === '' ? null : Number(latitude), lng: longitude === '' ? null : Number(longitude), year: Number(value(placeForm, 'year')), storyIds: storyId ? [storyId] : [], wishIds: wishId ? [wishId] : [] })) placeForm.hidden = true; else conflictReview(placeForm, () => { const latest = book.places.find(item => item.id === id); return { text: latest ? `${latest.name} · ${latest.year}${latest.lat == null ? ' · 未填坐标' : ` · ${latest.lat}, ${latest.lng}`}` : '地点暂时不存在。', accept() { placeEditVersion = latest?.version ?? 0; } }; }); }); });
 
 const identityChanges = typeof BroadcastChannel !== 'undefined' ? new BroadcastChannel('loveuhqq_member') : null;
 function identityChanged() { identityChanges?.postMessage('changed'); try { localStorage.setItem('loveuhqq_member_changed', String(Date.now())); } catch { /* Cross-tab fallback is optional. */ } }
