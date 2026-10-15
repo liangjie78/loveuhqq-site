@@ -1,4 +1,4 @@
-import { dotted, relationshipStartDate } from '../lib/anniversary';
+import { dotted, getShanghaiDate, relationshipStartDate } from '../lib/anniversary';
 import { api, ApiError, emptyCloudNotebook, type CloudNotebook, type SessionState } from '../lib/cloud-notebook';
 import { getSession, onSessionChange, publishSession } from '../lib/session';
 import { isCalendarDate, parseNotebook, type Wish } from '../lib/notebook';
@@ -14,6 +14,9 @@ const noteRetry = $('[data-note-retry]');
 const noteForm = $<HTMLFormElement>('[data-note-form]');
 const noteInput = $<HTMLTextAreaElement>('#day-note');
 const noteUndoButton = $<HTMLButtonElement>('[data-note-undo]');
+const noteSearch = $<HTMLInputElement>('#note-search');
+const noteSearchClear = $<HTMLButtonElement>('[data-note-search-clear]');
+const noteRandom = $<HTMLButtonElement>('[data-note-random]');
 const wishGuest = $('[data-wish-guest]');
 const wishLoading = $('[data-wish-loading]');
 const wishLoadingStatus = $('[data-wish-loading-status]');
@@ -49,6 +52,7 @@ const pendingRefreshes = new Set<number>();
 const queuedExplicitRefreshes = new Map<number, 'note' | 'wish'>();
 let date = relationshipStartDate;
 let noteEditing = false;
+let writeTodayPending = false;
 let noteEditSession = 0;
 let noteEditVersion = 0;
 let noteEditOriginal = '';
@@ -199,25 +203,65 @@ function renderNote() {
     $('[data-note-text]').hidden = false;
     $('[data-note-delete]').hidden = !book.notes[date];
   }
-  const writtenDates = Object.entries(book.notes).filter(([, text]) => text.trim()).length;
-  $('[data-notes-count]').textContent = String(writtenDates);
+  renderNoteArchive();
+  if (noteEditing && revisionOf(book.revisions.notes, date) !== noteEditVersion) showNoteConflict();
+}
+
+function writtenDates() {
+  return Object.keys(book.notes).filter(key => book.notes[key].trim()).sort().reverse();
+}
+
+function openSavedNote(key: string) {
+  if (!authenticated || !ready) return;
+  if (noteEditing) {
+    showStatus('note', '先收好或取消正在写的这一句。');
+    noteInput.focus({ preventScroll: true });
+    return;
+  }
+  date = key;
+  renderNote();
+  noteStatus.textContent = `翻到了 ${dotted(key)}。`;
+  $('[data-note-date]').focus({ preventScroll: true });
+  $('[data-note-date]').scrollIntoView({ block: 'center' });
+}
+
+function renderNoteArchive() {
+  const dates = writtenDates();
+  $('[data-notes-count]').textContent = String(dates.length);
+  noteRandom.disabled = dates.length === 0;
+  $('[data-note-random-hint]').textContent = dates.length
+    ? '从写过的日子里，挑一天回看。'
+    : '写下第一句以后，就能随手翻一页。';
+  const query = noteSearch.value.trim().toLocaleLowerCase().replaceAll(/\s/g, '');
+  noteSearchClear.hidden = noteSearch.value.length === 0;
+  const matches = dates.filter(key => {
+    const [year, month, day] = key.split('-');
+    const dateLabels = [key, `${year}-${Number(month)}-${Number(day)}`, `${Number(month)}-${Number(day)}`, `${year}年${Number(month)}月${Number(day)}日`];
+    const matchesDate = dateLabels.some(label => label.includes(query.replaceAll(/[./]/g, '-')));
+    return matchesDate || book.notes[key].toLocaleLowerCase().replaceAll(/\s/g, '').includes(query);
+  });
+  const empty = $('[data-notes-empty]');
+  empty.hidden = matches.length > 0;
+  empty.textContent = dates.length ? '这一句还没找到，换几个字试试。' : '还没有写过的日子，先给今天留一句吧。';
   const focused = document.activeElement instanceof HTMLElement ? document.activeElement : null;
   const focusedDate = focused?.dataset.noteDate;
   const index = $('[data-notes-list]');
   index.replaceChildren();
-  for (const key of Object.keys(book.notes).sort().reverse()) {
+  for (const key of matches) {
     const entry = document.createElement('button');
     entry.type = 'button'; entry.className = 'text-button note-index-entry';
     entry.dataset.noteDate = key;
-    entry.textContent = `${dotted(key)}　${[...book.notes[key]].slice(0, 36).join('')}`;
-    entry.addEventListener('click', () => {
-      if (noteEditing) { showStatus('note', '先收好或取消正在写的这一句。'); return; }
-      date = key; renderNote(); $('[data-note-date]').scrollIntoView({ block: 'center' });
-    });
+    if (key === date) entry.setAttribute('aria-current', 'date');
+    const label = document.createElement('time');
+    label.dateTime = key; label.textContent = dotted(key);
+    const excerpt = document.createElement('span');
+    const text = book.notes[key].replaceAll(/\s+/g, ' ').trim();
+    excerpt.textContent = `${[...text].slice(0, 60).join('')}${[...text].length > 60 ? '…' : ''}`;
+    entry.append(label, excerpt);
+    entry.addEventListener('click', () => openSavedNote(key));
     index.append(entry);
   }
   if (focusedDate) index.querySelector<HTMLElement>(`[data-note-date="${CSS.escape(focusedDate)}"]`)?.focus({ preventScroll: true });
-  if (noteEditing && revisionOf(book.revisions.notes, date) !== noteEditVersion) showNoteConflict();
 }
 
 function showNoteConflict() {
@@ -286,6 +330,13 @@ function render() {
     $('[data-note-text]').textContent = '';
     $('[data-notes-count]').textContent = '0';
     $('[data-notes-list]').replaceChildren();
+    noteSearch.value = '';
+    noteSearchClear.hidden = true;
+    noteRandom.disabled = true;
+    $('[data-note-index]').removeAttribute('open');
+    $('[data-notes-empty]').textContent = '';
+    $('[data-notes-empty]').hidden = true;
+    $('[data-note-date]').textContent = '';
     wishList.replaceChildren();
     $('[data-wish-count]').textContent = '';
     $('[data-wish-result]').textContent = '';
@@ -318,6 +369,35 @@ function beginNoteEdit() {
   $('[data-note-latest]').hidden = true;
   noteStatus.textContent = '';
   noteInput.focus();
+}
+
+function writeToday() {
+  if (noteEditing) {
+    showStatus('note', '先收好或取消正在写的这一句。');
+    noteInput.focus();
+    return;
+  }
+  if (!authenticated) {
+    writeTodayPending = true;
+    noteGuest.querySelector<HTMLButtonElement>('[data-open-login]')!.click();
+    return;
+  }
+  if (!ready) {
+    writeTodayPending = true;
+    showStatus('note', '正在打开手账，稍等就能写。');
+    void refreshCloud();
+    return;
+  }
+  writeTodayPending = false;
+  $('[data-return-today]').click();
+  date = getShanghaiDate(new Date());
+  renderNote();
+  beginNoteEdit();
+  noteForm.scrollIntoView({ block: 'center' });
+}
+
+function resumeTodayWriting() {
+  if (writeTodayPending && authenticated && ready && !document.documentElement.classList.contains('is-locked')) writeToday();
 }
 
 function finishNoteEdit(cancelled: boolean) {
@@ -398,6 +478,7 @@ function applyCloud(value: unknown, explicitRefresh?: 'note' | 'wish') {
   ready = true;
   if (!wasReady && authenticated) wishInput.value = getDrafts().wishText;
   render();
+  resumeTodayWriting();
   if (noteEditing && revisionOf(book.revisions.notes, date) !== noteEditVersion) showNoteConflict();
   if (wishEditing) updateWishConflict();
   if (explicitRefresh === 'note' && noteEditing) setNoteLatest();
@@ -489,6 +570,7 @@ function setSession(state: SessionState) {
   noteRetry.hidden = true; wishRetry.hidden = true;
   if (wasAuthenticated && !authenticated) draftsCache = null;
   if (!authenticated) {
+    writeTodayPending = false;
     noteInput.value = ''; wishInput.value = '';
     $('[data-note-conflict]').hidden = true;
     $('[data-note-latest]').hidden = true;
@@ -525,6 +607,22 @@ noteInput.addEventListener('input', () => {
   if (noteEditing && authenticated) { getDrafts().notes[date] = noteInput.value; saveDrafts(); }
 });
 $('[data-note-edit]').addEventListener('click', beginNoteEdit);
+noteSearch.addEventListener('input', renderNoteArchive);
+noteSearchClear.addEventListener('click', () => {
+  noteSearch.value = '';
+  renderNoteArchive();
+  noteSearch.focus();
+});
+noteRandom.addEventListener('click', () => {
+  const dates = writtenDates();
+  const candidates = dates.length > 1 ? dates.filter(key => key !== date) : dates;
+  if (candidates.length) openSavedNote(candidates[Math.floor(Math.random() * candidates.length)]);
+});
+document.addEventListener('journal:write-today', writeToday);
+document.addEventListener('gate:open', () => {
+  if (!authenticated) writeTodayPending = false;
+  else resumeTodayWriting();
+});
 $('[data-note-cancel]').addEventListener('click', () => { finishNoteEdit(true); $('[data-note-edit]').focus(); });
 $('[data-note-refresh]').addEventListener('click', () => void refreshCloud('note'));
 noteRetry.addEventListener('click', () => void refreshCloud());

@@ -5,12 +5,20 @@ import {
   getAnniversaryDay,
   getMomentDateStatus,
   getNextShanghaiMidnight,
+  getShanghaiDate,
   getUpcomingAnniversary,
   hundredthDayDate,
   relationshipStartDate,
 } from '../src/lib/anniversary.ts';
 
 const date = (value) => new Date(value);
+
+test('today writing uses the Shanghai date across midnight and year boundaries', () => {
+  assert.equal(getShanghaiDate(date('2026-10-15T15:59:59.999Z')), '2026-10-15');
+  assert.equal(getShanghaiDate(date('2026-10-15T16:00:00.000Z')), '2026-10-16');
+  assert.equal(getShanghaiDate(date('2026-12-31T16:00:00.000Z')), '2027-01-01');
+  assert.throws(() => getShanghaiDate(new Date(NaN)), RangeError);
+});
 
 test('exports the confirmed relationship start date', () => {
   assert.equal(relationshipStartDate, '2026-07-01');

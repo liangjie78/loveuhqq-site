@@ -8,6 +8,7 @@ import { momentTitles } from '../data/moments';
 import PhotoPlaceholders from '../components/PhotoPlaceholders.astro';
 import PhotosLocked from '../components/PhotosLocked.astro';
 import Notebook from '../components/Notebook.astro';
+import DailyPrompt from '../components/DailyPrompt.astro';
 import FutureList from '../components/FutureList.astro';
 import MomentArchive from '../components/MomentArchive.astro';
 import '../styles/notebook.css';
@@ -111,6 +112,7 @@ let inkIndex = 0;
           </ul>
         </div>
 
+        <DailyPrompt />
         <Notebook />
         <dl class="days-stats" data-reveal data-needs-js>
           <div class="stat">
