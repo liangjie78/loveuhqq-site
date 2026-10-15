@@ -1,29 +1,42 @@
 ---
+interface NavLink {
+  href: string;
+  label: string;
+}
+
 interface Props {
   /** The home page shows in-page links; other pages link back to it. */
   home?: boolean;
+  /** Custom navigation links for page-internal navigation (like memories). */
+  navLinks?: NavLink[];
   /** Where a sub-page's back link lands on the home page. */
   backHref?: string;
 }
 
-const { home = false, backHref = '/#photos' } = Astro.props;
-const links = [
+const { home = false, navLinks, backHref = '/#photos' } = Astro.props;
+const defaultHomeLinks: NavLink[] = [
   { href: '#days', label: '日子' },
   { href: '#photos', label: '照片' },
   { href: '#note', label: '心里话' },
   { href: '#future', label: '往后' },
   { href: '#letter', label: '信' },
 ];
+const effectiveLinks = navLinks ?? (home ? defaultHomeLinks : []);
+const hasNav = effectiveLinks.length > 0;
 ---
 
 <header class:list={['site-header', !home && 'is-solid']} data-header>
   <a class="wordmark" href={home ? '#top' : '/'}>loveuhqq<span class="wordmark-heart" aria-hidden="true"></span></a>
   {
+    hasNav && (
+      <nav class="site-nav" aria-label="页内导航">
+        {effectiveLinks.map(({ href, label }) => <a href={href}>{label}</a>)}
+      </nav>
+    )
+  }
+  {
     home ? (
       <>
-        <nav class="site-nav" aria-label="页内导航">
-          {links.map(({ href, label }) => <a href={href}>{label}</a>)}
-        </nav>
         <p class="header-day" data-header-day hidden>
           第 <span data-day-count /> 天
         </p>
@@ -35,9 +48,17 @@ const links = [
         </div>
       </>
     ) : (
-      <a class="back-link" href={backHref}>
-        <span aria-hidden="true">←</span> 回到日记
-      </a>
+      <div class="header-actions">
+        <div class="header-guest" data-header-session>
+          <button type="button" class="text-button" data-open-login data-needs-js aria-label="访客，点击解锁共同手账">访客</button>
+          <noscript>访客</noscript>
+          <span data-session-label hidden>我们的手账</span>
+          <button type="button" class="text-button" data-session-logout hidden>退出</button>
+        </div>
+        <a class="back-link" href={backHref}>
+          <span aria-hidden="true">←</span> 回到日记
+        </a>
+      </div>
     )
   }
 </header>
