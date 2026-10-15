@@ -57,10 +57,14 @@ function formatCalendarDate(timestamp: number): string {
   return `${year}-${month}-${day}`;
 }
 
+/** Returns YYYY-MM-DD for the calendar day in Asia/Shanghai. */
+export function getShanghaiDate(now: Date): string {
+  return formatCalendarDate(getShanghaiCalendarTimestamp(getValidTimestamp(now)));
+}
+
 /** Returns a marked date's status against today's Shanghai calendar date. */
 export function getMomentDateStatus(date: string, now: Date): MomentDateStatus {
-  const timestamp = getValidTimestamp(now);
-  const today = formatCalendarDate(getShanghaiCalendarTimestamp(timestamp));
+  const today = getShanghaiDate(now);
 
   if (date > today) return 'upcoming';
   if (date === today) return 'today';
