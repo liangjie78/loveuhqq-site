@@ -69,6 +69,24 @@
 
 升级迁移前先用项目 Wrangler 导出目标 D1 数据库，保存到仓库之外的用户指定安全位置；导出文件包含私密正文，不提交到 Git。回滚 Worker 不会回滚 D1 数据，不能对已有数据的库重复执行破坏性初始化。
 
+## 共同回忆册发布
+
+八项功能通过 `worker/runtime.ts` 导出 HTTP handler 与 `SharedDesktop` Durable Object。`wrangler.jsonc`、原预览配置和本任务隔离预览配置均声明相同的 SQLite 类迁移 `shared-memory-v1`，实际 DO 命名空间按 Worker 隔离。D1 增量迁移为 `0003_shared_memory_book.sql`，只新增独立表，不修改或批量迁移旧日记、愿望、相册和百日信。
+
+本任务验收使用 `wrangler.memory-preview.jsonc`、Worker `loveuhqq-memory-book-preview`、全新 D1/KV，只保存合成内容。部署使用项目 Wrangler：
+
+```sh
+npx wrangler d1 migrations apply DB --remote --config wrangler.memory-preview.jsonc
+npm run build
+npx wrangler deploy --config wrangler.memory-preview.jsonc
+```
+
+首次进入共同回忆册后，两个人各自认领空的个人身份并设置自己的称呼及个人口令，后续不能靠选择称呼直接进入另一人的草稿。助手不代填真实个人口令。共享密码继续使用现有安全配置流程；个人密码验证值仅存 D1，不放在 Worker 变量、页面或脚本中。
+
+声音使用既有 `PHOTOS` KV 的 `audio/` 独立前缀，D1 仅存所有者及父内容关系，每次读取均重新鉴权。音频总额度为 300 条/256 MiB，单条字节上限 4 MiB；60 秒录制与浏览器上传时长校验在客户端进行，Worker 额外检查声明时长与容器签名，不进行音频解码。不要将其宣称为服务端证明的实际时长限制。未启用 R2 或新增付费服务。
+
+正式站仍需当前任务明确授权合并、备份生产 D1、应用上述增量迁移及正式部署。部署时保持原生产 D1/KV 绑定，预览 ID 不得复制到生产；新 DO 类由 Wrangler 迁移创建。先执行生产配置检查、完整测试、构建和 dry run，再正式部署，并验证新页、旧入口、匿名 401、个人草稿隔离、未来信日期门槛及两端桌面同步。生产首次成员设置由双方亲自完成。数据库与 DO 存储均不随 Worker 版本回滚，不能用销毁资源恢复旧界面。
+
 ## 回滚
 
 经用户明确授权后，先用项目级 `wrangler deployments list` 查找本 Worker 的已知良好版本，再按安装版本的 `wrangler rollback --help` 执行针对该版本的回滚；随后重做域名、HTML 和资源验证。需要源码回退时通过新分支和 PR 恢复已知良好内容，由用户手动合并后重新构建部署；不 reset 或 force push。

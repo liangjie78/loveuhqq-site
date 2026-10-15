@@ -1,0 +1,15 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "loveuhqq-memory-book-preview",
+  "account_id": "a8baff96e8cfcc965098997737826969",
+  "compatibility_date": "2026-09-12",
+  "workers_dev": true,
+  "preview_urls": true,
+  "main": "worker/runtime.ts",
+  "assets": { "directory": "./dist", "not_found_handling": "404-page", "binding": "ASSETS", "run_worker_first": ["/api/*"] },
+  "d1_databases": [{ "binding": "DB", "database_name": "loveuhqq-memory-book-preview", "database_id": "64cf28d3-c836-4817-984b-6617bacfc4c3", "migrations_dir": "migrations" }],
+  "kv_namespaces": [{ "binding": "PHOTOS", "id": "06405401458d4a1badc5e1b2eec625cc" }],
+  "durable_objects": { "bindings": [{ "name": "SHARED_DESKTOP", "class_name": "SharedDesktop" }] },
+  "migrations": [{ "tag": "shared-memory-v1", "new_sqlite_classes": ["SharedDesktop"] }],
+  "observability": { "enabled": true, "traces": { "enabled": true } }
+}

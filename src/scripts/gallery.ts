@@ -21,6 +21,7 @@ const print = dialog.querySelector<HTMLElement>('.lightbox-print')!;
 let image = dialog.querySelector<HTMLImageElement>('[data-lightbox-image]')!;
 const title = dialog.querySelector<HTMLElement>('[data-lightbox-title]')!;
 const meta = dialog.querySelector<HTMLElement>('[data-lightbox-meta]')!;
+const photoStories = dialog.querySelector<HTMLAnchorElement>('[data-photo-stories]')!;
 const previous = dialog.querySelector<HTMLButtonElement>('[data-lightbox-prev]')!;
 const next = dialog.querySelector<HTMLButtonElement>('[data-lightbox-next]')!;
 
@@ -338,6 +339,8 @@ function applyManifest(manifest: PhotoManifest, focusId?: string) {
 }
 
 function clearPhotos() {
+  photoStories.hidden = true;
+  photoStories.removeAttribute('href');
   generation++;
   imageGeneration++;
   discardPendingImage();
@@ -442,6 +445,8 @@ async function show(target: number) {
   image = nextImage;
   setImageTone(print, nextImage);
   title.textContent = photo.title;
+  photoStories.href = `/memories/?photo=${encodeURIComponent(photo.id)}`;
+  photoStories.hidden = false;
   meta.textContent = [dateLabel(photo), `${position + 1} / ${current.length}`].filter(Boolean).join(' · ');
   if (lightboxManagement) lightboxManagement.hidden = !albumPage || !authenticated;
   if (lightboxFeature) {

@@ -185,6 +185,7 @@ function dispatchNotebookChanged() {
 
 function renderNote() {
   if (!ready || !authenticated) return;
+  $<HTMLAnchorElement>('[data-date-stories]').href = `/memories/?date=${encodeURIComponent(date)}`;
   $('[data-note-date]').textContent = dotted(date);
   const noteText = $('[data-note-text]');
   const savedNote = book.notes[date];
@@ -314,7 +315,10 @@ function renderWishes() {
     remove.setAttribute('aria-label', `移除：${wish.text}`);
     remove.dataset.wishId = wish.id; remove.dataset.wishAction = 'remove';
     remove.disabled = busy.has(`wish:${wish.id}`);
-    actions.append(edit, remove);
+    const story = document.createElement('a');
+    story.className = 'text-button'; story.textContent = wish.done ? '回看后来' : '计划与故事';
+    story.href = `/memories/?wish=${encodeURIComponent(wish.id)}#wishes`;
+    actions.append(story, edit, remove);
     item.append(label, actions); wishList.append(item);
   }
   $('[data-wish-empty]').hidden = book.wishes.length > 0;

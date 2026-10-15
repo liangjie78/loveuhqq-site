@@ -1,0 +1,90 @@
+---
+import Page from '../layouts/Page.astro';
+import SiteHeader from '../components/SiteHeader.astro';
+import '../styles/memory-book.css';
+import '../styles/memory-tools.css';
+---
+
+<Page title="共同回忆册 · loveuhqq" description="把写下的日子，收进共同回忆册。" path="/memories/" bodyClass="memory-page">
+  <SiteHeader />
+  <main id="main" class="memory-main">
+    <header class="memory-heading">
+      <p class="paper-label">写下来，再一起翻看</p>
+      <h1>共同回忆册</h1>
+      <p>日子、照片和往后的想法，都可以在这里接着写。</p>
+      <a class="text-link" href="/">← 回到日记</a>
+    </header>
+    <div class="memory-locked" data-memory-locked>
+      <p>解锁后，才能翻开我们的回忆册。</p>
+      <button class="pencil-button" type="button" data-open-login>解锁手账</button>
+    </div>
+    <p class="memory-status" data-memory-status role="status" aria-live="polite"></p>
+    <button class="text-button" type="button" data-memory-retry hidden>重新连接</button>
+    <div data-memory-private hidden>
+      <section class="memory-identity paper-card" aria-labelledby="identity-title">
+        <div><h2 id="identity-title">这一页，由谁来写</h2><p data-member-label>先打开自己的写作身份。</p></div>
+        <form data-identity-form class="memory-form">
+          <label>身份<select name="memberId"><option value="one">第一位</option><option value="two">第二位</option></select></label>
+          <label>称呼<input name="name" maxlength="30" autocomplete="nickname" placeholder="第一次使用时填写" /></label>
+          <label>个人口令<input name="password" type="password" minlength="8" maxlength="128" autocomplete="current-password" required /></label>
+          <div class="paper-actions"><button class="pencil-button" type="submit" name="action" value="login">打开自己的身份</button><button class="text-button" type="submit" name="action" value="register">建立这个身份</button></div>
+        </form>
+        <button class="text-button" type="button" data-identity-leave hidden>收起自己的身份</button>
+      </section>
+      <nav class="memory-nav" aria-label="回忆册导航"><a href="#stories">故事</a><a href="#wishes">往后与后来</a><a href="#post-office">未来邮局</a><a href="#screening">放映室</a><a href="#places">地点</a><a href="#shared-desk">共同桌面</a></nav>
+      <section id="stories" class="memory-section" aria-labelledby="stories-title">
+        <header class="memory-section-heading"><div><p class="paper-label">把经历收成一页</p><h2 id="stories-title">我们的故事</h2></div><button class="pencil-button" type="button" data-story-new>写一篇故事</button></header>
+        <div class="memory-filter"><label>找一找<input type="search" data-story-search placeholder="标题、日期或已经开放的文字" /></label><button class="text-button" type="button" data-story-filter-clear>看全部故事</button></div>
+        <p data-story-filter-hint></p><div class="memory-story-list" data-story-list></div>
+        <article class="memory-story paper-card" data-story-detail hidden></article>
+        <form data-story-form class="memory-form paper-card" hidden>
+          <h3 data-story-form-title>写一篇故事</h3>
+          <input name="id" type="hidden" />
+          <label>标题<input name="title" maxlength="120" required /></label>
+          <label>日期<input name="date" type="date" required /></label>
+          <label>共同记下的正文<textarea name="text" rows="6" maxlength="10000"></textarea></label>
+          <label>这一页的排法<select name="layout"><option value="journal">手账</option><option value="album">照片手账</option><option value="letter">信纸</option></select></label>
+          <label class="memory-check"><input name="revealTogether" type="checkbox" /> 两个人都提交后，再一起看到各自的版本</label>
+          <fieldset><legend>贴上已有照片</legend><div class="memory-photo-picker" data-story-photos></div></fieldset>
+          <fieldset><legend>关联往后的愿望</legend><div data-story-wishes></div></fieldset>
+          <div class="paper-actions"><button class="pencil-button" type="submit">收好故事</button><button class="text-button" type="button" data-story-cancel>先不改</button></div>
+        </form>
+      </section>
+      <section id="wishes" class="memory-section" aria-labelledby="memory-wishes-title"><header><p class="paper-label">从想一起做，到一起做过</p><h2 id="memory-wishes-title">往后与后来</h2></header><p>可以先商定日期，做过以后，再把故事收在旁边。</p><div data-memory-wishes class="memory-wishes"></div></section>
+      <section id="post-office" class="memory-section" aria-labelledby="post-title">
+        <header class="memory-section-heading"><div><p class="paper-label">留到约好的日子</p><h2 id="post-title">未来邮局</h2></div><button class="pencil-button" type="button" data-letter-new>写一封信</button></header>
+        <p>封好后不能改正文。拆信日期按北京时间计算，到日子再来翻开。</p><p><a class="text-link" href="/#letter">回看百日信 →</a></p>
+        <div data-letter-list class="memory-letter-list"></div><article data-letter-detail class="paper-card memory-letter" hidden></article>
+        <form data-letter-form class="memory-form paper-card" hidden>
+          <h3>写给以后的信</h3><input name="id" type="hidden" />
+          <label>信封上的标题<input name="title" maxlength="120" required /></label>
+          <label>收信人<select name="recipientId" required><option value="one">第一位</option><option value="two">第二位</option></select></label>
+          <label>拆信日期<input name="openDate" type="date" required /></label>
+          <label>一起拆信编号（选填）<input name="pairKey" maxlength="80" pattern="[a-zA-Z0-9-]+" placeholder="双方填同一短编号，比如 trip-2027" /></label><p class="memory-meta">填写相同编号的两封信，都封好并到期后再一起开放。</p>
+          <label>正文<textarea name="text" rows="8" maxlength="16000" required></textarea></label>
+          <div class="paper-actions"><button class="pencil-button" type="submit">保存草稿</button><button class="text-button" type="button" data-letter-cancel>先不写</button></div>
+        </form>
+      </section>
+      <section id="screening" class="memory-section" aria-labelledby="screening-title">
+        <header><p class="paper-label">慢慢翻，也可以放着看</p><h2 id="screening-title">回忆放映室</h2></header>
+        <form data-screening-form class="memory-form"><fieldset><legend>选择故事与照片，按下面的顺序播放</legend><div data-screening-options class="memory-screening-options"></div></fieldset><button class="pencil-button" type="submit">排成一段回忆</button></form>
+        <ol data-screening-order class="memory-screening-order"></ol>
+        <div data-screening-stage class="memory-screening-stage paper-card" aria-live="polite"><p>选几页真实的内容，再开始播放。</p></div>
+        <p data-screening-progress></p><div class="paper-actions"><button class="text-button" type="button" data-screening-prev>上一页</button><button class="pencil-button" type="button" data-screening-play>自动播放</button><button class="text-button" type="button" data-screening-next>下一页</button><button class="text-button" type="button" data-screening-restart>从头再看</button></div>
+      </section>
+      <section id="places" class="memory-section" aria-labelledby="places-title">
+        <header class="memory-section-heading"><div><p class="paper-label">由我们自己标记</p><h2 id="places-title">回忆里的地点</h2></div><button class="pencil-button" type="button" data-place-new>记一个地方</button></header>
+        <label>按年份翻看<select data-place-year><option value="">所有年份</option></select></label>
+        <div data-memory-map aria-label="回忆地图"></div><div data-place-list class="memory-place-list"></div>
+        <form data-place-form class="memory-form paper-card" hidden><h3>记一个地方</h3><input name="id" type="hidden" />
+          <label>地点名<input name="name" maxlength="120" required /></label><label>年份<input name="year" type="number" min="1900" max="2200" required /></label>
+          <div class="memory-coordinates"><label>纬度<input name="latitude" type="number" min="-85" max="85" step="any" required /></label><label>经度<input name="longitude" type="number" min="-180" max="180" step="any" required /></label></div>
+          <p>填写主动选好的坐标，不会读取设备定位。</p><label>关联故事<select name="storyId" data-place-story><option value="">暂不关联</option></select></label><label>关联愿望<select name="wishId" data-place-wish><option value="">暂不关联</option></select></label>
+          <div class="paper-actions"><button class="pencil-button" type="submit">收好地点</button><button class="text-button" type="button" data-place-cancel>先不记</button></div></form>
+      </section>
+      <section id="shared-desk" class="memory-section" data-shared-desktop aria-labelledby="desk-title"><header><p class="paper-label">一起摆一摆</p><h2 id="desk-title">共同桌面</h2></header></section>
+      <p class="memory-footer"><button class="text-button" type="button" data-lock-site>合上回忆册并上锁</button></p>
+    </div>
+  </main>
+  <script src="../scripts/memory-book.ts"></script>
+</Page>
