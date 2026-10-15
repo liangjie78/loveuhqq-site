@@ -25,7 +25,9 @@
       "id": "f2758069198e4a90896513225121d661"
     }
   ],
-  "main": "worker/index.ts",
+  "main": "worker/runtime.ts",
+  "durable_objects": { "bindings": [{ "name": "SHARED_DESKTOP", "class_name": "SharedDesktop" }] },
+  "migrations": [{ "tag": "shared-memory-v1", "new_sqlite_classes": ["SharedDesktop"] }],
   "d1_databases": [
     {
       "binding": "DB",

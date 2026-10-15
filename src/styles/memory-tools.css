@@ -1,0 +1,10 @@
+.memory-tool-hint { font-family: var(--sans); font-size: .88rem; color: var(--ink-light, #766658); line-height: 1.8; }
+.memory-desk { position: relative; height: 480px; width: 100%; border: 1px solid var(--line, #d6c9b7); background: var(--paper-2, #eee4d5); overflow: hidden; touch-action: pan-y; }
+.memory-desk-item { position: absolute; width: 145px; min-height: 95px; max-height: 200px; overflow: hidden; background: var(--paper, #faf4e8); padding: 9px; box-shadow: 1px 3px 8px #33221520; border: 1px solid #dccfba; font-family: var(--sans); touch-action: none; cursor: grab; }
+.memory-desk-item:focus-within { z-index: 2; }
+.memory-desk-item img { width: 100%; height: 90px; object-fit: cover; pointer-events: none; }
+.memory-desk-item p { margin: .3rem 0; font-size: .82rem; white-space: pre-wrap; overflow-wrap: anywhere; max-height: 100px; overflow: auto; }
+.memory-desk-item .text-button { font-size: .8rem; min-height: 32px; padding: 0 .3rem; }
+.memory-desk-controls { display: flex; flex-wrap: wrap; gap: .5rem; align-items: center; font-family: var(--sans); }
+.memory-desk-controls select, .memory-desk-controls input { min-width: 0; max-width: 100%; padding: .5rem; background: var(--paper); border: 1px solid #d6c9b7; }
+@media (max-width: 600px) { .memory-desk { height: 460px; } .memory-desk-item { width: 120px; } }

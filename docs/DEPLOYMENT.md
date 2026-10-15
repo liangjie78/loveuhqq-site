@@ -69,6 +69,24 @@
 
 升级迁移前先用项目 Wrangler 导出目标 D1 数据库，保存到仓库之外的用户指定安全位置；导出文件包含私密正文，不提交到 Git。回滚 Worker 不会回滚 D1 数据，不能对已有数据的库重复执行破坏性初始化。
 
+## 共同回忆册发布
+
+回忆册通过 `worker/runtime.ts` 导出 HTTP handler 与 `SharedDesktop` Durable Object。`wrangler.jsonc`、原预览配置和本任务隔离预览配置均声明相同的 SQLite 类迁移 `shared-memory-v1`，实际 DO 命名空间按 Worker 隔离。D1 增量迁移为 `0003_shared_memory_book.sql` 和 `0004_optional_place_coordinates.sql`：前者新增独立表，后者完整复制地点记录后移除坐标的非空要求；旧坐标、版本与关联均保留，不改动原日记、愿望、相册和百日信。
+
+本任务验收使用 `wrangler.memory-preview.jsonc`、Worker `loveuhqq-memory-book-preview`、全新 D1/KV，只保存合成内容。部署使用项目 Wrangler：
+
+```sh
+npx wrangler d1 migrations apply DB --remote --config wrangler.memory-preview.jsonc
+npm run build
+npx wrangler deploy --config wrangler.memory-preview.jsonc
+```
+
+共同门禁通过后，在首页上方选择男生或女生，无需注册或个人口令。沿用现有成员编号与记录；旧密码验证列仅为数据库兼容保留，不参与验证。共同密码继续使用现有安全配置流程，不重置预览门禁。
+
+声音使用既有 `PHOTOS` KV 的 `audio/` 独立前缀，D1 仅存所有者及父内容关系，每次读取均重新鉴权。音频总额度为 300 条/256 MiB，单条字节上限 4 MiB；60 秒录制与浏览器上传时长校验在客户端进行，Worker 额外检查声明时长与容器签名，不进行音频解码。不要将其宣称为服务端证明的实际时长限制。未启用 R2 或新增付费服务。
+
+正式站仍需当前任务明确授权合并、备份生产 D1、应用上述增量迁移及正式部署。部署时保持原生产 D1/KV 绑定，预览 ID 不得复制到生产；新 DO 类由 Wrangler 迁移创建。先执行生产配置检查、完整测试、构建和 dry run，再正式部署，并验证新页、旧入口、匿名 401、个人草稿隔离、未来信日期门槛及两端桌面同步。生产首次成员设置由双方亲自完成。数据库与 DO 存储均不随 Worker 版本回滚，不能用销毁资源恢复旧界面。
+
 ## 回滚
 
 经用户明确授权后，先用项目级 `wrangler deployments list` 查找本 Worker 的已知良好版本，再按安装版本的 `wrangler rollback --help` 执行针对该版本的回滚；随后重做域名、HTML 和资源验证。需要源码回退时通过新分支和 PR 恢复已知良好内容，由用户手动合并后重新构建部署；不 reset 或 force push。
@@ -166,3 +184,8 @@
 - 账号未开通 R2，经用户选择改用 Workers KV：创建 `loveuhqq-photos-preview`（`b74bb16196a048cc82b2c1c0feae90e9`）与 `loveuhqq-photos`（`f2758069198e4a90896513225121d661`）。16 张照片（缩略图与大图，均已去除 EXIF）及清单共 33 个键分别写入两个命名空间；原图不进仓库。
 - 部署前线上版本为 `6d6814c2-062f-4b69-afda-94781605fe57`，可作回滚目标。生产版本 ID：`a7e596e0-5a8c-4e27-8cc3-0b89146b7fb2`，Deployments 确认流量 100%，绑定 `PHOTOS` KV 与 `loveuhqq-notebook` D1。
 - 正式站首页、`/photos/`、`/favicon.svg`、`/manifest.json`、`/robots.txt` 与抽查的 `/_assets/*` 脚本、样式、字体均为 HTTPS 200；未知路径返回 404 且正文为“这一页，好像被撕掉了。”；已删除的示意图 `/images/sea.webp` 为 404。首页与 `/photos/` HTML 与 `dist` 一致，只含“待解锁”空位，不含任何照片标题。未登录时 `/api/photos` 与图片接口均为 401（`no-store`）；`blogtext.x23.shop` 未受影响。登录后的照片显示由用户在正式站验收。
+
+
+### 当前身份选择方式
+
+共同门禁通过后进入首页，上方只提供「男生」「女生」两项身份选择，不再注册称呼或填写个人口令；选择会沿用到回忆册与共同桌面，可随时切换。两份署名段落、共同揭晓、未来信件的收件人与日期规则保留，已有记录不迁移、不删除。身份只区分署名，不提供双方之间的口令隔离；任何通过共同门禁的人都可以切换查看相应身份的内容。此前独立个人口令的描述由本约定替代。

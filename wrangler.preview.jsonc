@@ -26,7 +26,9 @@
       "id": "b74bb16196a048cc82b2c1c0feae90e9"
     }
   ],
-  "main": "worker/index.ts",
+  "main": "worker/runtime.ts",
+  "durable_objects": { "bindings": [{ "name": "SHARED_DESKTOP", "class_name": "SharedDesktop" }] },
+  "migrations": [{ "tag": "shared-memory-v1", "new_sqlite_classes": ["SharedDesktop"] }],
   "observability": {
     "enabled": true,
     "traces": {

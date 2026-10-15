@@ -9,8 +9,9 @@ import {
   photoObjectKey, photoSizes, sortPhotos,
 } from '../src/lib/photos.ts';
 import type { PhotoManifest, PhotoSize, PrivatePhoto } from '../src/lib/photos.ts';
+import { handleMemoryRequest, memoryActor } from './memory-book.ts';
 
-type Env = Omit<Cloudflare.Env, "PHOTOS"> & { EDITOR_PASSWORD_HASH?: string; PHOTOS?: KVNamespace };
+type Env = Omit<Cloudflare.Env, "PHOTOS" | "SHARED_DESKTOP"> & { EDITOR_PASSWORD_HASH?: string; PHOTOS?: KVNamespace; SHARED_DESKTOP?: DurableObjectNamespace };
 type Entry = { kind: 'note' | 'wish'; entry_key: string; text: string; done: number; version: number; deleted: number };
 type JsonObject = Record<string, unknown>;
 class HttpError extends Error {
@@ -367,7 +368,8 @@ export default {
     if (path !== '/api' && !path.startsWith('/api/')) return env.ASSETS.fetch(request);
     try {
       const photoPath = path === '/api/photos' || /^\/api\/photos\/[^/]+(?:\/[^/]+)?$/.test(path);
-      const known = path === '/api/session' || path === '/api/notebook' || path === '/api/letter' || photoPath || /^\/api\/(notes|wishes)\/[^/]+$/.test(path);
+      const memoryPath = path.startsWith('/api/memory/');
+      const known = memoryPath || path === '/api/session' || path === '/api/notebook' || path === '/api/letter' || photoPath || /^\/api\/(notes|wishes)\/[^/]+$/.test(path);
       if (!known) return json({ error: '接口不存在。' }, 404);
       if (path === '/api/letter' && request.method !== 'GET') return json({ error: '方法不支持。' }, 405, { Allow: 'GET' });
       if (photoPath) {
@@ -394,6 +396,16 @@ export default {
         return json({ error: '方法不支持。' }, 405, { Allow: 'GET, POST, DELETE' });
       }
       if (!await authenticated(request, env.DB, env.EDITOR_PASSWORD_HASH!)) return json({ error: '请先登录手账。' }, 401);
+      if (path === '/api/memory/desktop') {
+        assertOrigin(request);
+        const actor = await memoryActor(request, env.DB);
+        if (!actor) return json({ error: '请先验证自己的个人身份。' }, 403);
+        if (!env.SHARED_DESKTOP) return json({ error: '共同桌面尚未配置，请稍后再来。' }, 503);
+        const headers = new Headers(request.headers);
+        headers.set('X-Memory-Actor', JSON.stringify(actor));
+        return env.SHARED_DESKTOP.getByName('shared-memory-book').fetch(new Request(request, { headers }));
+      }
+      if (memoryPath) return handleMemoryRequest(request, env);
       if (path === '/api/letter') {
         if (getAnniversaryDay(new Date(Date.now())) < 100) return json({ error: '百日信还未到拆信的日子。' }, 403);
         // Read private storage only after both server-side gates have passed.
