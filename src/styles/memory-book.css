@@ -26,6 +26,7 @@
 button.memory-card { cursor: pointer; min-height: 6rem; }
 .memory-card h3 { font-size: 1.15rem; margin: .5rem 0; overflow-wrap: anywhere; }
 .memory-card p { margin: .4rem 0; color: var(--ink-2); line-height: 1.7; }
+.memory-place-list .memory-card { display: flex; flex-direction: column; align-items: flex-start; gap: .4rem; }
 .memory-story, .memory-letter { margin-top: 1.5rem; }
 .memory-story h3, .memory-letter h3 { font: 400 clamp(1.6rem, 4vw, 2.3rem)/1.5 var(--serif); overflow-wrap: anywhere; }
 .memory-prose { white-space: pre-wrap; overflow-wrap: anywhere; line-height: 2; }
