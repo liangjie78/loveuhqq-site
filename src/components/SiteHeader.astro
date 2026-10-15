@@ -2,9 +2,11 @@
 interface Props {
   /** The home page shows in-page links; other pages link back to it. */
   home?: boolean;
+  /** Where a sub-page's back link lands on the home page. */
+  backHref?: string;
 }
 
-const { home = false } = Astro.props;
+const { home = false, backHref = '/#photos' } = Astro.props;
 const links = [
   { href: '#days', label: '日子' },
   { href: '#photos', label: '照片' },
@@ -33,7 +35,7 @@ const links = [
         </div>
       </>
     ) : (
-      <a class="back-link" href="/#photos">
+      <a class="back-link" href={backHref}>
         <span aria-hidden="true">←</span> 回到日记
       </a>
     )
