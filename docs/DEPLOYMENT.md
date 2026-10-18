@@ -87,6 +87,18 @@ npx wrangler deploy --config wrangler.memory-preview.jsonc
 
 正式站仍需当前任务明确授权合并、备份生产 D1、应用上述增量迁移及正式部署。部署时保持原生产 D1/KV 绑定，预览 ID 不得复制到生产；新 DO 类由 Wrangler 迁移创建。先执行生产配置检查、完整测试、构建和 dry run，再正式部署，并验证新页、旧入口、匿名 401、个人草稿隔离、未来信日期门槛及两端桌面同步。生产首次成员设置由双方亲自完成。数据库与 DO 存储均不随 Worker 版本回滚，不能用销毁资源恢复旧界面。
 
+## 回忆册外壳修复正式上线（2026-10-19，Asia/Shanghai）
+
+- 用户明确授权合并 PR #61 并执行生产部署。合并提交 `00ddc66`（squash），GitHub CI 通过；在干净 `main` 上复现 `npm ci`、77 项测试、前后端类型检查与 `npm run build`。
+- 生产 D1 的四项迁移此前已应用，本次 `migrations list` 显示无需新增迁移；Worker 与 DO 类未变，仅发布静态资源与脚本。
+- 部署前线上版本 `29ad500d-cd55-4fc5-8546-13f7d7cc1ae4` 可作回滚目标。项目级 Wrangler 4.131.1 部署至 `loveuhqq-site`，Custom Domain `loveuhqq.x23.shop`；生产版本 ID：`6b2da45c-4d40-4882-8b0c-3f4c4abffc93`。
+- 本机直连 `loveuhqq.x23.shop` 时 curl 复用连接会报 schannel 解密错误，加 `Connection: close` 后正常；DNS 解析仍为 `104.21.65.200`、`172.67.166.139`，未修改 DNS。
+- 线上 `/`、`/memories/`、`/photos/`、`/favicon.svg`、`/manifest.json`、`/robots.txt` 均为 HTTPS 200；未知路径返回 404 且正文为“这一页，好像被撕掉了。”。`/memories/` HTML 与 `dist` 逐字节一致，未出现 Cloudflare 注入脚本；抽查的 `SiteHeader`、`memories` CSS、脚本与字体子集 SHA-256 与 `dist` 一致。
+- 匿名访问 `/api/memory/bootstrap`、`/api/notebook`、`/api/photos` 均为 401；`/api/session` 返回未登录状态。
+- 真实 Chrome 在 390×844 与 1440×900 下访问线上 `/memories/`：无脚本错误、无横向溢出；390px 页眉为两行（`--header` 5.9rem），「回到日记」完整可见，锁定态共同桌面私有容器保持隐藏，分区眉标与表单操作行样式正确。截图已更新到 `docs/previews/shared-memory-mobile.png` 与 `shared-memory-desktop.png`，替换此前误存的门禁截图。
+- 本次只更新本项目 Worker，`blogtext.x23.shop` 与其他资源未改动。
+
+
 ## 回滚
 
 经用户明确授权后，先用项目级 `wrangler deployments list` 查找本 Worker 的已知良好版本，再按安装版本的 `wrangler rollback --help` 执行针对该版本的回滚；随后重做域名、HTML 和资源验证。需要源码回退时通过新分支和 PR 恢复已知良好内容，由用户手动合并后重新构建部署；不 reset 或 force push。
