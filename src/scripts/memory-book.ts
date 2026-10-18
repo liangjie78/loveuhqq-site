@@ -549,7 +549,9 @@ function renderPlaces() {
     if (!places.length) list.append(el('p', book.places.length ? '这一年还没有记下地点。' : '有想记的地方时，再写下来。暂时留空也没关系。'));
     for (const place of places) {
       const card = el('article', '', 'memory-card'); card.dataset.placeId = place.id; card.tabIndex = -1;
-      card.append(el('h3', place.name), el('p', String(place.year), 'memory-meta'), button('改这个地点', () => openPlace(place)));
+      // Coordinates and version are not part of the render key, so resolve the latest
+      // record by ID; a retained card must not reopen the editor with stale state.
+      card.append(el('h3', place.name), el('p', String(place.year), 'memory-meta'), button('改这个地点', () => openPlace(book.places.find(item => item.id === place.id) ?? place)));
       place.storyIds.forEach(id => { const story = book.stories.find(item => item.id === id); if (story) card.append(button(`翻开：${story.title}`, () => openStory(id))); });
       place.wishIds.forEach(id => { const wish = notebook?.wishes.find(item => item.id === id); if (wish) card.append(button(`往后的小事：${wish.text}`, () => { $('#wishes').scrollIntoView({ block: 'start' }); })); }); list.append(card);
     }
