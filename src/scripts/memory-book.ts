@@ -41,6 +41,8 @@ let loading: Promise<void> | null = null;
 let lastWriteConflict = false;
 let switching = false;
 let remotePending = false;
+let loadedOnce = false;
+const renderedLists = new Map<HTMLElement, string>();
 const discardIdentityMessage = '还没保存。换身份后，这份内容不会留下。要继续吗？';
 const desk = createSharedDesktop($('[data-shared-desktop]'), { onOpenStory: openStory, onUnauthorized: unauthorized });
 
@@ -55,7 +57,8 @@ function disposeRecordings(parent: HTMLElement) { all<HTMLElement>('.memory-reco
 function clearSelectors() {
   $<HTMLSelectElement>('[data-place-story]').replaceChildren(new Option('暂不关联', ''));
   $<HTMLSelectElement>('[data-place-wish]').replaceChildren(new Option('暂不关联', ''));
-  $<HTMLSelectElement>('[data-place-year]').replaceChildren(new Option('所有年份', '')); selectedPlaceYear = '';
+  const year = $<HTMLSelectElement>('[data-place-year]');
+  year.replaceChildren(new Option('所有年份', '')); delete year.dataset.years; selectedPlaceYear = '';
   all<HTMLOptionElement>('option', field(letterForm, 'recipientId')).forEach(option => { option.textContent = option.value === 'one' ? '第一位' : '第二位'; });
 }
 function discardShownContent() {
@@ -66,7 +69,7 @@ function discardShownContent() {
   loading = null;
   stopScreening(); screening = []; screeningIndex = 0;
   resetMedia(); desk.clear();
-  book = empty(); photos = []; notebook = null; selectedLetter = null;
+  book = empty(); photos = []; notebook = null; selectedLetter = null; loadedOnce = false;
   all<HTMLFormElement>('form', privateRoot).forEach(form => { form.reset(); delete form.dataset.dirty; });
   for (const selector of ['[data-story-list]', '[data-story-detail]', '[data-story-photos]', '[data-story-wishes]', '[data-memory-wishes]', '[data-letter-list]', '[data-letter-detail]', '[data-screening-options]', '[data-screening-order]', '[data-place-list]']) $(selector).replaceChildren();
   $('[data-screening-stage]').replaceChildren(el('p', '选几页真实的内容，再开始播放。'));
@@ -75,6 +78,7 @@ function discardShownContent() {
   clearSelectors();
   $('[data-story-filter-hint]').textContent = '';
   all<HTMLImageElement>('img', privateRoot).forEach(image => image.removeAttribute('src'));
+  renderedLists.clear();
   storyForm.hidden = letterForm.hidden = placeForm.hidden = true;
   $('[data-story-detail]').hidden = $('[data-letter-detail]').hidden = true;
   $('[data-memory-identity]').hidden = true;
@@ -93,7 +97,9 @@ async function load() {
   if (loading) return loading;
   const token = generation;
   const controller = new AbortController(); request = controller;
-  status.textContent = '正在翻开回忆册…';
+  // The ten-second refresh runs while someone may be reading; only the first load
+  // announces itself, and it stops as soon as anything is on screen.
+  if (!loadedOnce) status.textContent = '正在翻开回忆册…';
   loading = (async () => {
     try {
       const next = await api<MemoryBootstrap>(`${memoryApiRoot}/bootstrap`, { signal: controller.signal });
@@ -120,6 +126,7 @@ async function load() {
         photos = parsePhotoManifest(manifest).photos; notebook = notes;
       } else { photos = []; notebook = null; }
       render(); status.textContent = ''; $('[data-memory-retry]').hidden = true;
+      loadedOnce = true;
     } catch (error) { if (token === generation && !controller.signal.aborted) report(error); }
     finally { if (token === generation) { request = null; loading = null; } }
   })();
@@ -204,6 +211,7 @@ async function selectIdentity(id: string) {
 }
 function render() {
   $('[data-memory-locked]').hidden = true;
+  loadedOnce = true;
   const member = book.member;
   const identityBar = $('[data-memory-identity]');
   const unselectedCard = $('[data-memory-identity-unselected]');
@@ -228,6 +236,7 @@ function render() {
   }
   all<HTMLOptionElement>('option', field(letterForm, 'recipientId')).forEach(option => { option.textContent = memberName(option.value); });
   if (!member) {
+    renderedLists.clear();
     all<HTMLElement>('[data-story-list], [data-story-detail], [data-letter-list], [data-letter-detail], [data-place-list], [data-screening-options], [data-screening-order]').forEach(node => node.replaceChildren());
     storyForm.hidden = letterForm.hidden = placeForm.hidden = true; return;
   }
@@ -241,19 +250,31 @@ function jumpToHash() {
   let target: HTMLElement | null = null;
   try { target = document.getElementById(decodeURIComponent(pendingHash)); } catch { /* A malformed hash is simply ignored. */ }
   pendingHash = '';
-  if (target && !target.hidden) target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  if (target && !target.hidden) target.scrollIntoView({ behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth', block: 'start' });
 }
 function matchesFilter(story: MemoryStory) {
   const search = $<HTMLInputElement>('[data-story-search]').value.trim().toLocaleLowerCase();
   return (!filter.get('date') || story.date === filter.get('date')) && (!filter.get('photo') || story.photoIds.includes(filter.get('photo')!)) && (!filter.get('wish') || story.wishIds.includes(filter.get('wish')!) || book.wishPlans.some(plan => plan.id === filter.get('wish') && plan.storyId === story.id))
     && (!search || `${story.title} ${story.date} ${story.text} ${story.parts.map(part => `${part.text ?? ''} ${part.reply ?? ''}`).join(' ')}`.toLocaleLowerCase().includes(search));
 }
+// The refresh runs every ten seconds while the page is visible. Rebuilding a list
+// with identical content would drop keyboard focus, so skip when nothing changed.
+function renderList(target: HTMLElement, key: string, build: () => void) {
+  if (renderedLists.get(target) === key) return;
+  renderedLists.set(target, key);
+  build();
+}
 function renderStoryList() {
   const stories = book.stories.filter(matchesFilter).sort((a, b) => b.date.localeCompare(a.date));
-  const list = $('[data-story-list]'); list.replaceChildren();
+  const list = $('[data-story-list]');
   $('[data-story-filter-hint]').textContent = filter.has('date') || filter.has('photo') || filter.has('wish') ? '正在翻看这个入口关联的故事。也可以看全部，或为它新写一篇。' : '';
-  if (!stories.length) list.append(el('p', book.stories.length ? '这里还没找到相符的故事。' : '还没有故事。第一篇，留给我们自己写。'));
-  stories.forEach(story => { const card = button('', () => openStory(story.id), 'memory-card'); card.append(el('span', story.date, 'memory-meta'), el('h3', story.title), el('p', `${story.photoIds.length} 张照片 · ${story.parts.filter(part => part.submitted).length} 份已提交的版本`)); list.append(card); });
+  // Only what a card shows: a version bump alone does not change the list.
+  const key = JSON.stringify(stories.map(story => [story.id, story.date, story.title, story.photoIds.length, story.parts.filter(part => part.submitted).length]).concat([book.stories.length]));
+  renderList(list, key, () => {
+    list.replaceChildren();
+    if (!stories.length) list.append(el('p', book.stories.length ? '这里还没找到相符的故事。' : '还没有故事。第一篇，留给我们自己写。'));
+    stories.forEach(story => { const card = button('', () => openStory(story.id), 'memory-card'); card.append(el('span', story.date, 'memory-meta'), el('h3', story.title), el('p', `${story.photoIds.length} 张照片 · ${story.parts.filter(part => part.submitted).length} 份已提交的版本`)); list.append(card); });
+  });
 }
 function openStory(id: string) {
   selectedStory = id; storyForm.hidden = true; renderStory();
@@ -379,15 +400,18 @@ function wishPlan(wish: Wish, story?: MemoryStory) {
 }
 
 function renderLetters() {
-  const list = $('[data-letter-list]'); list.replaceChildren();
-  if (!book.letters.length) list.append(el('p', '邮局里还没有信，想写的时候再来。'));
-  for (const letter of book.letters) {
-    const card = button('', () => { void (async () => {
-      const token = generation; const controller = new AbortController(); mutations.add(controller); card.disabled = true;
-      try { const latest = await api<MemoryLetter>(`${memoryApiRoot}/letters/${letter.id}`, { signal: controller.signal }); if (token !== generation) return; book.letters = book.letters.map(item => item.id === latest.id ? latest : item); selectedLetter = letter.id; renderLetter(); $('[data-letter-detail]').scrollIntoView({ block: 'start' }); }
-      catch (error) { if (token === generation && !controller.signal.aborted) report(error); } finally { mutations.delete(controller); card.disabled = false; }
-    })(); }, 'memory-card'); card.append(el('p', `${memberName(letter.senderId)} → ${memberName(letter.recipientId)}`, 'memory-meta'), el('h3', letter.title), el('p', `${letter.openDate} · ${letter.status === 'draft' ? '草稿' : letter.readable ? '可以拆信' : '已封好'}`)); list.append(card);
-  }
+  const list = $('[data-letter-list]');
+  renderList(list, JSON.stringify(book.letters.map(letter => [letter.id, letter.title, letter.senderId, letter.recipientId, letter.openDate, letter.status, letter.readable])), () => {
+    list.replaceChildren();
+    if (!book.letters.length) list.append(el('p', '邮局里还没有信，想写的时候再来。'));
+    for (const letter of book.letters) {
+      const card = button('', () => { void (async () => {
+        const token = generation; const controller = new AbortController(); mutations.add(controller); card.disabled = true;
+        try { const latest = await api<MemoryLetter>(`${memoryApiRoot}/letters/${letter.id}`, { signal: controller.signal }); if (token !== generation) return; book.letters = book.letters.map(item => item.id === latest.id ? latest : item); selectedLetter = letter.id; renderLetter(); $('[data-letter-detail]').scrollIntoView({ block: 'start' }); }
+        catch (error) { if (token === generation && !controller.signal.aborted) report(error); } finally { mutations.delete(controller); card.disabled = false; }
+      })(); }, 'memory-card'); card.append(el('p', `${memberName(letter.senderId)} → ${memberName(letter.recipientId)}`, 'memory-meta'), el('h3', letter.title), el('p', `${letter.openDate} · ${letter.status === 'draft' ? '草稿' : letter.readable ? '可以拆信' : '已封好'}`)); list.append(card);
+    }
+  });
 }
 function letterInput(letter: MemoryLetter, audioIds = letter.audioIds ?? []): LetterInput { return { expectedVersion: letter.version, title: letter.title, text: letter.text ?? '', recipientId: letter.recipientId, openDate: letter.openDate, pairKey: letter.pairKey, audioIds }; }
 function renderLetter() {
@@ -404,10 +428,26 @@ function renderLetter() {
   if (letter.pairKey) detail.append(el('p', `一起拆信的约定：${letter.pairKey}`, 'memory-meta'));
   if (letter.senderId === book.member?.id) {
     if (letter.status === 'draft') {
-      detail.append(button('接着写', () => openLetter(letter)), button('确认封好这封信', () => { void write(`/letters/${letter.id}/seal`, 'POST', { expectedVersion: letter.version }); }, 'pencil-button'));
+      detail.append(button('接着写', () => openLetter(letter)), button('确认封好这封信', () => sealLetter(letter), 'pencil-button'));
       detail.append(recorder({ letterId: letter.id }, async id => { if (!await write(`/letters/${letter.id}`, 'PUT', letterInput(letter, [...(letter.audioIds ?? []), id]))) throw new Error('Audio attachment failed'); }));
-    } else detail.append(button('撤回为草稿', () => { void write(`/letters/${letter.id}/withdraw`, 'POST', { expectedVersion: letter.version }); }));
+    } else detail.append(button('撤回为草稿', () => withdrawLetter(letter)));
   }
+}
+// These two actions sit at the bottom of the page, far from the hero's status line,
+// so they report next to the reading card instead.
+function letterFeedback(message: string) {
+  const detail = $('[data-letter-detail]');
+  let line = detail.querySelector<HTMLElement>('[data-letter-feedback]');
+  if (!line) { line = el('p', '', 'memory-meta'); line.dataset.letterFeedback = ''; line.setAttribute('role', 'status'); detail.append(line); }
+  line.textContent = message;
+}
+async function sealLetter(letter: MemoryLetter) {
+  const ok = await write(`/letters/${letter.id}/seal`, 'POST', { expectedVersion: letter.version });
+  if (!ok) letterFeedback(lastWriteConflict ? '这封信已在别处更新，请稍后再试。' : '这次没能封好，信的内容还在，可以再试一次。');
+}
+async function withdrawLetter(letter: MemoryLetter) {
+  const ok = await write(`/letters/${letter.id}/withdraw`, 'POST', { expectedVersion: letter.version });
+  if (!ok) letterFeedback(lastWriteConflict ? '这封信已在别处更新，请稍后再试。' : '这次没能撤回，信还在封存中，可以再试一次。');
 }
 function openLetter(letter?: MemoryLetter) {
   all<HTMLElement>('[data-conflict-review]', letterForm).forEach(node => node.remove());
@@ -501,16 +541,29 @@ $('[data-screening-restart]').addEventListener('click', () => { stopScreening();
 $('[data-screening-play]').addEventListener('click', () => { if (screeningTimer) { stopScreening(); return; } if (!screening.length) return; if (matchMedia('(prefers-reduced-motion: reduce)').matches) { showSlide(); return; } $('[data-screening-play]').textContent = '暂停'; $('[data-screening-stage]').classList.add('is-playing'); screeningTimer = setInterval(() => { if (screeningIndex >= screening.length - 1) { stopScreening(); return; } screeningIndex++; showSlide(); }, 5500); });
 
 function renderPlaces() {
-  const year = $<HTMLSelectElement>('[data-place-year]'); year.replaceChildren(new Option('所有年份', ''));
-  [...new Set(book.places.map(place => place.year))].sort((a, b) => b - a).forEach(item => year.add(new Option(String(item), String(item)))); year.value = selectedPlaceYear;
-  const places = book.places.filter(place => !selectedPlaceYear || String(place.year) === selectedPlaceYear); const list = $('[data-place-list]'); list.replaceChildren();
-  if (!places.length) list.append(el('p', book.places.length ? '这一年还没有记下地点。' : '有想记的地方时，再写下来。暂时留空也没关系。'));
-  for (const place of places) {
-    const card = el('article', '', 'memory-card'); card.dataset.placeId = place.id; card.tabIndex = -1;
-    card.append(el('h3', place.name), el('p', String(place.year), 'memory-meta'), button('改这个地点', () => openPlace(place)));
-    place.storyIds.forEach(id => { const story = book.stories.find(item => item.id === id); if (story) card.append(button(`翻开：${story.title}`, () => openStory(id))); });
-    place.wishIds.forEach(id => { const wish = notebook?.wishes.find(item => item.id === id); if (wish) card.append(button(`往后的小事：${wish.text}`, () => { $('#wishes').scrollIntoView({ block: 'start' }); })); }); list.append(card);
+  const year = $<HTMLSelectElement>('[data-place-year]');
+  const places = book.places.filter(place => !selectedPlaceYear || String(place.year) === selectedPlaceYear);
+  const list = $('[data-place-list]');
+  renderList(list, JSON.stringify(places.map(place => [place.id, place.name, place.year, place.storyIds, place.wishIds])), () => {
+    list.replaceChildren();
+    if (!places.length) list.append(el('p', book.places.length ? '这一年还没有记下地点。' : '有想记的地方时，再写下来。暂时留空也没关系。'));
+    for (const place of places) {
+      const card = el('article', '', 'memory-card'); card.dataset.placeId = place.id; card.tabIndex = -1;
+      // Coordinates and version are not part of the render key, so resolve the latest
+      // record by ID; a retained card must not reopen the editor with stale state.
+      card.append(el('h3', place.name), el('p', String(place.year), 'memory-meta'), button('改这个地点', () => openPlace(book.places.find(item => item.id === place.id) ?? place)));
+      place.storyIds.forEach(id => { const story = book.stories.find(item => item.id === id); if (story) card.append(button(`翻开：${story.title}`, () => openStory(id))); });
+      place.wishIds.forEach(id => { const wish = notebook?.wishes.find(item => item.id === id); if (wish) card.append(button(`往后的小事：${wish.text}`, () => { $('#wishes').scrollIntoView({ block: 'start' }); })); }); list.append(card);
+    }
+  });
+  // Rebuilding the select would close it under a reader, so only touch it on change.
+  const years = [...new Set(book.places.map(place => place.year))].sort((a, b) => b - a);
+  if (year.dataset.years !== JSON.stringify(years)) {
+    year.dataset.years = JSON.stringify(years);
+    year.replaceChildren(new Option('所有年份', ''));
+    years.forEach(item => year.add(new Option(String(item), String(item))));
   }
+  year.value = selectedPlaceYear;
 }
 function openPlace(place?: MemoryPlace) {
   all<HTMLElement>('[data-conflict-review]', placeForm).forEach(node => node.remove());

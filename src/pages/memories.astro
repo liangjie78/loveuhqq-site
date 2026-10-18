@@ -37,7 +37,8 @@ const contents = [
           <div class="memory-locked-card sheet" data-memory-locked>
             <span class="tape tape-corner" aria-hidden="true"></span>
             <p>解锁后，才能翻开我们的回忆册。</p>
-            <button class="pencil-button" type="button" data-open-login>解锁手账</button>
+            <button class="pencil-button" type="button" data-open-login data-needs-js>解锁手账</button>
+            <noscript><p>开启 JavaScript 后才能解锁。</p></noscript>
           </div>
 
           <div class="memory-identity-bar" data-memory-identity hidden>
@@ -91,7 +92,8 @@ const contents = [
         <div class="memory-section-locked sheet" data-section-locked>
           <span class="tape tape-corner" aria-hidden="true"></span>
           <p>解锁后，才能翻开我们的故事。</p>
-          <button class="pencil-button" type="button" data-open-login>解锁手账</button>
+          <button class="pencil-button" type="button" data-open-login data-needs-js>解锁手账</button>
+          <noscript><p>开启 JavaScript 后才能解锁。</p></noscript>
         </div>
 
         <div class="memory-section-content" data-section-private hidden>
@@ -133,7 +135,8 @@ const contents = [
         <div class="memory-section-locked sheet" data-section-locked>
           <span class="tape tape-corner" aria-hidden="true"></span>
           <p>解锁后，翻看往后与后来的记录。</p>
-          <button class="pencil-button" type="button" data-open-login>解锁手账</button>
+          <button class="pencil-button" type="button" data-open-login data-needs-js>解锁手账</button>
+          <noscript><p>开启 JavaScript 后才能解锁。</p></noscript>
         </div>
 
         <div class="memory-section-content" data-section-private hidden>
@@ -158,7 +161,8 @@ const contents = [
         <div class="memory-section-locked sheet" data-section-locked>
           <span class="tape tape-corner" aria-hidden="true"></span>
           <p>解锁后，才能翻开未来邮局的信件。</p>
-          <button class="pencil-button" type="button" data-open-login>解锁手账</button>
+          <button class="pencil-button" type="button" data-open-login data-needs-js>解锁手账</button>
+          <noscript><p>开启 JavaScript 后才能解锁。</p></noscript>
         </div>
 
         <div class="memory-section-content" data-section-private hidden>
@@ -193,7 +197,8 @@ const contents = [
         <div class="memory-section-locked sheet" data-section-locked>
           <span class="tape tape-corner" aria-hidden="true"></span>
           <p>解锁后，开启回忆放映室。</p>
-          <button class="pencil-button" type="button" data-open-login>解锁手账</button>
+          <button class="pencil-button" type="button" data-open-login data-needs-js>解锁手账</button>
+          <noscript><p>开启 JavaScript 后才能解锁。</p></noscript>
         </div>
 
         <div class="memory-section-content" data-section-private hidden>
@@ -225,7 +230,8 @@ const contents = [
         <div class="memory-section-locked sheet" data-section-locked>
           <span class="tape tape-corner" aria-hidden="true"></span>
           <p>解锁后，翻看地点备忘。</p>
-          <button class="pencil-button" type="button" data-open-login>解锁手账</button>
+          <button class="pencil-button" type="button" data-open-login data-needs-js>解锁手账</button>
+          <noscript><p>开启 JavaScript 后才能解锁。</p></noscript>
         </div>
 
         <div class="memory-section-content" data-section-private hidden>
@@ -244,7 +250,7 @@ const contents = [
     </section>
 
     <!-- Section 6: Shared Desk -->
-    <section id="shared-desk" class="section memory-section memory-desk-section" data-shared-desktop aria-labelledby="desk-title">
+    <section id="shared-desk" class="section memory-section memory-desk-section" aria-labelledby="desk-title">
       <div class="section-inner">
         <header class="section-head memory-section-heading" data-reveal>
           <div class="section-head-title">
@@ -257,7 +263,12 @@ const contents = [
         <div class="memory-section-locked sheet" data-section-locked>
           <span class="tape tape-corner" aria-hidden="true"></span>
           <p>解锁后，打开共同桌面。</p>
-          <button class="pencil-button" type="button" data-open-login>解锁手账</button>
+          <button class="pencil-button" type="button" data-open-login data-needs-js>解锁手账</button>
+          <noscript><p>开启 JavaScript 后才能解锁。</p></noscript>
+        </div>
+
+        <div class="memory-section-content" data-section-private hidden>
+          <div data-shared-desktop></div>
         </div>
       </div>
     </section>
