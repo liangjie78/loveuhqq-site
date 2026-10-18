@@ -150,6 +150,12 @@ html.has-dialog, html.has-dialog body { overflow: hidden; }
 }
 .tape-pink { background-color: rgb(239 192 190 / .74); }
 
+/* Small labels above a heading and the row of actions under a form; shared by the
+   journal and the memory book, so they live here rather than in one page's styles. */
+.paper-label { font-size: .78rem; letter-spacing: .14em; color: var(--muted); }
+.paper-actions { display: flex; flex-wrap: wrap; align-items: center; gap: .5rem 1.5rem; }
+.paper-actions .text-button { min-height: 44px; }
+
 .text-link {
   display: inline-flex;
   align-items: center;

@@ -501,6 +501,9 @@ button.memory-card:hover {
 @media (max-width: 768px) {
   .memory-hero-inner {
     grid-template-columns: 1fr;
+    /* `.hero-inner` names the home page's areas; left in place they would keep
+       placing the two blocks in two columns after the columns collapse. */
+    grid-template-areas: none;
     gap: 2.5rem;
   }
   .memory-hero-contents {
@@ -509,6 +512,53 @@ button.memory-card:hover {
   .memory-hero-words {
     max-width: 100%;
   }
+}
+
+/* Six section links plus the account and back links do not fit one 390px row, so
+   the book's header keeps the wordmark and actions on top and gives the sections
+   their own full-width row. --header grows with it, and every section's padding
+   and scroll offset already read that variable. The breakpoint matches the hero's
+   one-column switch above, so a narrow two-column hero never sits under a
+   two-row header. */
+@media (max-width: 768px) {
+  /* Sections and the fixed header read --header from :root, so the taller two-row
+     header has to be declared there rather than on body. */
+  html:has(.memory-page) { --header: 5.9rem; }
+  .memory-page .site-header {
+    flex-wrap: wrap;
+    row-gap: 0;
+    padding-bottom: .15rem;
+  }
+  /* Wordmark, then the account and back links, each on one line: a three-line
+     header would be taller than --header and cover the top of the page. */
+  .memory-page .header-actions {
+    gap: .35rem .75rem;
+    min-width: 0;
+    margin-left: auto;
+  }
+  .memory-page .header-guest { gap: .35rem; font-size: .8rem; }
+  .memory-page .site-nav {
+    order: 3;
+    flex: 1 0 100%;
+    justify-content: space-between;
+    margin-left: 0;
+    border-top: 1px solid var(--line);
+  }
+  .memory-page .site-nav a {
+    flex: 1;
+    min-width: 0;
+    padding-inline: .1rem;
+    font-size: .82rem;
+    letter-spacing: 0;
+  }
+}
+
+@media (max-width: 400px) {
+  html:has(.memory-page) { --header: 5.9rem; }
+  .memory-page .wordmark { font-size: 1rem; }
+  .memory-page .header-guest { gap: .2rem; font-size: .74rem; }
+  .memory-page .back-link { font-size: .8rem; gap: .25rem; }
+  .memory-page .site-nav a { font-size: .74rem; }
 }
 
 @media (max-width: 640px) {
