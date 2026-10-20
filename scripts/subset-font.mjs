@@ -42,7 +42,7 @@ function collectChars(dir) {
     for (const entry of readdirSync(current)) {
       const path = join(current, entry);
       if (statSync(path).isDirectory()) walk(path);
-      else if (/\.(astro|ts|css)$/.test(entry)) {
+      else if (/\.(astro|ts|tsx|css)$/.test(entry)) {
         for (const char of readFileSync(path, 'utf8')) {
           if (char >= ' ') chars.add(char);
         }

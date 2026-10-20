@@ -1,10 +1,12 @@
 import { dotted, getAnniversaryDay, getNextShanghaiMidnight, hundredthDayDate } from '../lib/anniversary';
 import { api, ApiError } from '../lib/cloud-notebook';
 import { getSession, onSessionChange, publishSession } from '../lib/session';
+import { animate } from 'motion';
 
 interface Letter { salutation: string; paragraphs: string[]; closing: string }
 
 const root = document.documentElement;
+const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
 const envelope = document.querySelector<HTMLButtonElement>('[data-envelope]')!;
 const note = document.querySelector<HTMLElement>('[data-envelope-note]')!;
 const dialog = document.querySelector<HTMLDialogElement>('[data-letter-dialog]')!;
@@ -71,9 +73,11 @@ function updateDates() {
 
 function waitForDate() {
   showNote(`还没到拆的时候，${dotted(hundredthDayDate)} 再来。`);
-  envelope.classList.remove('is-wiggling');
-  void envelope.offsetWidth;
-  envelope.classList.add('is-wiggling');
+  if (reducedMotion.matches) return;
+  animate(envelope, {
+    rotate: [0, 4, -3, 2, -1, 0],
+    y: [0, -4, 0, -2, 0],
+  }, { duration: .75, ease: 'easeInOut' });
 }
 
 async function loadLetter() {
@@ -145,7 +149,6 @@ envelope.addEventListener('click', () => {
   envelope.removeAttribute('data-open-login');
   openLetter();
 });
-envelope.addEventListener('animationend', () => envelope.classList.remove('is-wiggling'));
 retry.addEventListener('click', () => void loadLetter());
 dialog.querySelector('[data-letter-close]')!.addEventListener('click', closeLetter);
 dialog.addEventListener('cancel', event => { event.preventDefault(); closeLetter(); });

@@ -3,6 +3,8 @@ import { api, ApiError, emptyCloudNotebook, type CloudNotebook, type SessionStat
 import { getSession, onSessionChange, publishSession } from '../lib/session';
 import { isCalendarDate, parseNotebook, type Wish } from '../lib/notebook';
 import { momentTitles } from '../data/moments';
+import { buttonVariants } from '../components/ui/button';
+import { inputVariants } from '../components/ui/input';
 
 const $ = <T extends HTMLElement = HTMLElement>(selector: string) => document.querySelector<T>(selector)!;
 const noteGuest = $('[data-note-guest]');
@@ -249,7 +251,7 @@ function renderNoteArchive() {
   index.replaceChildren();
   for (const key of matches) {
     const entry = document.createElement('button');
-    entry.type = 'button'; entry.className = 'text-button note-index-entry';
+    entry.type = 'button'; entry.className = buttonVariants({ variant: 'ghost', className: 'note-index-entry' });
     entry.dataset.noteDate = key;
     if (key === date) entry.setAttribute('aria-current', 'date');
     const label = document.createElement('time');
@@ -311,12 +313,12 @@ function renderWishes() {
     const actions = document.createElement('div'); actions.className = 'wish-actions';
     const edit = makeButton('改一改', () => beginWishEdit(wish));
     edit.dataset.wishId = wish.id; edit.dataset.wishAction = 'edit';
-    const remove = makeButton('移除', () => void removeWish(wish));
+    const remove = makeButton('移除', () => void removeWish(wish), 'ghost', 'danger');
     remove.setAttribute('aria-label', `移除：${wish.text}`);
     remove.dataset.wishId = wish.id; remove.dataset.wishAction = 'remove';
     remove.disabled = busy.has(`wish:${wish.id}`);
     const story = document.createElement('a');
-    story.className = 'text-button'; story.textContent = wish.done ? '回看后来' : '计划与故事';
+    story.className = buttonVariants({ variant: 'ghost' }); story.textContent = wish.done ? '回看后来' : '计划与故事';
     story.href = `/memories/?wish=${encodeURIComponent(wish.id)}#wishes`;
     actions.append(story, edit, remove);
     item.append(label, actions); wishList.append(item);
@@ -348,9 +350,9 @@ function render() {
   if (ready) { renderNote(); renderWishes(); }
 }
 
-function makeButton(text: string, action: () => void, className = 'text-button') {
+function makeButton(text: string, action: () => void, variant: 'default' | 'ghost' = 'ghost', tone: 'default' | 'danger' = 'default') {
   const element = document.createElement('button');
-  element.type = 'button'; element.className = className; element.textContent = text;
+  element.type = 'button'; element.className = buttonVariants({ variant, tone }); element.textContent = text;
   element.addEventListener('click', action);
   return element;
 }
@@ -404,7 +406,7 @@ function renderWishEditor(wish: Wish, value: string) {
   item.dataset.wishRow = wish.id; item.classList.toggle('is-done', wish.done);
   const label = document.createElement('label'); label.className = 'sr-only'; label.htmlFor = `wish-edit-${wish.id}`;
   label.textContent = '修改这件小事';
-  const input = document.createElement('input'); input.type = 'text'; input.id = `wish-edit-${wish.id}`;
+  const input = document.createElement('input'); input.className = inputVariants({ variant: 'underline' }); input.type = 'text'; input.id = `wish-edit-${wish.id}`;
   input.maxLength = 120; input.required = true; input.value = value; input.dataset.wishEditInput = '';
   input.setAttribute('aria-label', '修改这件小事');
   input.addEventListener('input', () => {
@@ -412,7 +414,7 @@ function renderWishEditor(wish: Wish, value: string) {
     getDrafts().wishes[wish.id] = input.value; saveDrafts();
     input.setCustomValidity('');
   });
-  const save = makeButton('收好', () => void saveWishEdit(wish.id), 'pencil-button');
+  const save = makeButton('收好', () => void saveWishEdit(wish.id), 'default');
   save.dataset.wishId = wish.id; save.dataset.wishAction = 'save';
   const cancel = makeButton('取消', () => cancelWishEdit());
   cancel.dataset.wishId = wish.id; cancel.dataset.wishAction = 'cancel';

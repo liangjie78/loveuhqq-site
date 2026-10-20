@@ -72,7 +72,7 @@ function broadcastLogout(pending: boolean) {
 }
 function syncLogoutFromOtherTab(pending: boolean) {
   // Revoke private content before any asynchronous session confirmation.
-  if (!pending) publishSession({ authenticated: false, configured: true });
+  if (!pending) publishSession({ authenticated: false, configured: true }, false);
   if (logoutUnconfirmed === pending) {
     if (!pending) void refreshSession().catch(() => {});
     return;
@@ -83,7 +83,7 @@ function syncLogoutFromOtherTab(pending: boolean) {
     else sessionStorage.removeItem(logoutUnconfirmedKey);
   } catch { /* Storage is optional. */ }
   openGate();
-  if (pending) publishSession({ authenticated: false, configured: true });
+  if (pending) publishSession({ authenticated: false, configured: true }, true);
   else void refreshSession().catch(() => {});
 }
 async function logout(showGate: boolean) {
@@ -97,7 +97,7 @@ async function logout(showGate: boolean) {
     try { sessionStorage.removeItem(logoutUnconfirmedKey); } catch { /* Storage is optional. */ }
     try { localStorage.removeItem(logoutUnconfirmedKey); } catch { /* Storage is optional. */ }
     broadcastLogout(false);
-    publishSession(state); notifyOtherTabs();
+    publishSession(state, false); notifyOtherTabs();
     succeeded = true;
   } catch {
     logoutUnconfirmed = true;
@@ -106,7 +106,7 @@ async function logout(showGate: boolean) {
     broadcastLogout(true);
     retryLogout.disabled = false;
     openGate();
-    publishSession({ authenticated: false, configured: true });
+    publishSession({ authenticated: false, configured: true }, true);
   } finally { checking = false; retryLogout.disabled = false; }
   if (succeeded) {
     if (showGate) { window.scrollTo(0, 0); openGate(); }
@@ -117,7 +117,7 @@ async function logout(showGate: boolean) {
 root.classList.add('gate-ready');
 onSessionChange(state => {
   if (logoutUnconfirmed && state.authenticated) {
-    publishSession({ authenticated: false, configured: state.configured });
+    publishSession({ authenticated: false, configured: state.configured }, true);
     return;
   }
   updateIdentity(state);
@@ -125,7 +125,7 @@ onSessionChange(state => {
 });
 if (logoutUnconfirmed) {
   openGate();
-  publishSession({ authenticated: false, configured: true });
+  publishSession({ authenticated: false, configured: true }, true);
 }
 document.addEventListener('click', event => {
   const trigger = (event.target as Element).closest<HTMLElement>('[data-open-login]');

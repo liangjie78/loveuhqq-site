@@ -1,19 +1,20 @@
 import { api, type SessionState } from './cloud-notebook';
+import { sessionStore } from '../stores/session';
 
 let pending: Promise<SessionState> | undefined;
 let current: SessionState = { authenticated: false, configured: false };
 let generation = 0;
 let initialized = false;
 export function onSessionChange(listener: (state: SessionState) => void): void {
-  document.addEventListener('session:changed', event => listener((event as CustomEvent<SessionState>).detail));
+  sessionStore.subscribe(state => listener({ authenticated: state.authenticated, configured: state.configured }));
   if (initialized) listener(current);
 }
-export function publishSession(state: SessionState) {
+export function publishSession(state: SessionState, logoutUnconfirmed = sessionStore.getState().logoutUnconfirmed) {
   generation++;
   current = state;
   initialized = true;
   pending = Promise.resolve(state);
-  document.dispatchEvent(new CustomEvent<SessionState>('session:changed', { detail: state }));
+  sessionStore.setState({ ...state, logoutUnconfirmed });
 }
 export function getSession(): Promise<SessionState> {
   return pending ??= readSession();

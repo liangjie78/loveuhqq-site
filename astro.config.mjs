@@ -1,7 +1,10 @@
 import { fileURLToPath } from 'node:url';
 import { defineConfig } from 'astro/config';
+import react from '@astrojs/react';
+import tailwindcss from '@tailwindcss/vite';
 
 export default defineConfig({
+  integrations: [react()],
   site: 'https://loveuhqq.x23.shop',
   output: 'static',
   compressHTML: true,
@@ -10,6 +13,7 @@ export default defineConfig({
     assets: '_assets',
   },
   vite: {
+    plugins: [tailwindcss()],
     // Pin the project tsconfig: auto-discovery can climb into an enclosing checkout
     // (e.g. a git worktree nested in the main repo) and fail on its unresolved extends.
     tsconfig: fileURLToPath(new URL('./tsconfig.json', import.meta.url)),

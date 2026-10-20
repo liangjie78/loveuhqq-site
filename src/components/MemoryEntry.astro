@@ -1,4 +1,7 @@
 ---
+import { buttonVariants } from './ui/button';
+import { ArrowUpRight } from 'lucide-react';
+
 // The homepage's door into /memories/. Copy is reused from the memory book's own
 // headings so the two pages speak with one voice; the contents list mirrors the
 // book's `.memory-nav`. Nothing private is read here — the page itself stays a
@@ -19,7 +22,7 @@ const contents = [
       <p class="paper-label">写下来，再一起翻看</p>
       <h2 id="memories-title">共同回忆册</h2>
       <p>日子、照片和往后的想法，都可以在这里接着写。</p>
-      <a class="pencil-button memories-open" href="/memories/">翻开共同回忆册 <span aria-hidden="true">↗</span></a>
+      <a class:list={[buttonVariants({ variant: 'default' }), 'memories-open']} href="/memories/">翻开共同回忆册 <ArrowUpRight size={16} aria-hidden="true" /></a>
     </header>
     <nav class="memories-contents" aria-label="回忆册目录" data-reveal>
       <span class="tape tape-corner" aria-hidden="true"></span>

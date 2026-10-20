@@ -14,24 +14,20 @@ const bundled = await build({
 });
 
 async function fixture(t) {
-  const previous = { document: globalThis.document, fetch: globalThis.fetch };
-  const document = new EventTarget();
+  const previous = { fetch: globalThis.fetch };
   const requests = [];
   const published = [];
-  document.addEventListener('session:changed', event => published.push(event.detail));
-  globalThis.document = document;
   globalThis.fetch = () => new Promise((resolve, reject) => requests.push({
     respond(state) { resolve(Response.json(state)); },
     fail() { reject(new TypeError('Network unavailable')); },
   }));
   t.after(() => {
-    if (previous.document === undefined) delete globalThis.document;
-    else globalThis.document = previous.document;
     globalThis.fetch = previous.fetch;
   });
   // Each case imports the real bundled module with independent module state.
   const source = `${bundled.outputFiles[0].text}\n// fixture ${moduleId++}`;
   const session = await import(`data:text/javascript;base64,${Buffer.from(source).toString('base64')}`);
+  session.onSessionChange(state => published.push(state));
   return { session, requests, published };
 }
 

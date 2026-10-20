@@ -1,0 +1,47 @@
+@import "tailwindcss/theme" layer(theme);
+@import "tailwindcss/utilities" layer(utilities);
+@source "../components/ui";
+@source "../islands";
+
+:root {
+  --background: #f5eee4;
+  --foreground: #2a1f1b;
+  --card: #fffcf7;
+  --card-foreground: #2a1f1b;
+  --primary: #b0474f;
+  --primary-foreground: #fffcf7;
+  --secondary: #ede3d5;
+  --muted-foreground: #76645b;
+  --border: rgb(42 31 27 / .2);
+  --input: rgb(42 31 27 / .32);
+  --ring: #b0474f;
+  --radius: 3px;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --radius-sm: var(--radius);
+  --radius-md: var(--radius);
+  --radius-lg: var(--radius);
+  --radius-xl: var(--radius);
+}
+
+.ui {
+  box-sizing: border-box;
+}
+
+.ui *,
+.ui *::before,
+.ui *::after {
+  box-sizing: inherit;
+}

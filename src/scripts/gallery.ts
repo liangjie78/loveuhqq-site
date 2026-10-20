@@ -4,6 +4,9 @@ import {
   featuredPhotoCount, featuredPhotos, parsePhotoManifest, photoSummary, photoUrl, type PhotoManifest, type PrivatePhoto,
 } from '../lib/photos';
 import { getSession, onSessionChange, publishSession } from '../lib/session';
+import { lucideSvg } from '../lib/lucide-dom';
+import { buttonVariants } from '../components/ui/button';
+import { Pencil, Plus, Star, Trash2 } from 'lucide-react';
 
 const root = document.documentElement;
 const dialog = document.querySelector<HTMLDialogElement>('[data-lightbox]')!;
@@ -86,11 +89,12 @@ let manageMode: 'title' | 'delete' | null = null;
 
 const dateLabel = (photo: PrivatePhoto) => (photo.date ? dotted(photo.date) : '');
 
-function makePhotoButton(label: string, action: () => void, className = 'text-button') {
+function makePhotoButton(label: string, action: () => void, Icon: typeof Pencil, danger = false) {
   const button = document.createElement('button');
   button.type = 'button';
-  button.className = className;
-  button.textContent = label;
+  button.className = buttonVariants({ variant: 'ghost', tone: danger ? 'danger' : 'default', className: 'photo-action' });
+  const text = document.createElement('span'); text.textContent = label;
+  button.append(lucideSvg(Icon, 15), text);
   button.addEventListener('click', action);
   return button;
 }
@@ -164,9 +168,9 @@ function card(photo: PrivatePhoto, list: PrivatePhoto[], position: number, pink:
   entry.dataset.photoEntryId = photo.id;
   const actions = document.createElement('div');
   actions.className = 'photo-management';
-  const edit = makePhotoButton('改标题', () => openPhotoTitle(photo, edit));
-  const feature = makePhotoButton(featuredIds.has(photo.id) ? '从首页撤下' : '设为首页精选', () => void toggleFeatured(photo.id, !featuredIds.has(photo.id)));
-  const remove = makePhotoButton('从相册取下', () => openPhotoDelete(photo, remove), 'text-button photo-remove-button');
+  const edit = makePhotoButton('改标题', () => openPhotoTitle(photo, edit), Pencil);
+  const feature = makePhotoButton(featuredIds.has(photo.id) ? '从首页撤下' : '设为首页精选', () => void toggleFeatured(photo.id, !featuredIds.has(photo.id)), Star);
+  const remove = makePhotoButton('从相册取下', () => openPhotoDelete(photo, remove), Trash2, true);
   feature.disabled = !featuredIds.has(photo.id) && featuredIds.size >= featuredPhotoCount;
   if (feature.disabled) feature.title = '首页已经留了三张，请先收下一张。';
   edit.dataset.photoId = feature.dataset.photoId = remove.dataset.photoId = photo.id;
@@ -190,6 +194,7 @@ function addSlot(): HTMLButtonElement {
   slot.className = 'polaroid polaroid-empty polaroid-add';
   slot.setAttribute('aria-label', '贴一张照片');
   slot.innerHTML = '<span class="polaroid-slot"><span class="polaroid-add-main">贴一张</span><span class="polaroid-add-sub">留给下一张</span></span><span class="polaroid-caption"><span class="polaroid-title">&nbsp;</span></span>';
+  slot.querySelector('.polaroid-add-main')?.append(lucideSvg(Plus, 18));
   slot.addEventListener('click', () => openPaste(slot));
   return slot;
 }
