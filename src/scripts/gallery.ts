@@ -24,6 +24,10 @@ const meta = dialog.querySelector<HTMLElement>('[data-lightbox-meta]')!;
 const photoStories = dialog.querySelector<HTMLAnchorElement>('[data-photo-stories]')!;
 const previous = dialog.querySelector<HTMLButtonElement>('[data-lightbox-prev]')!;
 const next = dialog.querySelector<HTMLButtonElement>('[data-lightbox-next]')!;
+const lightboxClose = dialog.querySelector<HTMLButtonElement>('[data-lightbox-close]')!;
+const lightboxFeedback = dialog.querySelector<HTMLElement>('[data-lightbox-feedback]')!;
+const lightboxStatus = dialog.querySelector<HTMLElement>('[data-lightbox-status]')!;
+const lightboxRetry = dialog.querySelector<HTMLButtonElement>('[data-lightbox-retry]')!;
 
 const pasteDialog = document.querySelector<HTMLDialogElement>('[data-paste-photo]');
 const pasteForm = pasteDialog?.querySelector<HTMLFormElement>('[data-paste-form]');
@@ -61,11 +65,11 @@ let uploadRequest: AbortController | null = null;
 let pendingAlbum = false;
 let current: PrivatePhoto[] = [];
 let index = 0;
+let requestedIndex = 0;
 let imageGeneration = 0;
 let pendingImage: HTMLImageElement | null = null;
 let trigger: HTMLElement | null = null;
-let touchStartX = 0;
-let touchStartY = 0;
+let touchStart: { identifier: number; x: number; y: number } | null = null;
 let revision = 0;
 let featuredIds = new Set<string>();
 let currentKind: 'all' | 'featured' = 'all';
@@ -323,13 +327,18 @@ function applyManifest(manifest: PhotoManifest, focusId?: string) {
   render(manifest.photos, featuredPhotos(manifest));
   setStatus('');
   if (dialog.open) {
-    const activeId = current[index]?.id;
+    const activeId = current[requestedIndex]?.id;
     const updated = currentKind === 'all' ? manifest.photos : featuredPhotos(manifest);
     if (updated.length === 0) dialog.close();
     else {
       const activeIndex = updated.findIndex(photo => photo.id === activeId);
+      const target = activeIndex >= 0 ? activeIndex : Math.min(requestedIndex, updated.length - 1);
       current = updated;
-      void show(activeIndex >= 0 ? activeIndex : Math.min(index, updated.length - 1));
+      previous.hidden = next.hidden = updated.length < 2;
+      const returnId = trigger?.dataset.photoId;
+      const focusId = updated.some(photo => photo.id === returnId) ? returnId : updated[target].id;
+      trigger = document.querySelector<HTMLElement>(`[data-photo-wall="${currentKind}"] a[data-photo-id="${focusId}"]`) ?? trigger;
+      void show(target);
     }
   }
   if (focusId && !manageDialog?.open) {
@@ -412,12 +421,17 @@ async function loadPhotos() {
 }
 
 async function show(target: number) {
-  index = (target + current.length) % current.length;
-  const photo = current[index];
-  const position = index;
+  requestedIndex = (target + current.length) % current.length;
+  const position = requestedIndex;
+  const photo = current[position];
   const currentImageGeneration = ++imageGeneration;
   discardPendingImage();
-  print.classList.remove('is-dark-image');
+  lightboxFeedback.hidden = false;
+  lightboxStatus.textContent = '正在翻开照片…';
+  lightboxRetry.hidden = true;
+  if (lightboxEdit) lightboxEdit.disabled = true;
+  if (lightboxFeature) lightboxFeature.disabled = true;
+  if (lightboxDelete) lightboxDelete.disabled = true;
   const nextImage = new Image(photo.width, photo.height);
   pendingImage = nextImage;
   nextImage.dataset.lightboxImage = '';
@@ -426,29 +440,35 @@ async function show(target: number) {
     if (imageGeneration === currentImageGeneration && image === nextImage) setImageTone(print, nextImage);
   }, { once: true });
   nextImage.src = photoUrl(photo.id, 'large');
-  if (dialog.open) {
-    try {
-      await nextImage.decode();
-    } catch {
-      if (imageGeneration === currentImageGeneration) {
-        pendingImage = null;
-        meta.textContent = '照片暂时打不开，请稍后再试。';
-      }
-      return;
+  try {
+    await nextImage.decode();
+  } catch {
+    if (imageGeneration === currentImageGeneration) {
+      pendingImage = null;
+      lightboxStatus.textContent = '照片暂时打不开，请再试一次。';
+      lightboxRetry.hidden = false;
     }
+    return;
   }
   if (imageGeneration !== currentImageGeneration) return;
   pendingImage = null;
+  index = position;
+  lightboxFeedback.hidden = true;
+  lightboxStatus.textContent = '';
   // Keep the current print intact until the next image is ready, then swap together.
   print.style.setProperty('--ratio', String(photo.width / photo.height));
   image.replaceWith(nextImage);
   image = nextImage;
+  image.hidden = false;
+  print.classList.remove('is-dark-image');
   setImageTone(print, nextImage);
   title.textContent = photo.title;
   photoStories.href = `/memories/?photo=${encodeURIComponent(photo.id)}`;
   photoStories.hidden = false;
   meta.textContent = [dateLabel(photo), `${position + 1} / ${current.length}`].filter(Boolean).join(' · ');
   if (lightboxManagement) lightboxManagement.hidden = !albumPage || !authenticated;
+  if (lightboxEdit) lightboxEdit.disabled = false;
+  if (lightboxDelete) lightboxDelete.disabled = false;
   if (lightboxFeature) {
     const isFeatured = featuredIds.has(photo.id);
     lightboxFeature.textContent = isFeatured ? '从首页撤下' : featuredIds.size >= featuredPhotoCount ? '首页已留三张' : '设为首页精选';
@@ -462,7 +482,13 @@ function open(list: PrivatePhoto[], target: number, from: HTMLElement, kind: 'al
   currentKind = kind;
   trigger = from;
   previous.hidden = next.hidden = list.length < 2;
-  show(target);
+  image.removeAttribute('src');
+  image.hidden = true;
+  title.textContent = list[target].title;
+  meta.textContent = '';
+  photoStories.hidden = true;
+  if (lightboxManagement) lightboxManagement.hidden = true;
+  void show(target);
   dialog.showModal();
   root.classList.add('has-dialog');
 }
@@ -589,7 +615,7 @@ async function submitPhotoTitle(event: Event) {
     const saved = await mutatePhoto(photo.id, `/api/photos/${photo.id}`, 'PUT', { expectedRevision: revision, title: nextTitle }, photo.id);
     if (saved) {
       closePhotoManage(false);
-      if (dialog.open) lightboxEdit?.focus({ preventScroll: true });
+      if (dialog.open) (lightboxEdit?.disabled ? lightboxClose : lightboxEdit)?.focus({ preventScroll: true });
       else document.querySelector<HTMLElement>(`[data-photo-wall="all"] a[data-photo-id="${photo.id}"]`)?.focus({ preventScroll: true });
     }
   } catch (error) {
@@ -615,8 +641,7 @@ async function confirmPhotoDelete() {
     closePhotoManage(false);
     setStatus('这张照片已从相册收好。');
     if (dialog.open) {
-      if (next.hidden && previous.hidden) dialog.querySelector<HTMLButtonElement>('[data-lightbox-close]')?.focus({ preventScroll: true });
-      else lightboxFeature?.focus({ preventScroll: true });
+      (lightboxFeature?.disabled || next.hidden ? lightboxClose : lightboxFeature)?.focus({ preventScroll: true });
     }
     else {
       const nextCard = document.querySelector<HTMLElement>('[data-photo-wall="all"] a[data-photo-id]')
@@ -737,14 +762,15 @@ async function submitPaste(event: Event) {
   }
 }
 
-previous.addEventListener('click', () => void show(index - 1));
-next.addEventListener('click', () => void show(index + 1));
-dialog.querySelector('[data-lightbox-close]')!.addEventListener('click', () => dialog.close());
+previous.addEventListener('click', () => void show(requestedIndex - 1));
+next.addEventListener('click', () => void show(requestedIndex + 1));
+lightboxRetry.addEventListener('click', () => void show(requestedIndex));
+lightboxClose.addEventListener('click', () => dialog.close());
 
 dialog.addEventListener('keydown', (event) => {
   if (current.length < 2) return;
-  if (event.key === 'ArrowLeft') void show(index - 1);
-  else if (event.key === 'ArrowRight') void show(index + 1);
+  if (event.key === 'ArrowLeft') void show(requestedIndex - 1);
+  else if (event.key === 'ArrowRight') void show(requestedIndex + 1);
   else return;
   event.preventDefault();
 });
@@ -755,18 +781,27 @@ dialog.addEventListener('click', (event) => {
 });
 
 dialog.addEventListener('touchstart', (event) => {
-  touchStartX = event.touches[0].clientX;
-  touchStartY = event.touches[0].clientY;
+  const touch = event.touches[0];
+  touchStart = event.touches.length === 1
+    ? { identifier: touch.identifier, x: touch.clientX, y: touch.clientY }
+    : null;
 }, { passive: true });
 dialog.addEventListener('touchend', (event) => {
-  const deltaX = event.changedTouches[0].clientX - touchStartX;
-  const deltaY = event.changedTouches[0].clientY - touchStartY;
+  const start = touchStart;
+  touchStart = null;
+  if (!start || event.touches.length > 0) return;
+  const touch = [...event.changedTouches].find(touch => touch.identifier === start.identifier);
+  if (!touch) return;
+  const deltaX = touch.clientX - start.x;
+  const deltaY = touch.clientY - start.y;
   if (current.length < 2 || Math.abs(deltaX) < 48 || Math.abs(deltaX) < Math.abs(deltaY) * 1.4) return;
-  if (deltaX < 0) void show(index + 1);
-  else void show(index - 1);
+  if (deltaX < 0) void show(requestedIndex + 1);
+  else void show(requestedIndex - 1);
 }, { passive: true });
+dialog.addEventListener('touchcancel', () => { touchStart = null; }, { passive: true });
 
 dialog.addEventListener('close', () => {
+  touchStart = null;
   imageGeneration++;
   discardPendingImage();
   if (!pasteDialog?.open && !manageDialog?.open) root.classList.remove('has-dialog');

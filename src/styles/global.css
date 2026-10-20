@@ -941,12 +941,16 @@ a.polaroid:hover, a.polaroid:focus-visible { rotate: 0deg; translate: 0 -8px; bo
   overflow: hidden;
   background: transparent;
 }
-.lightbox[open] { display: grid; place-items: center; }
+.lightbox[open] { display: grid; grid-template-rows: minmax(0, 1fr); place-items: center; }
 .lightbox::backdrop { background: var(--backdrop); }
 .lightbox[open]::backdrop { animation: fade .35s ease both; }
 
 .lightbox-print {
   container-type: inline-size;
+  display: flex;
+  flex-direction: column;
+  max-height: 100%;
+  min-height: 0;
   /* --ratio is the photo's width / height, set by the gallery script. */
   width: min(100%, 60rem, calc((100svh - 13rem) * var(--ratio, .8) + 1.6rem));
   padding: .8rem .8rem 0;
@@ -955,17 +959,21 @@ a.polaroid:hover, a.polaroid:focus-visible { rotate: 0deg; translate: 0 -8px; bo
   rotate: -1deg;
 }
 .lightbox[open] .lightbox-print { animation: print-in .6s var(--ease-out) both; }
-.lightbox-print img { width: 100%; height: auto; background: var(--paper-2); opacity: 1; }
+.lightbox-print img { width: 100%; height: auto; min-height: 0; object-fit: contain; background: var(--paper-2); opacity: 1; }
 .lightbox-print figcaption {
   display: flex;
+  flex: none;
+  flex-wrap: wrap;
   align-items: baseline;
   justify-content: space-between;
   gap: 1rem;
   padding: .9rem .2rem 1.1rem;
 }
-.lightbox-title { font: 400 1.02rem/1.5 var(--sans); letter-spacing: .04em; }
+.lightbox-title { min-width: 0; overflow-wrap: anywhere; font: 400 1.02rem/1.5 var(--sans); letter-spacing: .04em; }
 .lightbox-meta { flex: none; font-size: .75rem; letter-spacing: .06em; color: var(--muted); font-variant-numeric: tabular-nums; }
-.lightbox-management { justify-content: flex-start; padding: 0 .15rem .65rem; border-top: 1px dashed var(--line-strong); }
+.lightbox-feedback { flex: none; margin: 0 .2rem .75rem; font-size: .8rem; color: var(--muted); }
+.lightbox-feedback .text-button { margin-left: .75rem; font-size: inherit; }
+.lightbox-management { flex: none; justify-content: flex-start; padding: 0 .15rem .65rem; border-top: 1px dashed var(--line-strong); }
 .lightbox-management .text-button { font-size: .76rem; }
 @container (max-width: 20rem) {
   .lightbox-print figcaption { flex-direction: column; align-items: flex-start; gap: .25rem; }
