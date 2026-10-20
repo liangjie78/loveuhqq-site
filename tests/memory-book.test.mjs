@@ -17,7 +17,7 @@ async function fixture() {
       const statement = sqlite.prepare(sql); let values = [];
       return { bind(...args) { values = args.map(value => value instanceof ArrayBuffer ? new Uint8Array(value) : value); return this; },
         async first() { return statement.get(...values) ?? null; }, async all() { return { results: statement.all(...values) }; },
-        async run() { if (/\bRETURNING\b/i.test(sql)) return { results: statement.all(...values), meta: {} }; return { results: [], meta: statement.run(...values) }; } };
+        async run() { if (/^\s*SELECT\b|\bRETURNING\b/i.test(sql)) return { results: statement.all(...values), meta: {} }; return { results: [], meta: statement.run(...values) }; } };
     },
     async batch(statements) { sqlite.exec('BEGIN'); try { const result = []; for (const statement of statements) result.push(await statement.run()); sqlite.exec('COMMIT'); return result; } catch (error) { sqlite.exec('ROLLBACK'); throw error; } },
   };
@@ -36,6 +36,62 @@ async function fixture() {
 const story = (extra = {}) => ({ expectedVersion: 0, title: '合成故事', date: '2026-10-15', text: '公开给双方的故事正文', photoIds: [], wishIds: [], layout: 'journal', revealTogether: true, ...extra });
 const part = (text, extra = {}) => ({ expectedVersion: 0, text, reply: '', submitted: false, audioIds: [], ...extra });
 const letter = (extra = {}) => ({ expectedVersion: 0, title: '合成信件', text: 'SYNTHETIC_SECRET_LETTER', recipientId: 'two', openDate: '2099-01-01', pairKey: '', audioIds: [], ...extra });
+
+function interleaveStoryWrite(f, write) {
+  const prepare = f.env.DB.prepare.bind(f.env.DB), batch = f.env.DB.batch.bind(f.env.DB);
+  let written = false;
+  const commit = () => { if (!written) { written = true; write(); } };
+  f.env.DB.prepare = (sql) => {
+    const statement = prepare(sql);
+    if (/FROM memory_stories\b/.test(sql)) {
+      for (const method of ['first', 'all']) {
+        const read = statement[method].bind(statement);
+        statement[method] = (...args) => { const result = read(...args); commit(); return result; };
+      }
+    }
+    return statement;
+  };
+  f.env.DB.batch = async (statements) => { const result = await batch(statements); commit(); return result; };
+  return () => assert.equal(written, true, 'the concurrent story write must execute');
+}
+
+test('bootstrap never combines a public story snapshot with a newly private part', async (t) => {
+  const f = await fixture(); t.after(() => f.sqlite.close());
+  await f.register('one'); await f.register('two');
+  assert.equal((await f.request('/stories/race-story', 'PUT', story({ revealTogether: false }))).status, 200);
+  const assertWritten = interleaveStoryWrite(f, () => {
+    f.sqlite.exec(`BEGIN;
+      UPDATE memory_stories SET reveal_together=1,version=2 WHERE id='race-story';
+      INSERT INTO memory_parts VALUES('race-story','two',1,'SYNTHETIC_PRIVATE_PART','SYNTHETIC_PRIVATE_REPLY',0,'["private-audio"]');
+      COMMIT;`);
+  });
+  const response = await f.request('/bootstrap');
+  assert.equal(response.status, 200); assertWritten();
+  const snapshot = await response.json();
+  assert.equal(JSON.stringify(snapshot).includes('SYNTHETIC_PRIVATE'), false, 'unrevealed partner text and reply must stay hidden');
+  assert.equal(JSON.stringify(snapshot).includes('private-audio'), false, 'unrevealed partner audio IDs must stay hidden');
+  const latest = await (await f.request('/bootstrap')).json();
+  assert.equal(latest.stories[0].revealTogether, true); assert.equal(latest.stories[0].parts.length, 1);
+  assert.equal(latest.stories[0].parts[0].text, undefined);
+});
+
+test('audio authorization never combines a public story snapshot with a newly private attachment', async (t) => {
+  const f = await fixture(); t.after(() => f.sqlite.close());
+  await f.register('one'); await f.register('two');
+  assert.equal((await f.request('/stories/race-story', 'PUT', story({ revealTogether: false }))).status, 200);
+  const webm = new Uint8Array([0x1a, 0x45, 0xdf, 0xa3, 0, 0, 0, 0, 0, 0, 0, 0]);
+  const upload = await f.request('/audio?storyId=race-story', 'POST', webm, 'two', { 'Content-Type': 'audio/webm', 'X-Audio-Duration': '1' });
+  assert.equal(upload.status, 201); const audio = await upload.json();
+  const assertWritten = interleaveStoryWrite(f, () => {
+    f.sqlite.exec("UPDATE memory_stories SET reveal_together=1,version=2 WHERE id='race-story'");
+    f.sqlite.prepare('INSERT INTO memory_parts VALUES(?,?,?,?,?,?,?)').run('race-story', 'two', 1, 'private', '', 0, JSON.stringify([audio.id]));
+  });
+  const reads = f.reads.length;
+  const response = await f.request(`/audio/${audio.id}`);
+  assertWritten(); assert.equal(response.status, 404, 'unrevealed partner audio must remain inaccessible during a story-mode change');
+  assert.equal(f.reads.length, reads, 'denied audio must never read KV');
+  assert.equal((await f.request(`/audio/${audio.id}`, 'GET', undefined, 'two')).status, 200);
+});
 
 test('signature selection binds to a live parent session and supports switching without a password', async () => {
   const f = await fixture();
