@@ -114,10 +114,10 @@ export async function memoryBootstrap(request: Request, db: D1Database): Promise
   const actor = await memoryActor(request, db);
   const members = await rows(db, "SELECT id, CASE id WHEN 'one' THEN '男生' ELSE '女生' END AS name FROM memory_members ORDER BY id") as MemoryMember[];
   if (!actor) return { member: null, members, stories: [], letters: [], places: [], wishPlans: [] };
-  const [stories, parts, letters, places, plans] = await Promise.all([
-    rows(db, 'SELECT * FROM memory_stories ORDER BY date DESC,id'), rows(db, 'SELECT * FROM memory_parts'), rows(db, 'SELECT * FROM memory_letters ORDER BY open_date,id'),
-    rows(db, 'SELECT * FROM memory_places ORDER BY year DESC,name'), rows(db, 'SELECT * FROM memory_wish_plans'),
-  ]);
+  const [stories, parts, letters, places, plans] = (await db.batch<Row>([
+    db.prepare('SELECT * FROM memory_stories ORDER BY date DESC,id'), db.prepare('SELECT * FROM memory_parts'), db.prepare('SELECT * FROM memory_letters ORDER BY open_date,id'),
+    db.prepare('SELECT * FROM memory_places ORDER BY year DESC,name'), db.prepare('SELECT * FROM memory_wish_plans'),
+  ])).map(result => result.results);
   return { member: { id: actor.id, name: actor.name }, members,
     stories: stories.map(story => projectedStory(story, parts.filter(p => p.story_id === story.id), actor)),
     letters: letters.filter(letter => letter.sender_id === actor.id || letter.status === 'sealed' && letter.recipient_id === actor.id).map(letter => projectedLetter(letter, letters, actor)),
@@ -217,9 +217,9 @@ async function saveWishPlan(request: Request, db: D1Database, id: string) {
 async function canHear(db: D1Database, audio: Row, actor: MemoryActor): Promise<boolean> {
   if (audio.owner_id === actor.id) return true;
   if (audio.story_id) {
-    const story = await ensureStory(db, audio.story_id);
-    const part = await one(db, 'SELECT audio_ids FROM memory_parts WHERE story_id = ? AND member_id = ?', audio.story_id, audio.owner_id);
-    return (!story.reveal_together || story.opened_at !== null) && !!part && arr(part.audio_ids).includes(audio.id);
+    const part = await one(db, `SELECT s.reveal_together,s.opened_at,p.audio_ids FROM memory_stories s
+      JOIN memory_parts p ON p.story_id = s.id WHERE s.id = ? AND p.member_id = ?`, audio.story_id, audio.owner_id);
+    return !!part && (!part.reveal_together || part.opened_at !== null) && arr(part.audio_ids).includes(audio.id);
   }
   const letter = await one(db, 'SELECT * FROM memory_letters WHERE id = ?', audio.letter_id);
   return !!letter && letter.recipient_id === actor.id && arr(letter.audio_ids).includes(audio.id) && letterReady(letter, await rows(db, 'SELECT * FROM memory_letters'));
