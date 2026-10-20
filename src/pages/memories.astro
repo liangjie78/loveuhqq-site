@@ -46,6 +46,12 @@ const contents = [
             <button type="button" class="text-button" data-switch-identity>换成</button>
           </div>
 
+          <div data-needs-member hidden>
+            <button type="button" class="text-button" data-memory-export>导出当前可见记录（JSON）</button>
+            <p class="memory-meta">仅导出已保存且当前可见的回忆册记录，不包含日记、照片和音频文件。</p>
+            <p class="memory-meta" data-memory-export-status role="status"></p>
+          </div>
+
           <div class="memory-unselected-card sheet" data-memory-identity-unselected hidden>
             <span class="tape tape-corner" aria-hidden="true"></span>
             <p>请选择身份</p>

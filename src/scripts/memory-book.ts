@@ -4,12 +4,15 @@ import { parsePhotoManifest, photoUrl, type PrivatePhoto } from '../lib/photos';
 import type { CloudNotebook, Wish } from '../lib/notebook';
 import { audioMaxBytes, audioMaxSeconds, memoryApiRoot, memoryAudioUrl, type MemoryBootstrap, type MemoryStory, type MemoryLetter, type MemoryPlace, type StoryInput, type LetterInput, type PartInput } from '../lib/memory-book';
 import { createSharedDesktop } from './shared-desktop';
+import { buildMemoryExport } from '../lib/memory-export';
 
 const $ = <T extends HTMLElement = HTMLElement>(selector: string, parent: ParentNode = document) => parent.querySelector<T>(selector)!;
 const all = <T extends HTMLElement = HTMLElement>(selector: string, parent: ParentNode = document) => [...parent.querySelectorAll<T>(selector)];
 const el = <K extends keyof HTMLElementTagNameMap>(tag: K, text = '', className = '') => { const node = document.createElement(tag); node.textContent = text; node.className = className; return node; };
 const button = (text: string, action: () => void, className = 'text-button') => { const node = el('button', text, className); node.type = 'button'; node.addEventListener('click', action); return node; };
 const status = $('[data-memory-status]');
+const exportButton = $<HTMLButtonElement>('[data-memory-export]');
+const exportStatus = $('[data-memory-export-status]');
 const privateRoot = $('[data-memory-private]');
 const storyForm = $<HTMLFormElement>('[data-story-form]');
 const letterForm = $<HTMLFormElement>('[data-letter-form]');
@@ -32,6 +35,10 @@ let placeEditVersion = 0;
 let renderedStory = '';
 let renderedLetter = '';
 let request: AbortController | null = null;
+let exportRequest: AbortController | null = null;
+let exportTimeout: ReturnType<typeof setTimeout> | null = null;
+let exportUrl: string | null = null;
+let exportRelease: ReturnType<typeof setTimeout> | null = null;
 const mutations = new Set<AbortController>();
 const cleanups = new Set<() => void>();
 const recordingCleanups = new WeakMap<HTMLElement, () => void>();
@@ -52,6 +59,65 @@ function report(error: unknown) {
   $('[data-memory-retry]').hidden = false;
 }
 function unauthorized() { publishSession({ authenticated: false, configured: true }); }
+function releaseExportUrl() {
+  if (exportRelease !== null) clearTimeout(exportRelease);
+  exportRelease = null;
+  if (exportUrl !== null) URL.revokeObjectURL(exportUrl);
+  exportUrl = null;
+}
+function cancelExport() {
+  exportRequest?.abort(); exportRequest = null;
+  if (exportTimeout !== null) clearTimeout(exportTimeout);
+  exportTimeout = null;
+  releaseExportUrl();
+  exportButton.disabled = false;
+  exportStatus.textContent = '';
+}
+async function exportVisibleRecords() {
+  if (exportRequest || !authenticated || switching || !book.member) return;
+  cancelExport();
+  const controller = new AbortController(); exportRequest = controller;
+  const token = generation;
+  const memberId = book.member.id;
+  const current = () => exportRequest === controller && authenticated && !switching && token === generation && book.member?.id === memberId;
+  const active = () => current() && !controller.signal.aborted;
+  exportButton.disabled = true;
+  exportStatus.textContent = '正在整理已保存的记录…';
+  exportTimeout = setTimeout(() => controller.abort(), 20_000);
+  try {
+    const notes = await api<CloudNotebook>('/api/notebook', { signal: controller.signal });
+    if (!active()) return;
+    const fresh = await api<MemoryBootstrap>(`${memoryApiRoot}/bootstrap`, { signal: controller.signal });
+    if (!active()) return;
+    if (fresh.member?.id !== memberId) {
+      cancelExport(); exportStatus.textContent = '署名已变化，请确认后重新导出。'; void load(); return;
+    }
+    const session = await refreshSession();
+    if (!active() || fresh.member?.id !== memberId || !session.authenticated) return;
+    const exportedAt = new Date().toISOString();
+    const json = JSON.stringify(buildMemoryExport(fresh, notes.wishes, exportedAt), null, 2);
+    if (!active() || fresh.member?.id !== memberId) return;
+    exportUrl = URL.createObjectURL(new Blob([json], { type: 'application/json;charset=utf-8' }));
+    const link = document.createElement('a');
+    link.href = exportUrl;
+    link.download = `loveuhqq-visible-records-${exportedAt.replace(/:/g, '-')}.json`;
+    document.body.append(link); link.click(); link.remove();
+    exportRelease = setTimeout(releaseExportUrl, 1_000);
+    exportStatus.textContent = '已发起下载。';
+  } catch (error) {
+    if (!current()) return;
+    if (error instanceof ApiError && error.status === 401) { unauthorized(); return; }
+    exportStatus.textContent = '暂时没能导出，请再试一次。';
+  } finally {
+    if (exportRequest === controller) {
+      if (book.member?.id !== memberId) {
+        exportStatus.textContent = '署名已变化，请确认后重新导出。'; void load();
+      } else if (controller.signal.aborted) exportStatus.textContent = '暂时没能导出，请再试一次。';
+      if (exportTimeout !== null) clearTimeout(exportTimeout);
+      exportTimeout = null; exportRequest = null; exportButton.disabled = false;
+    }
+  }
+}
 function resetMedia() { cleanups.forEach(clean => clean()); cleanups.clear(); all<HTMLMediaElement>('audio, video', privateRoot).forEach(media => { media.pause(); media.removeAttribute('src'); media.load(); }); }
 function disposeRecordings(parent: HTMLElement) { all<HTMLElement>('.memory-recording', parent).forEach(node => { const clean = recordingCleanups.get(node); clean?.(); if (clean) cleanups.delete(clean); }); }
 function clearSelectors() {
@@ -62,6 +128,7 @@ function clearSelectors() {
   all<HTMLOptionElement>('option', field(letterForm, 'recipientId')).forEach(option => { option.textContent = option.value === 'one' ? '第一位' : '第二位'; });
 }
 function discardShownContent() {
+  cancelExport();
   renderedStory = renderedLetter = '';
   generation++;
   request?.abort(); request = null;
@@ -105,6 +172,7 @@ async function load() {
       const next = await api<MemoryBootstrap>(`${memoryApiRoot}/bootstrap`, { signal: controller.signal });
       if (token !== generation || !authenticated) return;
       if (book.member && book.member.id !== next.member?.id) {
+        cancelExport();
         if (hasUnsavedChanges() && !window.confirm(discardIdentityMessage)) {
           await api<MemoryBootstrap>(`${memoryApiRoot}/identity`, { method: 'POST', signal: controller.signal, body: JSON.stringify({ id: book.member.id }) });
           if (token !== generation || !authenticated) return;
@@ -173,6 +241,7 @@ function hasUnsavedChanges(): boolean {
 async function selectIdentity(id: string) {
   if (switching || (id !== 'one' && id !== 'two') || book.member?.id === id) return;
   switching = true;
+  cancelExport();
   let failed = false;
   const controller = new AbortController();
   try {
@@ -611,6 +680,7 @@ function applyRemoteIdentity() {
   void load();
 }
 function scheduleRemote(mayAsk: boolean) {
+  cancelExport();
   if (switching) { remotePending = true; return; }
   if (!mayAsk) remoteAsk = false;
   if (remoteTimer !== null) return;
@@ -638,6 +708,7 @@ identityChanges?.addEventListener('message', event => {
 window.addEventListener('storage', event => { if (event.key === 'loveuhqq_member_changed') scheduleRemote(true); });
 
 $('[data-memory-retry]').addEventListener('click', () => { void load(); });
+exportButton.addEventListener('click', () => { void exportVisibleRecords(); });
 $('[data-story-new]').addEventListener('click', () => openStoryForm());
 $('[data-story-cancel]').addEventListener('click', () => { storyForm.hidden = true; delete storyForm.dataset.dirty; });
 $('[data-letter-new]').addEventListener('click', () => openLetter());
@@ -647,7 +718,7 @@ $('[data-place-cancel]').addEventListener('click', () => { placeForm.hidden = tr
 $<HTMLInputElement>('[data-story-search]').addEventListener('input', renderStoryList);
 $('[data-story-filter-clear]').addEventListener('click', () => { filter = new URLSearchParams(); $<HTMLInputElement>('[data-story-search]').value = ''; renderStoryList(); });
 $<HTMLSelectElement>('[data-place-year]').addEventListener('change', event => { selectedPlaceYear = (event.target as HTMLSelectElement).value; renderPlaces(); });
-onSessionChange(state => { authenticated = state.authenticated; if (!authenticated) clearPrivate(); else void load(); });
+onSessionChange(state => { authenticated = state.authenticated; if (!authenticated) clearPrivate(); else if (!exportRequest) void load(); });
 document.addEventListener('click', event => { if ((event.target as Element).closest('[data-session-logout], [data-lock-site]')) { authenticated = false; clearPrivate(); } }, { capture: true });
 window.addEventListener('pagehide', clearPrivate);
 window.addEventListener('pageshow', event => { if (event.persisted) { clearPrivate(); void refreshSession().then(state => { authenticated = state.authenticated; if (authenticated) void load(); }).catch(report); } });
