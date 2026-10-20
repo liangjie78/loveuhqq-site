@@ -176,3 +176,27 @@ test('opening failure hides the previous print and closing prevents a late commi
   assert.equal(f.get('[data-lightbox-image]').hidden, true);
   assert.equal(f.document.activeElement, f.trigger);
 });
+
+test('only a completed single-finger swipe changes photos; pinch and cancelled touches do not', async () => {
+  const f = await fixture();
+  f.open(0);
+  await f.ready(f.images[0]);
+  const touch = (identifier, clientX) => ({ identifier, clientX, clientY: 200 });
+  const dispatch = (name, touches, changedTouches = touches) => {
+    f.get('[data-lightbox]').dispatchEvent(Object.assign(new Event(name), { touches, changedTouches }));
+  };
+  dispatch('touchstart', [touch(1, 300)]);
+  dispatch('touchstart', [touch(1, 300), touch(2, 350)]);
+  dispatch('touchend', [touch(2, 350)], [touch(1, 100)]);
+  dispatch('touchend', [], [touch(2, 350)]);
+  assert.equal(f.images.length, 1);
+  dispatch('touchstart', [touch(1, 300)]);
+  dispatch('touchcancel', [], [touch(1, 100)]);
+  dispatch('touchend', [], [touch(1, 100)]);
+  assert.equal(f.images.length, 1);
+  dispatch('touchstart', [touch(1, 300)]);
+  dispatch('touchend', [], [touch(1, 100)]);
+  assert.equal(f.images.length, 2);
+  await f.ready(f.images[1]);
+  assert.equal(f.get('[data-lightbox-title]').textContent, photos[1].title);
+});

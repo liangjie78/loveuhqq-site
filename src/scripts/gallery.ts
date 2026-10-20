@@ -69,8 +69,7 @@ let requestedIndex = 0;
 let imageGeneration = 0;
 let pendingImage: HTMLImageElement | null = null;
 let trigger: HTMLElement | null = null;
-let touchStartX = 0;
-let touchStartY = 0;
+let touchStart: { identifier: number; x: number; y: number } | null = null;
 let revision = 0;
 let featuredIds = new Set<string>();
 let currentKind: 'all' | 'featured' = 'all';
@@ -782,18 +781,27 @@ dialog.addEventListener('click', (event) => {
 });
 
 dialog.addEventListener('touchstart', (event) => {
-  touchStartX = event.touches[0].clientX;
-  touchStartY = event.touches[0].clientY;
+  const touch = event.touches[0];
+  touchStart = event.touches.length === 1
+    ? { identifier: touch.identifier, x: touch.clientX, y: touch.clientY }
+    : null;
 }, { passive: true });
 dialog.addEventListener('touchend', (event) => {
-  const deltaX = event.changedTouches[0].clientX - touchStartX;
-  const deltaY = event.changedTouches[0].clientY - touchStartY;
+  const start = touchStart;
+  touchStart = null;
+  if (!start || event.touches.length > 0) return;
+  const touch = [...event.changedTouches].find(touch => touch.identifier === start.identifier);
+  if (!touch) return;
+  const deltaX = touch.clientX - start.x;
+  const deltaY = touch.clientY - start.y;
   if (current.length < 2 || Math.abs(deltaX) < 48 || Math.abs(deltaX) < Math.abs(deltaY) * 1.4) return;
   if (deltaX < 0) void show(requestedIndex + 1);
   else void show(requestedIndex - 1);
 }, { passive: true });
+dialog.addEventListener('touchcancel', () => { touchStart = null; }, { passive: true });
 
 dialog.addEventListener('close', () => {
+  touchStart = null;
   imageGeneration++;
   discardPendingImage();
   if (!pasteDialog?.open && !manageDialog?.open) root.classList.remove('has-dialog');
