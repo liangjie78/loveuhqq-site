@@ -146,10 +146,12 @@ async function write(path: string, method: string, body?: unknown): Promise<bool
 async function submit(form: HTMLFormElement, task: () => Promise<void>) {
   if (form.dataset.busy) return;
   form.dataset.busy = 'yes';
-  all<HTMLButtonElement>('button', form).forEach(control => { control.disabled = true; });
+  const controls = all<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement | HTMLButtonElement>('input, textarea, select, button', form)
+    .map(control => ({ control, inert: control.inert }));
+  controls.forEach(({ control }) => { control.inert = true; });
   let feedback = form.querySelector<HTMLElement>('.memory-form-feedback'); if (!feedback) { feedback = el('p', '', 'memory-form-feedback'); feedback.setAttribute('role', 'status'); form.append(feedback); }
   feedback.textContent = '正在收好…';
-  try { await task(); feedback.textContent = status.textContent || '这次操作已完成。'; } finally { delete form.dataset.busy; all<HTMLButtonElement>('button', form).forEach(control => { control.disabled = false; }); }
+  try { await task(); feedback.textContent = status.textContent || '这次操作已完成。'; } finally { delete form.dataset.busy; controls.forEach(({ control, inert }) => { control.inert = inert; }); }
 }
 function memberName(id: string) { return id === 'one' ? '男生' : '女生'; }
 function conflictReview(form: HTMLFormElement, latest: () => { text: string; accept: () => void }) {
