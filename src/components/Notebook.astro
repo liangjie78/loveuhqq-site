@@ -1,47 +1,50 @@
 ---
 import DailyPrompt from './DailyPrompt.astro';
+import { buttonVariants } from './ui/button';
+import { inputVariants } from './ui/input';
+import { textareaVariants } from './ui/textarea';
 ---
 
 <section class="day-back" id="daily-prompt-title" aria-label="日子的背面" data-needs-js>
   <div class="notebook-guest" data-note-guest>
     <p class="paper-label">日子的背面</p>
     <p>解锁后，翻看我们的记录</p>
-    <button class="pencil-button" type="button" data-open-login data-needs-js>解锁手账</button>
+    <button class={buttonVariants({ variant: 'default' })} type="button" data-open-login data-needs-js>解锁手账</button>
   </div>
   <div class="notebook-loading" data-note-loading hidden>
     <p data-note-loading-status role="status">正在打开手账…</p>
-    <button class="text-button" type="button" data-note-retry hidden>重新连接</button>
+    <button class={buttonVariants({ variant: 'ghost' })} type="button" data-note-retry hidden>重新连接</button>
   </div>
   <div data-note-private hidden>
     <div class="day-back-heading">
       <div><p class="paper-label">日子的背面</p><h3 id="day-back-title" data-note-date tabindex="-1">给今天留一句</h3></div>
-      <button class="pencil-button" type="button" data-note-edit><span data-note-edit-label>写一句</span> <span aria-hidden="true">↗</span></button>
+      <button class={buttonVariants({ variant: 'default' })} type="button" data-note-edit><span data-note-edit-label>写一句</span></button>
     </div>
     <DailyPrompt />
     <p class="day-back-text" data-note-text>这一天还空着。想记的时候，再写。</p>
-    <a class="text-button" data-date-stories href="/memories/">翻看这一天的故事 ↗</a>
+    <a class={buttonVariants({ variant: 'ghost' })} data-date-stories href="/memories/">翻看这一天的故事</a>
     <form data-note-form hidden class="note-editor">
       <label class="sr-only" for="day-note">这一天想记下的话</label>
-      <textarea id="day-note" maxlength="2000" rows="4" placeholder="写在这里。"></textarea>
-      <div class="paper-actions"><button class="pencil-button" type="submit">收好这一句</button><button class="text-button" type="button" data-note-cancel>取消</button><button class="text-button" type="button" data-note-delete hidden>移除这一句</button></div>
+      <textarea class={textareaVariants({ variant: 'underline' })} id="day-note" maxlength="2000" rows="4" placeholder="写在这里。"></textarea>
+      <div class="paper-actions"><button class={buttonVariants({ variant: 'default' })} type="submit">收好这一句</button><button class={buttonVariants({ variant: 'ghost' })} type="button" data-note-cancel>取消</button><button class={buttonVariants({ variant: 'ghost', tone: 'danger' })} type="button" data-note-delete hidden>移除这一句</button></div>
     </form>
     <div class="note-conflict" data-note-conflict hidden>
       <p>这一天在手账里有新内容。草稿还在，可以先刷新对照。</p>
-      <button class="text-button" type="button" data-note-refresh>刷新查看</button>
+      <button class={buttonVariants({ variant: 'ghost' })} type="button" data-note-refresh>刷新查看</button>
       <p class="note-conflict-latest" data-note-latest hidden></p>
     </div>
     <p class="notebook-status" data-note-status role="status"></p>
-    <button class="text-button" type="button" data-note-undo hidden>撤销移除这一句</button>
+    <button class={buttonVariants({ variant: 'ghost' })} type="button" data-note-undo hidden>撤销移除这一句</button>
     <div class="memory-bookmark">
       <span class="memory-bookmark-ribbon" aria-hidden="true"><svg viewBox="0 0 24 32" fill="none"><path d="M5 2h14v27l-7-5-7 5V2Z" /><path d="m9 11 3 3 3-3M12 14v5" /></svg></span>
       <div class="memory-bookmark-copy"><h4>随手翻一页</h4><p data-note-random-hint>从写过的日子里，挑一天回看。</p></div>
-      <button class="text-button memory-bookmark-turn" type="button" data-note-random disabled>翻一页 <span aria-hidden="true">↗</span></button>
+      <button class:list={[buttonVariants({ variant: 'ghost' }), 'memory-bookmark-turn']} type="button" data-note-random disabled>翻一页</button>
     </div>
     <details class="note-index" data-note-index>
       <summary>翻看写过的日子 <span data-notes-count>0</span></summary>
       <div class="note-search">
         <label for="note-search">按日期或一句话找找</label>
-        <div class="note-search-field"><input id="note-search" type="search" maxlength="120" placeholder="比如 10月，或记得的几个字" autocomplete="off" /><button class="text-button" type="button" data-note-search-clear hidden>清空</button></div>
+        <div class="note-search-field"><input class={inputVariants({ variant: 'default' })} id="note-search" type="search" maxlength="120" placeholder="比如 10月，或记得的几个字" autocomplete="off" /><button class={buttonVariants({ variant: 'ghost' })} type="button" data-note-search-clear hidden>清空</button></div>
       </div>
       <p class="note-index-empty" data-notes-empty role="status" hidden></p>
       <div data-notes-list></div>

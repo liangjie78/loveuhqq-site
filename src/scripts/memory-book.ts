@@ -3,13 +3,19 @@ import { getSession, onSessionChange, publishSession, refreshSession } from '../
 import { parsePhotoManifest, photoUrl, type PrivatePhoto } from '../lib/photos';
 import type { CloudNotebook, Wish } from '../lib/notebook';
 import { audioMaxBytes, audioMaxSeconds, memoryApiRoot, memoryAudioUrl, type MemoryBootstrap, type MemoryStory, type MemoryLetter, type MemoryPlace, type StoryInput, type LetterInput, type PartInput } from '../lib/memory-book';
-import { createSharedDesktop } from './shared-desktop';
 import { buildMemoryExport } from '../lib/memory-export';
+import { buttonVariants } from '../components/ui/button';
+import { inputVariants } from '../components/ui/input';
+import { textareaVariants } from '../components/ui/textarea';
+import { lucideSvg, type LucideIconNode } from '../lib/lucide-dom';
+import { selectMember, setCurrentMember } from '../lib/member';
+import { emitSharedDeskUpdate } from '../lib/shared-desk-events';
+import { ArrowDown, ArrowRight, ArrowUp, Lock, Pencil, RotateCw, Trash2 } from 'lucide';
 
 const $ = <T extends HTMLElement = HTMLElement>(selector: string, parent: ParentNode = document) => parent.querySelector<T>(selector)!;
 const all = <T extends HTMLElement = HTMLElement>(selector: string, parent: ParentNode = document) => [...parent.querySelectorAll<T>(selector)];
 const el = <K extends keyof HTMLElementTagNameMap>(tag: K, text = '', className = '') => { const node = document.createElement(tag); node.textContent = text; node.className = className; return node; };
-const button = (text: string, action: () => void, className = 'text-button') => { const node = el('button', text, className); node.type = 'button'; node.addEventListener('click', action); return node; };
+const button = (text: string, action: () => void, className = buttonVariants({ variant: 'ghost' }), Icon?: LucideIconNode) => { const node = el('button', '', className); if (Icon) node.append(lucideSvg(Icon, 15)); if (text) node.append(el('span', text)); node.type = 'button'; node.addEventListener('click', action); return node; };
 const status = $('[data-memory-status]');
 const exportButton = $<HTMLButtonElement>('[data-memory-export]');
 const exportStatus = $('[data-memory-export-status]');
@@ -51,7 +57,9 @@ let remotePending = false;
 let loadedOnce = false;
 const renderedLists = new Map<HTMLElement, string>();
 const discardIdentityMessage = '还没保存。换身份后，这份内容不会留下。要继续吗？';
-const desk = createSharedDesktop($('[data-shared-desktop]'), { onOpenStory: openStory, onUnauthorized: unauthorized });
+function updateSharedDesk() {
+  emitSharedDeskUpdate(authenticated && book.member ? { member: book.member, stories: book.stories, photos } : null);
+}
 
 function report(error: unknown) {
   if (error instanceof ApiError && error.status === 401) { unauthorized(); return; }
@@ -135,7 +143,7 @@ function discardShownContent() {
   mutations.forEach(controller => controller.abort()); mutations.clear();
   loading = null;
   stopScreening(); screening = []; screeningIndex = 0;
-  resetMedia(); desk.clear();
+  resetMedia(); emitSharedDeskUpdate(null); setCurrentMember(null);
   book = empty(); photos = []; notebook = null; selectedLetter = null; loadedOnce = false;
   all<HTMLFormElement>('form', privateRoot).forEach(form => { form.reset(); delete form.dataset.dirty; });
   for (const selector of ['[data-story-list]', '[data-story-detail]', '[data-story-photos]', '[data-story-wishes]', '[data-memory-wishes]', '[data-letter-list]', '[data-letter-detail]', '[data-screening-options]', '[data-screening-order]', '[data-place-list]']) $(selector).replaceChildren();
@@ -181,13 +189,14 @@ async function load() {
           return;
         }
         if (token !== generation || !authenticated) return;
-        resetMedia(); stopScreening(); screening = []; screeningIndex = 0; desk.clear();
+        resetMedia(); stopScreening(); screening = []; screeningIndex = 0; emitSharedDeskUpdate(null); setCurrentMember(null);
         all<HTMLFormElement>('form', privateRoot).forEach(form => { form.reset(); delete form.dataset.dirty; });
         clearSelectors();
         all<HTMLElement>('[data-story-detail], [data-letter-detail], [data-screening-stage], [data-screening-order]', privateRoot).forEach(node => node.replaceChildren());
         storyForm.hidden = letterForm.hidden = placeForm.hidden = true;
       }
       book = next;
+      setCurrentMember(next.member?.id ?? null);
       if (next.member) {
         const [manifest, notes] = await Promise.all([api('/api/photos', { signal: controller.signal }), api<CloudNotebook>('/api/notebook', { signal: controller.signal })]);
         if (token !== generation || !authenticated) return;
@@ -256,8 +265,8 @@ async function selectIdentity(id: string) {
     status.textContent = '正在选择…';
     const token = generation;
     mutations.add(controller);
-    const next = await api<MemoryBootstrap>(`${memoryApiRoot}/identity`, { method: 'POST', signal: controller.signal, body: JSON.stringify({ id }) });
-    if (token !== generation || !authenticated) return;
+    const next = await selectMember(id, controller.signal);
+    if (!next || token !== generation || !authenticated) return;
     postMemberChanged();
     book = next;
     if (next.member) {
@@ -300,7 +309,7 @@ function render() {
   } else {
     identityBar.hidden = true;
     unselectedCard.hidden = false;
-    resetMedia(); stopScreening(); screening = []; screeningIndex = 0; desk.clear();
+    resetMedia(); stopScreening(); screening = []; screeningIndex = 0; emitSharedDeskUpdate(null); setCurrentMember(null);
     all<HTMLElement>('[data-section-locked]').forEach(node => { node.hidden = false; });
     all<HTMLElement>('[data-section-private]').forEach(node => { node.hidden = true; });
     all<HTMLElement>('[data-needs-member]').forEach(node => { node.hidden = true; });
@@ -312,7 +321,7 @@ function render() {
     storyForm.hidden = letterForm.hidden = placeForm.hidden = true; return;
   }
   renderStoryList(); renderStory(); renderWishes(); renderLetters(); renderLetter(); renderScreeningOptions(); renderPlaces();
-  desk.update({ member, stories: book.stories, photos });
+  updateSharedDesk();
   jumpToHash();
 }
 let pendingHash = location.hash.slice(1);
@@ -368,7 +377,7 @@ function renderStory() {
   renderedStory = snapshot;
   disposeRecordings(detail); detail.replaceChildren(); detail.dataset.layout = story.layout;
   detail.append(el('p', story.date, 'memory-meta'), el('h3', story.title), el('p', story.text, 'memory-prose'));
-  detail.append(button('改这一页', () => openStoryForm(story)));
+  detail.append(button('改这一页', () => openStoryForm(story), buttonVariants({ variant: 'ghost' }), Pencil));
   const wall = el('div', '', 'memory-story-photos'); story.photoIds.forEach(id => { const photo = photos.find(item => item.id === id); if (photo) wall.append(imageFor(photo)); }); detail.append(wall);
   const parts = el('div', '', 'memory-parts');
   for (const member of book.members) {
@@ -386,7 +395,7 @@ function renderStory() {
         let audioIds = [...(part?.audioIds ?? [])]; let partEditVersion = part?.version ?? 0;
         text.input.maxLength = 10000; reply.input.maxLength = 3000;
         form.append(text.label, reply.label, label, recorder({ storyId: story.id }, id => { audioIds.push(id); form.dataset.dirty = 'yes'; }));
-        const save = el('button', '收好自己的版本', 'pencil-button'); save.type = 'submit';
+        const save = el('button', '收好自己的版本', buttonVariants({ variant: 'default' })); save.type = 'submit';
         form.append(save, button('先不改', () => { disposeRecordings(form); form.remove(); edit.hidden = false; }));
         form.addEventListener('input', () => { form.dataset.dirty = 'yes'; });
         form.addEventListener('submit', event => { event.preventDefault(); void submit(form, async () => { const body: PartInput = { expectedVersion: partEditVersion, text: text.input.value, reply: reply.input.value, submitted: submitted.checked, audioIds }; if (await write(`/stories/${story.id}/part`, 'PUT', body)) { delete form.dataset.dirty; renderStory(); } else conflictReview(form, () => { const latest = book.stories.find(item => item.id === story.id)?.parts.find(item => item.memberId === member.id); return { text: `${latest?.text ?? ''}\n${latest?.reply ?? ''}`, accept() { partEditVersion = latest?.version ?? 0; } }; }); }); });
@@ -412,7 +421,7 @@ function renderStory() {
   const locations = book.places.filter(place => place.storyIds.includes(story.id));
   if (locations.length) { const area = el('section'); area.append(el('h4', '这一页里的地点')); locations.forEach(place => area.append(button(`${place.name} · 查看地点`, () => { selectedPlaceYear = String(place.year); renderPlaces(); $('#places').scrollIntoView({ block: 'start' }); document.querySelector<HTMLElement>(`[data-place-id="${CSS.escape(place.id)}"]`)?.focus({ preventScroll: true }); }))); detail.append(area); }
 }
-function labeledTextarea(text: string, initial: string, maxLength = 10000) { const label = el('label', text); const input = el('textarea'); input.rows = 5; input.maxLength = maxLength; input.value = initial; label.append(input); return { label, input }; }
+function labeledTextarea(text: string, initial: string, maxLength = 10000) { const label = el('label', text); const input = el('textarea'); input.className = textareaVariants({ variant: 'default' }); input.rows = 5; input.maxLength = maxLength; input.value = initial; label.append(input); return { label, input }; }
 function openStoryForm(story?: MemoryStory) {
   all<HTMLElement>('[data-conflict-review]', storyForm).forEach(node => node.remove());
   storyForm.reset(); delete storyForm.dataset.dirty; storyEditVersion = story?.version ?? 0;
@@ -439,7 +448,7 @@ function renderWishes() {
   // Preserve an open scheduling draft while the surrounding book refreshes.
   if (list.querySelector('form[data-dirty="yes"]')) return;
   list.replaceChildren();
-  if (!notebook?.wishes.length) { list.append(el('p', '往后的清单还空着。'), Object.assign(el('a', '回到往后的小清单 →', 'text-link'), { href: '/#future' })); return; }
+  if (!notebook?.wishes.length) { const back = el('a', '回到往后的小清单', 'text-link'); back.href = '/#future'; back.append(lucideSvg(ArrowRight, 16)); list.append(el('p', '往后的清单还空着。'), back); return; }
   for (const wish of notebook.wishes) {
     const plan = book.wishPlans.find(item => item.id === wish.id);
     const story = book.stories.find(item => item.id === plan?.storyId) ?? book.stories.find(item => item.wishIds.includes(wish.id));
@@ -454,12 +463,12 @@ function wishPlan(wish: Wish, story?: MemoryStory) {
   let planVersion = plan?.version ?? 0;
   const form = el('form', '', 'memory-form memory-wish-plan');
   form.append(el('h4', `从往后走到后来：${wish.text}`));
-  const dateLabel = el('label', '商定的日期（可以留空）'); const date = el('input'); date.type = 'date'; date.value = plan?.plannedDate ?? ''; dateLabel.append(date);
+  const dateLabel = el('label', '商定的日期（可以留空）'); const date = el('input'); date.className = inputVariants({ variant: 'default' }); date.type = 'date'; date.value = plan?.plannedDate ?? ''; dateLabel.append(date);
   const storyLabel = el('label', '把后来收进哪一篇故事'); const select = el('select'); select.add(new Option('暂不关联', '')); book.stories.forEach(item => select.add(new Option(item.title, item.id))); select.value = plan?.storyId ?? story?.id ?? ''; storyLabel.append(select);
   const doneLabel = el('label', '', 'memory-check'); const done = el('input'); done.type = 'checkbox'; done.checked = wish.done; doneLabel.append(done, el('span', '这件事已经一起做过了'));
   form.append(dateLabel, storyLabel, doneLabel, el('p', '调整完成状态会保留故事和照片。', 'memory-meta'));
   form.addEventListener('input', () => { form.dataset.dirty = 'yes'; });
-  const save = el('button', '收好安排与关联', 'pencil-button'); save.type = 'submit'; form.append(save);
+  const save = el('button', '收好安排与关联', buttonVariants({ variant: 'default' })); save.type = 'submit'; form.append(save);
   form.addEventListener('submit', event => { event.preventDefault(); void submit(form, async () => {
     const token = generation;
     if (done.checked !== wish.done) {
@@ -480,7 +489,7 @@ function renderLetters() {
         const token = generation; const controller = new AbortController(); mutations.add(controller); card.disabled = true;
         try { const latest = await api<MemoryLetter>(`${memoryApiRoot}/letters/${letter.id}`, { signal: controller.signal }); if (token !== generation) return; book.letters = book.letters.map(item => item.id === latest.id ? latest : item); selectedLetter = letter.id; renderLetter(); $('[data-letter-detail]').scrollIntoView({ block: 'start' }); }
         catch (error) { if (token === generation && !controller.signal.aborted) report(error); } finally { mutations.delete(controller); card.disabled = false; }
-      })(); }, 'memory-card'); card.append(el('p', `${memberName(letter.senderId)} → ${memberName(letter.recipientId)}`, 'memory-meta'), el('h3', letter.title), el('p', `${letter.openDate} · ${letter.status === 'draft' ? '草稿' : letter.readable ? '可以拆信' : '已封好'}`)); list.append(card);
+      })(); }, 'memory-card'); const senders = el('p', '', 'memory-meta'); senders.append(el('span', memberName(letter.senderId)), lucideSvg(ArrowRight, 14), el('span', memberName(letter.recipientId))); card.append(senders, el('h3', letter.title), el('p', `${letter.openDate} · ${letter.status === 'draft' ? '草稿' : letter.readable ? '可以拆信' : '已封好'}`)); list.append(card);
     }
   });
 }
@@ -499,7 +508,7 @@ function renderLetter() {
   if (letter.pairKey) detail.append(el('p', `一起拆信的约定：${letter.pairKey}`, 'memory-meta'));
   if (letter.senderId === book.member?.id) {
     if (letter.status === 'draft') {
-      detail.append(button('接着写', () => openLetter(letter)), button('确认封好这封信', () => sealLetter(letter), 'pencil-button'));
+      detail.append(button('接着写', () => openLetter(letter)), button('确认封好这封信', () => sealLetter(letter), buttonVariants({ variant: 'default' }), Lock));
       detail.append(recorder({ letterId: letter.id }, async id => { if (!await write(`/letters/${letter.id}`, 'PUT', letterInput(letter, [...(letter.audioIds ?? []), id]))) throw new Error('Audio attachment failed'); }));
     } else detail.append(button('撤回为草稿', () => withdrawLetter(letter)));
   }
@@ -529,7 +538,7 @@ letterForm.addEventListener('submit', event => { event.preventDefault(); void su
 
 function audioCard(id: string) {
   const card = el('div', '', 'memory-audio-card'); const audio = el('audio'); audio.controls = true; audio.preload = 'none'; audio.src = memoryAudioUrl(id);
-  const hint = el('p'); hint.setAttribute('role', 'status'); const retry = button('再打开一次录音', () => { hint.textContent = '正在重新打开…'; audio.src = memoryAudioUrl(id); audio.load(); void load(); }); retry.hidden = true;
+  const hint = el('p'); hint.setAttribute('role', 'status'); const retry = button('再打开一次录音', () => { hint.textContent = '正在重新打开…'; audio.src = memoryAudioUrl(id); audio.load(); void load(); }, buttonVariants({ variant: 'ghost' }), RotateCw); retry.hidden = true;
   audio.addEventListener('error', () => { hint.textContent = '录音暂时没能打开，可能仍在同步，可以稍后再试。'; retry.hidden = false; });
   audio.addEventListener('canplay', () => { hint.textContent = ''; retry.hidden = true; }); card.append(el('p', '留在这一页的声音'), audio, hint, retry); return card;
 }
@@ -537,7 +546,7 @@ function recorder(owner: { storyId?: string; letterId?: string }, onUploaded: (i
   const box = el('section', '', 'memory-recording'); box.append(el('h4', '留一段声音'), el('p', '最多 60 秒、4 MiB。录好后先试听，再收进这一页。', 'memory-meta'));
   const feedback = el('p', '', 'memory-recording-status'); feedback.setAttribute('role', 'status');
   const preview = el('audio'); preview.controls = true; preview.hidden = true;
-  const file = el('input'); file.type = 'file'; file.accept = 'audio/*'; file.setAttribute('aria-label', '上传已有录音');
+  const file = el('input'); file.className = inputVariants({ variant: 'default' }); file.type = 'file'; file.accept = 'audio/*'; file.setAttribute('aria-label', '上传已有录音');
   let blob: Blob | null = null; let duration = 0; let objectUrl = ''; let media: MediaRecorder | null = null; let stream: MediaStream | null = null; let timeout: ReturnType<typeof setTimeout> | undefined; let started = 0; let savedId: string | null = null; let attached = false; let disposed = false; let probe: HTMLAudioElement | null = null; let probeGeneration = 0;
   const release = () => { disposed = true; probeGeneration++; if (timeout) clearTimeout(timeout); if (media?.state === 'recording') { media.ondataavailable = null; media.onstop = null; media.stop(); } stream?.getTracks().forEach(track => track.stop()); stream = null; probe?.pause(); probe?.removeAttribute('src'); probe?.load(); probe = null; preview.pause(); preview.removeAttribute('src'); preview.load(); if (objectUrl) URL.revokeObjectURL(objectUrl); objectUrl = ''; blob = null; savedId = null; };
   cleanups.add(release);
@@ -578,7 +587,7 @@ function recorder(owner: { storyId?: string; letterId?: string }, onUploaded: (i
       if (owner.letterId) renderLetter();
     } catch (error) { if (token === generation) { feedback.textContent = '没能收好，录音还在，可以重试。'; report(error); } }
     finally { mutations.delete(controller); if (token === generation && !disposed) { upload.disabled = attached; file.disabled = false; record.disabled = false; } }
-  })(); }, 'pencil-button'); upload.disabled = true;
+  })(); }, buttonVariants({ variant: 'default' })); upload.disabled = true;
   file.addEventListener('change', () => { const selected = file.files?.[0]; if (selected) void choose(selected); });
   box.append(record, stop, file, preview, feedback, upload); return box;
 }
@@ -596,7 +605,7 @@ function renderScreeningOptions() {
 }
 function renderScreeningOrder() {
   const order = $('[data-screening-order]'); order.replaceChildren();
-  screening.forEach((slide, index) => { const row = el('li'); row.append(el('span', slideTitle(slide))); const up = button('往前', () => { [screening[index - 1], screening[index]] = [screening[index], screening[index - 1]]; stopScreening(); renderScreeningOrder(); showSlide(); }); up.disabled = index === 0; const down = button('往后', () => { [screening[index + 1], screening[index]] = [screening[index], screening[index + 1]]; stopScreening(); renderScreeningOrder(); showSlide(); }); down.disabled = index === screening.length - 1; row.append(up, down); order.append(row); });
+  screening.forEach((slide, index) => { const row = el('li'); row.append(el('span', slideTitle(slide))); const up = button('往前', () => { [screening[index - 1], screening[index]] = [screening[index], screening[index - 1]]; stopScreening(); renderScreeningOrder(); showSlide(); }, buttonVariants({ variant: 'ghost' }), ArrowUp); up.disabled = index === 0; const down = button('往后', () => { [screening[index + 1], screening[index]] = [screening[index], screening[index + 1]]; stopScreening(); renderScreeningOrder(); showSlide(); }, buttonVariants({ variant: 'ghost' }), ArrowDown); down.disabled = index === screening.length - 1; row.append(up, down); order.append(row); });
 }
 function showSlide() {
   const stage = $('[data-screening-stage]'); stage.replaceChildren(); const slide = screening[screeningIndex];
@@ -647,6 +656,11 @@ function openPlace(place?: MemoryPlace) {
 placeForm.addEventListener('submit', event => { event.preventDefault(); void submit(placeForm, async () => { const storyId = value(placeForm, 'storyId'); const wishId = value(placeForm, 'wishId'); const id = value(placeForm, 'id'); const latitude = value(placeForm, 'latitude').trim(); const longitude = value(placeForm, 'longitude').trim(); if (await write(`/places/${id}`, 'PUT', { expectedVersion: placeEditVersion, name: value(placeForm, 'name'), lat: latitude === '' ? null : Number(latitude), lng: longitude === '' ? null : Number(longitude), year: Number(value(placeForm, 'year')), storyIds: storyId ? [storyId] : [], wishIds: wishId ? [wishId] : [] })) { delete placeForm.dataset.dirty; placeForm.hidden = true; } else conflictReview(placeForm, () => { const latest = book.places.find(item => item.id === id); return { text: latest ? `${latest.name} · ${latest.year}${latest.lat == null ? ' · 未填坐标' : ` · ${latest.lat}, ${latest.lng}`}` : '地点暂时不存在。', accept() { placeEditVersion = latest?.version ?? 0; } }; }); }); });
 
 const identityChanges = typeof BroadcastChannel !== 'undefined' ? new BroadcastChannel('loveuhqq_member') : null;
+window.addEventListener('memory:shared-desk-request', updateSharedDesk);
+document.addEventListener('memory:open-story', event => {
+  const id = (event as CustomEvent<{ id?: unknown }>).detail?.id;
+  if (typeof id === 'string') openStory(id);
+});
 let remoteTimer: ReturnType<typeof setTimeout> | null = null;
 let remoteAsk = true;
 

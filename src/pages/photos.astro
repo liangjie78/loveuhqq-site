@@ -4,6 +4,9 @@ import SiteHeader from '../components/SiteHeader.astro';
 import Lightbox from '../components/Lightbox.astro';
 import PhotoPlaceholders from '../components/PhotoPlaceholders.astro';
 import PhotosLocked from '../components/PhotosLocked.astro';
+import { buttonVariants } from '../components/ui/button';
+import { inputVariants } from '../components/ui/input';
+import { ArrowLeft, ArrowUpRight, Lock } from 'lucide-react';
 import '../styles/album-transition.css';
 ---
 
@@ -13,12 +16,12 @@ import '../styles/album-transition.css';
     <header class="album-head" data-reveal>
       <h1>相册</h1>
       <p data-photos-summary>解锁后，才能翻开这本相册。</p>
-      <a class="text-button" href="/memories/">翻开共同回忆册 ↗</a>
+      <a class={buttonVariants({ variant: 'ghost' })} href="/memories/">翻开共同回忆册 <ArrowUpRight size={16} aria-hidden="true" /></a>
     </header>
     <PhotosLocked />
     <div class="photos-status" data-needs-js>
       <p data-photos-status role="status" hidden></p>
-      <button class="text-button" type="button" data-photos-retry hidden>再试一次</button>
+      <button class={buttonVariants({ variant: 'ghost' })} type="button" data-photos-retry hidden>再试一次</button>
     </div>
     <div class="album-wall" data-photo-wall="all" data-reveal>
       <PhotoPlaceholders count={6} />
@@ -26,8 +29,8 @@ import '../styles/album-transition.css';
   </main>
   <footer class="site-footer site-footer-small">
     <div class="footer-meta">
-      <a class="text-button" href="/#photos"><span aria-hidden="true">←</span> 回到日记</a>
-      <button class="text-button" type="button" data-lock-site>上锁</button>
+      <a class={buttonVariants({ variant: 'ghost' })} href="/#photos"><ArrowLeft size={16} aria-hidden="true" /> 回到日记</a>
+      <button class={buttonVariants({ variant: 'ghost' })} type="button" data-lock-site><Lock size={15} aria-hidden="true" /> 上锁</button>
     </div>
   </footer>
 
@@ -41,19 +44,19 @@ import '../styles/album-transition.css';
           <span class="paste-pick-empty" data-paste-empty>点这里选一张图</span>
           <img class="paste-pick-preview" data-paste-preview alt="" hidden />
         </button>
-        <button class="text-button paste-swap" type="button" data-paste-swap hidden>换一张</button>
+        <button class:list={[buttonVariants({ variant: 'ghost' }), 'paste-swap']} type="button" data-paste-swap hidden>换一张</button>
         <label class="paste-field">
           <span>标题</span>
-          <input type="text" name="title" maxlength="80" placeholder="给这张写个名字" data-paste-title autocomplete="off" required />
+          <input class={inputVariants({ variant: 'default' })} type="text" name="title" maxlength="80" placeholder="给这张写个名字" data-paste-title autocomplete="off" required />
         </label>
         <label class="paste-field">
           <span>拍摄日期（可选）</span>
-          <input type="date" name="date" data-paste-date />
+          <input class={inputVariants({ variant: 'default' })} type="date" name="date" data-paste-date />
         </label>
         <p class="paste-error" data-paste-error role="status" hidden></p>
         <div class="paste-actions">
-          <button class="text-button" type="button" data-paste-cancel>取消</button>
-          <button class="pencil-button" type="submit" data-paste-submit>贴上</button>
+          <button class={buttonVariants({ variant: 'ghost' })} type="button" data-paste-cancel>取消</button>
+          <button class={buttonVariants({ variant: 'default' })} type="submit" data-paste-submit>贴上</button>
         </div>
       </form>
     </div>
@@ -67,12 +70,12 @@ import '../styles/album-transition.css';
         <form class="photo-manage-form" data-photo-title-form novalidate>
           <label class="paste-field">
             <span>给这张换个名字</span>
-            <input type="text" maxlength="80" data-photo-title-input autocomplete="off" required />
+            <input class={inputVariants({ variant: 'default' })} type="text" maxlength="80" data-photo-title-input autocomplete="off" required />
           </label>
           <p class="paste-error" data-photo-edit-error role="status" hidden></p>
           <div class="paste-actions">
-            <button class="text-button" type="button" data-photo-manage-cancel>先不改</button>
-            <button class="pencil-button" type="submit" data-photo-title-submit>收好标题</button>
+            <button class={buttonVariants({ variant: 'ghost' })} type="button" data-photo-manage-cancel>先不改</button>
+            <button class={buttonVariants({ variant: 'default' })} type="submit" data-photo-title-submit>收好标题</button>
           </div>
         </form>
       </section>
@@ -81,8 +84,8 @@ import '../styles/album-transition.css';
         <p class="photo-delete-copy" data-photo-delete-copy></p>
         <p class="paste-error" data-photo-delete-error role="status" hidden></p>
         <div class="paste-actions">
-          <button class="text-button" type="button" data-photo-manage-cancel>再留一会儿</button>
-          <button class="pencil-button photo-remove-button" type="button" data-photo-delete-confirm>确认取下</button>
+          <button class={buttonVariants({ variant: 'ghost' })} type="button" data-photo-manage-cancel>再留一会儿</button>
+          <button class={buttonVariants({ variant: 'ghost', tone: 'danger' })} type="button" data-photo-delete-confirm>确认取下</button>
         </div>
       </section>
     </div>

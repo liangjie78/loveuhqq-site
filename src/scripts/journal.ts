@@ -10,6 +10,7 @@ import {
   type CalendarMonth,
 } from '../lib/anniversary';
 import { momentTitles } from '../data/moments';
+import { animate } from 'motion';
 import './notebook';
 
 const root = document.documentElement;
@@ -160,7 +161,6 @@ function showReadout(day = today, updateNotebook = false) {
 function paintGrid() {
   if (!grid) return;
   const cells = $$('[data-day]').filter((cell) => grid.contains(cell));
-  let pastCount = 0;
   for (const cell of cells) {
     const day = Number(cell.dataset.day);
     const isPast = day < today;
@@ -169,10 +169,7 @@ function paintGrid() {
     cell.classList.toggle('is-written', writtenDates.has(cellDates.get(day) ?? ''));
     // A steady, scattered tone per day so the filled squares look hand-coloured.
     cell.dataset.tone = String(Math.imul(day, 2654435761) >>> 29 & 3);
-    if (isPast) cell.style.setProperty('--n', String(pastCount++));
-    else cell.style.removeProperty('--n');
   }
-  grid.style.setProperty('--step', `${Math.min(9, 1100 / Math.max(1, pastCount)).toFixed(2)}ms`);
 }
 
 if (grid) {
@@ -444,18 +441,13 @@ function countUp() {
     countUpDone = true;
     return;
   }
-  const duration = 1500;
-  const delay = 950;
-  let start = 0;
-  const step = (time: number) => {
-    start ||= time;
-    const progress = Math.min(1, Math.max(0, (time - start - delay) / duration));
-    const eased = 1 - Math.pow(1 - progress, 4);
-    output.textContent = String(Math.round(eased * target));
-    if (progress < 1) requestAnimationFrame(step);
-    else countUpDone = true;
-  };
-  requestAnimationFrame(step);
+  animate(0, target, {
+    duration: 1.5,
+    delay: .95,
+    ease: 'easeOut',
+    onUpdate: value => { output.textContent = String(Math.round(value)); },
+    onComplete: () => { countUpDone = true; },
+  });
 }
 
 refreshDates();
@@ -529,9 +521,7 @@ if (heart) {
 
   heart.addEventListener('click', (event) => {
     if (reducedMotion.matches) return;
-    heart.classList.remove('is-beating');
-    void heart.offsetWidth;
-    heart.classList.add('is-beating');
+    animate(heart, { scale: [1, 1.09, .97, 1.06, .995, 1] }, { duration: .9, ease: 'easeOut' });
 
     const bounds = keepsake.getBoundingClientRect();
     const originX = event.clientX ? event.clientX - bounds.left : bounds.width / 2;
@@ -543,16 +533,16 @@ if (heart) {
       spark.className = 'heart-spark';
       spark.style.left = `${originX}px`;
       spark.style.top = `${originY}px`;
-      spark.style.setProperty('--dx', `${Math.cos(angle) * distance}px`);
-      spark.style.setProperty('--dy', `${Math.sin(angle) * distance}px`);
-      spark.style.setProperty('--turn', `${Math.round(Math.random() * 60 - 30)}deg`);
       spark.style.setProperty('--size', `${(0.55 + Math.random() * 0.6).toFixed(2)}rem`);
-      spark.addEventListener('animationend', () => spark.remove(), { once: true });
       keepsake.append(spark);
+      animate(spark, {
+        opacity: [0, 1, 0],
+        x: [0, Math.cos(angle) * distance],
+        y: [0, Math.sin(angle) * distance],
+        scale: [.3, 1],
+        rotate: [0, Math.round(Math.random() * 60 - 30)],
+      }, { duration: 1.15, ease: 'easeOut', onComplete: () => spark.remove() });
     }
-  });
-  heart.addEventListener('animationend', (event) => {
-    if (event.animationName === 'heart-beat') heart.classList.remove('is-beating');
   });
 
   keepsake.addEventListener('pointermove', (event) => {

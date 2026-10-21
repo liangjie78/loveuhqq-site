@@ -1,6 +1,8 @@
 ---
 import Page from '../layouts/Page.astro';
 import SiteHeader from '../components/SiteHeader.astro';
+import { buttonVariants } from '../components/ui/button';
+import { ArrowRight } from 'lucide-react';
 ---
 
 <Page title="这一页不见了 · loveuhqq" description="这一页不见了。" path="/404" bodyClass="lost-page">
@@ -11,7 +13,7 @@ import SiteHeader from '../components/SiteHeader.astro';
       <p class="lost-code">404</p>
       <h1>这一页，好像被撕掉了。</h1>
       <p>地址可能写错了，回日记里看看吧。</p>
-      <a class="pill-link" href="/">回到日记 <span aria-hidden="true">→</span></a>
+      <a class={buttonVariants({ variant: 'ink' })} href="/">回到日记 <ArrowRight size={16} aria-hidden="true" /></a>
     </div>
   </main>
 </Page>

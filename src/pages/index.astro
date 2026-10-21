@@ -11,6 +11,9 @@ import Notebook from '../components/Notebook.astro';
 import FutureList from '../components/FutureList.astro';
 import MemoryEntry from '../components/MemoryEntry.astro';
 import MomentArchive from '../components/MomentArchive.astro';
+import { buttonVariants } from '../components/ui/button';
+import { ArrowDown, ArrowLeft, ArrowUp, ArrowRight, ChevronRight, Lock, X } from 'lucide-react';
+import SignatureChoice from '../islands/SignatureChoice';
 import '../styles/notebook.css';
 import '../styles/memory-entry.css';
 import '../styles/album-transition.css';
@@ -33,14 +36,7 @@ let inkIndex = 0;
   <SiteHeader home />
   <main id="main" tabindex="-1">
     <section class="hero" id="top" aria-labelledby="hero-title">
-      <div class="signature-choice" data-signature-choice hidden>
-        <p class="signature-label" data-signature-label aria-hidden="true">请选择身份</p>
-        <div class="signature-options" role="group" aria-label="请选择身份">
-          <button type="button" class="signature-btn" data-signature="one" aria-pressed="false">男生</button>
-          <button type="button" class="signature-btn" data-signature="two" aria-pressed="false">女生</button>
-        </div>
-        <p class="signature-status" data-signature-status role="status"></p>
-      </div>
+      <SignatureChoice client:load />
       <div class="hero-inner">
         <div class="hero-words">
           <h1 class="hero-title" id="hero-title" aria-label="爱你，何青青。">
@@ -85,14 +81,14 @@ let inkIndex = 0;
             <span><b data-year-label>一周年</b><time data-year-last>{dotted(lastDay.date)}</time></span>
           </div>
           <div class="year-nav" data-year-nav data-needs-js hidden>
-            <button class="text-button year-step" type="button" data-year-prev>← 上一年</button>
-            <button class="text-button year-step" type="button" data-year-next>下一年 →</button>
+            <button class:list={[buttonVariants({ variant: 'ghost' }), 'year-step']} type="button" data-year-prev><ArrowLeft size={15} aria-hidden="true" /> 上一年</button>
+            <button class:list={[buttonVariants({ variant: 'ghost' }), 'year-step']} type="button" data-year-next>下一年 <ChevronRight size={15} aria-hidden="true" /></button>
           </div>
           <p class="year-hint" id="year-hint" data-needs-js>点一格，翻到那一天的背面。手机上可以左右轻扫，也可以用方向键翻看。</p>
           <div class="year-feedback">
             <p class="year-readout" data-year-readout aria-live="polite">{startLabel} — {dotted(lastDay.date)}</p>
-            <button class="text-button year-note-jump" type="button" data-note-jump hidden>翻看这天 ↓</button>
-            <button class="text-button year-today" type="button" data-return-today data-needs-js disabled>回到今天</button>
+            <button class:list={[buttonVariants({ variant: 'ghost' }), 'year-note-jump']} type="button" data-note-jump hidden>翻看这天 <ArrowDown size={15} aria-hidden="true" /></button>
+            <button class:list={[buttonVariants({ variant: 'ghost' }), 'year-today']} type="button" data-return-today data-needs-js disabled>回到今天</button>
           </div>
           <div class="year-grid" data-year-grid role="group" tabindex="0" aria-describedby="year-hint" aria-label={`第一年的日历，从 ${startLabel} 到 ${dotted(lastDay.date)}，可用方向键翻看`} style={`--months:${months.length}`}>
             {months.map((month) => (
@@ -148,7 +144,7 @@ let inkIndex = 0;
           <PhotoPlaceholders count={3} />
         </div>
         <PhotosLocked />
-        <p class="photos-more" data-reveal><a class="text-link" href="/photos/" data-album-link>翻开整本相册<span aria-hidden="true">→</span></a></p>
+        <p class="photos-more" data-reveal><a class="text-link" href="/photos/" data-album-link>翻开整本相册 <ArrowRight size={16} aria-hidden="true" /></a></p>
       </div>
     </section>
 
@@ -192,8 +188,8 @@ let inkIndex = 0;
     <p class="footer-words">往后。<br /><span>未完待续。</span></p>
     <div class="footer-meta">
       <span>loveuhqq · 始于 {startLabel}</span>
-      <button class="text-button" type="button" data-lock-site>上锁</button>
-      <a class="text-button" href="#top">回到第一页 <span aria-hidden="true">↑</span></a>
+      <button class={buttonVariants({ variant: 'ghost' })} type="button" data-lock-site><Lock size={15} aria-hidden="true" /> 上锁</button>
+      <a class={buttonVariants({ variant: 'ghost' })} href="#top">回到第一页 <ArrowUp size={15} aria-hidden="true" /></a>
     </div>
   </footer>
 
@@ -201,15 +197,14 @@ let inkIndex = 0;
   <dialog class="letter-dialog" data-letter-dialog aria-labelledby="letter-dialog-title">
     <div class="letter-dialog-header">
       <h2 id="letter-dialog-title">写给第 100 天</h2>
-      <button class="letter-close text-button" type="button" data-letter-close autofocus>收好这封信 <span aria-hidden="true">×</span></button>
+      <button class:list={[buttonVariants({ variant: 'ghost' }), 'letter-close']} type="button" data-letter-close autofocus>收好这封信 <X size={15} aria-hidden="true" /></button>
     </div>
     <div class="letter-dialog-body" data-letter-scroll>
       <p class="letter-status" data-letter-status role="status" aria-live="polite"></p>
-      <button class="text-button letter-retry" type="button" data-letter-retry hidden>再试一次</button>
+      <button class:list={[buttonVariants({ variant: 'ghost' }), 'letter-retry']} type="button" data-letter-retry hidden>再试一次</button>
       <article class="letter-reading" data-letter-reading hidden></article>
     </div>
   </dialog>
   <script src="../scripts/journal.ts"></script>
   <script src="../scripts/letter.ts"></script>
-  <script src="../scripts/signature-choice.ts"></script>
 </Page>

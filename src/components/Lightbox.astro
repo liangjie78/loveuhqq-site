@@ -1,29 +1,34 @@
+---
+import { buttonVariants } from './ui/button';
+import { ArrowUpRight, ChevronLeft, ChevronRight, X } from 'lucide-react';
+---
+
 <dialog class="lightbox" data-lightbox aria-labelledby="lightbox-title">
   <figure class="lightbox-print">
     <img data-lightbox-image alt="" width="800" height="1000" />
     <figcaption>
       <span class="lightbox-title" id="lightbox-title" data-lightbox-title></span>
       <span class="lightbox-meta" data-lightbox-meta aria-live="polite"></span>
-      <a class="text-button" data-photo-stories hidden>翻到照片里的故事 ↗</a>
+      <a class={buttonVariants({ variant: 'ghost' })} data-photo-stories hidden>翻到照片里的故事 <ArrowUpRight size={16} aria-hidden="true" /></a>
     </figcaption>
     <p class="lightbox-feedback" data-lightbox-feedback hidden>
       <span data-lightbox-status role="status"></span>
-      <button class="text-button" type="button" data-lightbox-retry hidden>再试一次</button>
+      <button class={buttonVariants({ variant: 'ghost' })} type="button" data-lightbox-retry hidden>再试一次</button>
     </p>
     <div class="photo-management lightbox-management" data-lightbox-management hidden>
-      <button class="text-button" type="button" data-lightbox-edit>改标题</button>
-      <button class="text-button" type="button" data-lightbox-feature>设为首页精选</button>
-      <button class="text-button photo-remove-button" type="button" data-lightbox-delete>从相册取下</button>
+      <button class={buttonVariants({ variant: 'ghost' })} type="button" data-lightbox-edit>改标题</button>
+      <button class={buttonVariants({ variant: 'ghost' })} type="button" data-lightbox-feature>设为首页精选</button>
+      <button class={buttonVariants({ variant: 'ghost', tone: 'danger' })} type="button" data-lightbox-delete>从相册取下</button>
     </div>
   </figure>
   <button class="lightbox-button lightbox-close" type="button" data-lightbox-close aria-label="关闭">
-    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18" /></svg>
+    <X size={20} aria-hidden="true" />
   </button>
   <button class="lightbox-button lightbox-prev" type="button" data-lightbox-prev aria-label="上一张">
-    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 5l-7 7 7 7" /></svg>
+    <ChevronLeft size={24} aria-hidden="true" />
   </button>
   <button class="lightbox-button lightbox-next" type="button" data-lightbox-next aria-label="下一张">
-    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 5l7 7-7 7" /></svg>
+    <ChevronRight size={24} aria-hidden="true" />
   </button>
 </dialog>
 <script src="../scripts/gallery.ts"></script>

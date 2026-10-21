@@ -215,7 +215,6 @@
   padding: clamp(1.4rem, 3.5vw, 2.8rem);
   background: var(--sheet);
   border: 1px solid var(--line);
-  box-shadow: 0 6px 16px #2a1f1b08;
   border-radius: 3px;
 }
 .memory-section .paper-card .tape-corner {
@@ -240,10 +239,7 @@
   max-width: 18rem;
   margin-bottom: 1.5rem;
 }
-.memory-form input:not([type=checkbox]),
-.memory-form textarea,
 .memory-form select,
-.memory-filter input,
 .memory-year-filter select {
   width: 100%;
   min-width: 0;
@@ -255,10 +251,7 @@
   color: var(--ink);
   font: inherit;
 }
-.memory-form textarea {
-  line-height: 1.9;
-  resize: vertical;
-}
+.memory-form textarea { line-height: 1.9; resize: vertical; }
 .memory-form fieldset {
   border: 1px solid var(--line);
   padding: 1rem;

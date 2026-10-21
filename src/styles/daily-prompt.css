@@ -10,7 +10,7 @@
 .daily-prompt-ring { stroke-dasharray: 2 4; opacity: .6; }
 .daily-prompt-question { flex: 1 1 12rem; min-width: 0; margin: 0; font-size: .82rem; line-height: 1.8; color: var(--muted); overflow-wrap: anywhere; }
 .daily-prompt-shuffle { flex: none; min-height: 44px; margin-left: auto; padding-inline: .35rem; font-size: .75rem; white-space: nowrap; }
-.daily-prompt-shuffle span { display: inline-block; margin-left: .3rem; color: var(--rose); }
+.daily-prompt-shuffle svg { color: var(--rose); }
 .daily-prompt-question.is-turning { animation: daily-prompt-ink .3s ease-out both; }
 @keyframes daily-prompt-ink { from { opacity: .25; transform: translateY(3px); } to { opacity: 1; transform: translateY(0); } }
 @media (prefers-reduced-motion: reduce) {

@@ -17,6 +17,7 @@ const compiled = await build({
     name: 'album-transport',
     setup(builder) {
       builder.onResolve({ filter: /\/lib\/(session|cloud-notebook)$/ }, args => ({ path: args.path, namespace: 'fixture' }));
+      builder.onResolve({ filter: /\/lib\/lucide-dom$/ }, args => ({ path: args.path, namespace: 'fixture' }));
       builder.onLoad({ filter: /session$/, namespace: 'fixture' }, () => ({ contents: `
         export const onSessionChange = listener => globalThis.sessionListener = listener;
         export const getSession = async () => ({});
@@ -25,6 +26,9 @@ const compiled = await build({
       builder.onLoad({ filter: /cloud-notebook$/, namespace: 'fixture' }, () => ({ contents: `
         export class ApiError extends Error {}
         export const api = async () => globalThis.manifest;
+      ` }));
+      builder.onLoad({ filter: /lucide-dom$/, namespace: 'fixture' }, () => ({ contents: `
+        export function lucideSvg() { return document.createElement('span'); }
       ` }));
     },
   }],

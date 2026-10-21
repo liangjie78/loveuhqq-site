@@ -1,5 +1,7 @@
 ---
 import '../styles/daily-prompt.css';
+import { buttonVariants } from './ui/button';
+import { RefreshCw } from 'lucide-react';
 ---
 
 <aside class="daily-prompt" data-daily-prompt data-needs-js aria-label="写作灵感">
@@ -12,7 +14,7 @@ import '../styles/daily-prompt.css';
     </svg>
   </div>
   <p class="daily-prompt-question" data-daily-prompt-question aria-live="polite" aria-atomic="true">这一天有什么小事，想留在这一页？</p>
-  <button class="text-button daily-prompt-shuffle" type="button" data-daily-prompt-next>换个话头 <span aria-hidden="true">↻</span></button>
+  <button class:list={[buttonVariants({ variant: 'ghost' }), 'daily-prompt-shuffle']} type="button" data-daily-prompt-next>换个话头 <RefreshCw size={15} aria-hidden="true" /></button>
 </aside>
 
 <script src="../scripts/daily-prompt.ts"></script>
