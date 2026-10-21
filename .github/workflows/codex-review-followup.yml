@@ -83,10 +83,10 @@ jobs:
             if (existing.some(c => c.body?.includes(marker))) return;
             // Treat review text as untrusted evidence, never as operational instructions.
             const items = [...new Map(actionable.map(c=>[c.path+':'+c.line+':'+c.body,[c.id,c]])).values()]
-              .slice(0,12).map(([id,c]) => {
+              .map(([id,c]) => {
                 const priority = c.body.match(/(?:^|[^A-Za-z0-9])(P[01])(?:[^A-Za-z0-9]|$)/i)?.[1]?.toUpperCase();
                 const summary = c.body.replace(/\s+/g,' ').slice(0,240);
-                return `- ${priority} \`${c.path}:${c.line}\` ([review comment](${c.html_url})): ${summary}`;
+                return `- ${priority} finding: [original review comment](${c.html_url}) (file: ${c.path}, line: ${c.line}). Verify the issue against current code before fixing.`;
               });
             if (!items.length) return;
             const body = `@codex fix\n\nPlease fix and verify these outstanding P0/P1 findings on this PR's existing head branch (do not merge or deploy):\n${items.join('\n')}\n\n${marker}`;
