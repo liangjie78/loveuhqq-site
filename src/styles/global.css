@@ -563,6 +563,7 @@ html.fonts-pending .intro { animation-play-state: paused; }
 .year-cells > .is-moment.is-today::after { background: var(--sheet); }
 
 .can-reveal .year:not(.is-in) .year-cells > .is-past { background: var(--empty); }
+.can-reveal [data-reveal]:not(.is-in) { opacity: 0; }
 
 .year-readout {
   min-height: 1.7em;

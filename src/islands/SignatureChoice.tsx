@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { useStore } from 'zustand';
 import { ToggleGroup, ToggleGroupItem } from '../components/ui/toggle-group';
 import { api } from '../lib/cloud-notebook';
-import { selectMember, setCurrentMember } from '../lib/member';
+import { beginMemberRequest, isLatestMemberRequest, selectMember, setCurrentMember } from '../lib/member';
 import type { MemoryBootstrap } from '../lib/memory-book';
 import { getSession, refreshSession } from '../lib/session';
 import { memberStore } from '../stores/member';
@@ -48,6 +48,7 @@ export default function SignatureChoice() {
   const isUnlocked = useCallback(() => authenticated && !document.documentElement.classList.contains('is-locked'), [authenticated]);
   const refresh = useCallback(async () => {
     const token = ++generation.current;
+    const requestId = beginMemberRequest();
     const ready = isUnlocked();
     document.documentElement.classList.toggle('signature-room', ready);
     if (!ready) {
@@ -58,12 +59,12 @@ export default function SignatureChoice() {
     }
     try {
       const book = await api<MemoryBootstrap>('/api/memory/bootstrap');
-      if (token !== generation.current || !isUnlocked()) return;
-      setCurrentMember(book.member?.id ?? null);
+      if (token !== generation.current || !isLatestMemberRequest(requestId) || !isUnlocked()) return;
+      setCurrentMember(book.member?.id ?? null, requestId);
       setUnlocked(true);
       setStatus('');
     } catch {
-      if (token !== generation.current || !isUnlocked()) return;
+      if (token !== generation.current || !isLatestMemberRequest(requestId) || !isUnlocked()) return;
       setUnlocked(true);
       setStatus('身份暂时未能读取，可以重新选择。');
     }
@@ -111,6 +112,7 @@ export default function SignatureChoice() {
 
   useEffect(() => {
     if (!authenticated) {
+      generation.current++;
       setCurrentMember(null);
       setUnlocked(false);
       setStatus('');
@@ -122,21 +124,23 @@ export default function SignatureChoice() {
 
   async function choose(id: string) {
     if (!isUnlocked() || busy || (id !== 'one' && id !== 'two') || id === memberId) return;
+    const token = ++generation.current;
+    const requestId = beginMemberRequest();
     setBusy(true);
     const channel = typeof BroadcastChannel === 'undefined' ? null : new BroadcastChannel('loveuhqq_member');
     try {
       const elsewhere = await askOtherDrafts(channel);
-      if (!isUnlocked() || id === memberStore.getState().memberId) return;
+      if (token !== generation.current || !isLatestMemberRequest(requestId) || !isUnlocked() || id === memberStore.getState().memberId) return;
       if (elsewhere && !window.confirm(discardIdentityMessage)) return;
       setStatus('正在选择…');
-      await selectMember(id as 'one' | 'two');
-      if (!isUnlocked()) return;
+      const book = await selectMember(id as 'one' | 'two', undefined, requestId);
+      if (!book || token !== generation.current || !isLatestMemberRequest(requestId) || !isUnlocked()) return;
       setUnlocked(true);
       setStatus('');
       broadcastMemberChange(channel);
       document.dispatchEvent(new Event('memory:identity-changed'));
     } catch {
-      if (isUnlocked()) setStatus('暂时没能选好，请再试一次。');
+      if (token === generation.current && isLatestMemberRequest(requestId) && isUnlocked()) setStatus('暂时没能选好，请再试一次。');
     } finally {
       channel?.close();
       setBusy(false);

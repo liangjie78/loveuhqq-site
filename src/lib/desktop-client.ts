@@ -28,6 +28,24 @@ export function beginDesktopPut(protocol: DesktopProtocol, item: DesktopItem, mu
   return { ...protocol, pending: item, pendingMutationId: mutationId, status: 'saving' };
 }
 
+export function matchesPendingDesktopSave(protocol: DesktopProtocol, message: DesktopMessage): boolean {
+  return message.type === 'saved'
+    && protocol.pendingMutationId !== null
+    && message.mutationId === protocol.pendingMutationId;
+}
+
+export function shouldClearPendingDesktopNote(
+  protocol: DesktopProtocol,
+  message: DesktopMessage,
+  noteSave: { mutationId: string; value: string } | null,
+  currentValue: string | undefined,
+): boolean {
+  return matchesPendingDesktopSave(protocol, message)
+    && noteSave !== null
+    && noteSave.mutationId === message.mutationId
+    && noteSave.value === currentValue;
+}
+
 export function applyDesktopMessage(protocol: DesktopProtocol, message: DesktopMessage): DesktopProtocol {
   let next = protocol;
   if (message.state && message.state.revision >= protocol.snapshot.revision) {

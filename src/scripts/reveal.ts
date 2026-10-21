@@ -2,11 +2,19 @@ import { animate, inView } from 'motion';
 
 const items = document.querySelectorAll<HTMLElement>('[data-reveal]');
 const prefersReducedMotion = () => window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+const root = document.documentElement;
 
 if (prefersReducedMotion() || !('IntersectionObserver' in window)) {
   items.forEach(item => item.classList.add('is-in'));
+  root.classList.remove('can-reveal');
+  root.classList.add('reveal-ready');
 } else if (items.length > 0) {
-  document.documentElement.classList.add('can-reveal');
+  root.classList.add('reveal-ready');
+  window.matchMedia('(prefers-reduced-motion: reduce)').addEventListener('change', event => {
+    if (!event.matches) return;
+    root.classList.remove('can-reveal');
+    items.forEach(item => item.classList.add('is-in'));
+  });
   items.forEach(item => {
     inView(item, () => {
       const pastCells = item.matches('.year')
@@ -37,4 +45,7 @@ if (prefersReducedMotion() || !('IntersectionObserver' in window)) {
       }
     }, { margin: '0px 0px -10% 0px', amount: .12 });
   });
+} else {
+  root.classList.remove('can-reveal');
+  root.classList.add('reveal-ready');
 }

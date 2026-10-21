@@ -7,15 +7,15 @@ import { buildMemoryExport } from '../lib/memory-export';
 import { buttonVariants } from '../components/ui/button';
 import { inputVariants } from '../components/ui/input';
 import { textareaVariants } from '../components/ui/textarea';
-import { lucideSvg } from '../lib/lucide-dom';
+import { lucideSvg, type LucideIconNode } from '../lib/lucide-dom';
 import { selectMember, setCurrentMember } from '../lib/member';
 import { emitSharedDeskUpdate } from '../lib/shared-desk-events';
-import { ArrowDown, ArrowRight, ArrowUp, Lock, Pencil, RotateCw, Trash2, type LucideIcon } from 'lucide-react';
+import { ArrowDown, ArrowRight, ArrowUp, Lock, Pencil, RotateCw, Trash2 } from 'lucide';
 
 const $ = <T extends HTMLElement = HTMLElement>(selector: string, parent: ParentNode = document) => parent.querySelector<T>(selector)!;
 const all = <T extends HTMLElement = HTMLElement>(selector: string, parent: ParentNode = document) => [...parent.querySelectorAll<T>(selector)];
 const el = <K extends keyof HTMLElementTagNameMap>(tag: K, text = '', className = '') => { const node = document.createElement(tag); node.textContent = text; node.className = className; return node; };
-const button = (text: string, action: () => void, className = buttonVariants({ variant: 'ghost' }), Icon?: LucideIcon) => { const node = el('button', '', className); if (Icon) node.append(lucideSvg(Icon, 15)); if (text) node.append(el('span', text)); node.type = 'button'; node.addEventListener('click', action); return node; };
+const button = (text: string, action: () => void, className = buttonVariants({ variant: 'ghost' }), Icon?: LucideIconNode) => { const node = el('button', '', className); if (Icon) node.append(lucideSvg(Icon, 15)); if (text) node.append(el('span', text)); node.type = 'button'; node.addEventListener('click', action); return node; };
 const status = $('[data-memory-status]');
 const exportButton = $<HTMLButtonElement>('[data-memory-export]');
 const exportStatus = $('[data-memory-export-status]');
@@ -266,7 +266,7 @@ async function selectIdentity(id: string) {
     const token = generation;
     mutations.add(controller);
     const next = await selectMember(id, controller.signal);
-    if (token !== generation || !authenticated) return;
+    if (!next || token !== generation || !authenticated) return;
     postMemberChanged();
     book = next;
     if (next.member) {

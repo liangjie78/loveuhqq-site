@@ -6,9 +6,11 @@ import {
   beginDesktopPut,
   desktopDisconnected,
   emptyDesktopProtocol,
+  matchesPendingDesktopSave,
   moveDesktopByArrow,
   moveDesktopByDelta,
   retryDesktopPosition,
+  shouldClearPendingDesktopNote,
 } from '../src/lib/desktop-client.ts';
 
 const item = { id: 'same-item', kind: 'note', refId: '', text: '合成便签', x: .2, y: .2, rotation: 0, version: 1 };
@@ -33,6 +35,22 @@ test('unrelated saves do not acknowledge my move; conflict retry keeps my positi
   assert.equal(protocol.pending, null);
   assert.equal(protocol.status, 'saved');
   assert.equal(adoptLatestDesktopPosition(protocol).conflicted, null);
+});
+
+test('only the current note save acknowledgement can clear its unchanged input', () => {
+  let protocol = beginDesktopPut(emptyDesktopProtocol(), { ...item, text: '我的便签' }, 'my-note-save');
+  const myAck = { type: 'saved', mutationId: 'my-note-save', state: snapshot(1) };
+  const partnerAck = { type: 'saved', mutationId: 'partner-note-save', state: snapshot(2) };
+  const noteDraft = { mutationId: 'my-note-save', value: '我的便签' };
+
+  assert.equal(matchesPendingDesktopSave(protocol, partnerAck), false);
+  assert.equal(shouldClearPendingDesktopNote(protocol, partnerAck, noteDraft, noteDraft.value), false);
+  assert.equal(shouldClearPendingDesktopNote(protocol, myAck, noteDraft, '刚写的新便签'), false);
+  assert.equal(shouldClearPendingDesktopNote(protocol, myAck, noteDraft, noteDraft.value), true);
+
+  protocol = applyDesktopMessage(protocol, myAck);
+  assert.equal(matchesPendingDesktopSave(protocol, partnerAck), false);
+  assert.equal(protocol.status, 'saved');
 });
 
 test('a lost acknowledgement is recoverable after reconnect with the latest server version', () => {

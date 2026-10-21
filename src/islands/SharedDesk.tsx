@@ -10,9 +10,11 @@ import {
   beginDesktopPut,
   desktopDisconnected,
   emptyDesktopProtocol,
+  matchesPendingDesktopSave,
   moveDesktopByArrow,
   moveDesktopByDelta,
   retryDesktopPosition,
+  shouldClearPendingDesktopNote,
   type DesktopMessage,
   type DesktopProtocol,
 } from '../lib/desktop-client';
@@ -78,6 +80,7 @@ export default function SharedDesk() {
   const dataRef = useRef(data);
   const deskRef = useRef<HTMLDivElement>(null);
   const noteRef = useRef<HTMLInputElement | null>(null);
+  const noteSaveRef = useRef<{ mutationId: string; value: string } | null>(null);
   const socketRef = useRef<WebSocket | null>(null);
   const reconnectRef = useRef<() => void>(() => {});
   const [linkStatus, setLinkStatus] = useState('');
@@ -165,16 +168,30 @@ export default function SharedDesk() {
         if (socket !== nextSocket || !active) return;
         try {
           const message = JSON.parse(event.data) as DesktopMessage;
+          const pendingProtocol = protocolRef.current;
+          const pendingMutationId = pendingProtocol.pendingMutationId;
+          const noteSave = noteSaveRef.current;
+          const matchesPendingSave = matchesPendingDesktopSave(pendingProtocol, message);
+          const clearNote = shouldClearPendingDesktopNote(pendingProtocol, message, noteSave, noteRef.current?.value);
+          const matchesPendingResponse = pendingMutationId !== null
+            && (message.type === 'conflict' || message.type === 'error')
+            && message.mutationId === pendingMutationId;
           const next = applyDesktopMessage(protocolRef.current, message);
           commitProtocol(next);
           if (message.type === 'conflict' && next.conflicted) setConflictStatus('同一件物品刚被移动了。我的位置还在，选择保留哪一版。');
-          else if (message.type === 'saved' && next.status === 'saved') {
-            if (noteRef.current) noteRef.current.value = '';
+          if (matchesPendingSave) {
+            if (noteSave?.mutationId === message.mutationId) {
+              if (clearNote && noteRef.current) {
+                noteRef.current.value = '';
+              }
+              noteSaveRef.current = null;
+            }
             setMessageStatus('已收好，另一端也能看到。'); setConflictStatus('');
           } else if (message.type === 'error') {
             setMessageStatus(message.error ?? '桌面操作暂时没有完成。');
             if (next.conflicted) setConflictStatus(message.error ?? '这件物品的保存结果还未确认。');
           }
+          if (matchesPendingResponse) noteSaveRef.current = null;
         } catch { setMessageStatus('桌面消息没有读完整，请重新连接。'); }
       });
       nextSocket.addEventListener('close', event => {
@@ -221,6 +238,7 @@ export default function SharedDesk() {
       previous?.close();
       commitProtocol(emptyDesktopProtocol());
       if (noteRef.current) noteRef.current.value = '';
+      noteSaveRef.current = null;
     };
   }, [activeMember]);
 
@@ -229,7 +247,7 @@ export default function SharedDesk() {
     ? { ...item, x: optimisticPosition.x, y: optimisticPosition.y }
     : item), [items, optimisticPosition, protocol.pending]);
 
-  function put(item: DesktopItem): boolean {
+  function put(item: DesktopItem, noteValue?: string): boolean {
     const current = protocolRef.current;
     if (current.pending) { setMessageStatus('上一件还在保存，稍等一下。'); return false; }
     const mutationId = crypto.randomUUID();
@@ -237,14 +255,15 @@ export default function SharedDesk() {
     if (socket?.readyState !== WebSocket.OPEN) { setMessageStatus('连接尚未恢复，这次操作没有保存。'); return false; }
     socket.send(JSON.stringify({ type: 'put', item, expectedVersion: item.version, mutationId }));
     commitProtocol(beginDesktopPut(current, item, mutationId));
+    noteSaveRef.current = noteValue === undefined ? null : { mutationId, value: noteValue };
     setMessageStatus('正在收好这件物品…');
     return true;
   }
 
-  function add(kind: DesktopItem['kind'], refId: string, text = '') {
+  function add(kind: DesktopItem['kind'], refId: string, text = '', noteValue?: string) {
     const current = protocolRef.current;
     if (!dataRef.current?.member) return;
-    put({ id: crypto.randomUUID(), kind, refId, text, x: .12 + (current.snapshot.items.length % 4) * .18, y: .12 + (current.snapshot.items.length % 3) * .2, rotation: 0, version: 0 });
+    put({ id: crypto.randomUUID(), kind, refId, text, x: .12 + (current.snapshot.items.length % 4) * .18, y: .12 + (current.snapshot.items.length % 3) * .2, rotation: 0, version: 0 }, noteValue);
   }
 
   function onDragEnd(event: DragEndEvent) {
@@ -305,8 +324,8 @@ export default function SharedDesk() {
           if (id) add(kind as 'story' | 'photo', id);
         }}>摆到桌上</Button>
         <Input ref={noteRef} maxLength={500} placeholder="留张便签或票根" aria-label="便签或票根内容" />
-        <Button type="button" variant="ghost" onClick={() => { const input = noteRef.current; if (input?.value.trim()) add('note', '', input.value.trim()); }}>贴便签</Button>
-        <Button type="button" variant="ghost" onClick={() => { const input = noteRef.current; if (input?.value.trim()) add('ticket', '', input.value.trim()); }}>贴票根</Button>
+        <Button type="button" variant="ghost" onClick={() => { const input = noteRef.current; if (input?.value.trim()) add('note', '', input.value.trim(), input.value); }}>贴便签</Button>
+        <Button type="button" variant="ghost" onClick={() => { const input = noteRef.current; if (input?.value.trim()) add('ticket', '', input.value.trim(), input.value); }}>贴票根</Button>
         <Button type="button" variant="ghost" onClick={reconnect}>重新连接</Button>
       </div>
       <p className="memory-tool-hint" role="status">{messageStatus || linkStatus}</p>

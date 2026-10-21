@@ -4,9 +4,9 @@ import {
   featuredPhotoCount, featuredPhotos, parsePhotoManifest, photoSummary, photoUrl, type PhotoManifest, type PrivatePhoto,
 } from '../lib/photos';
 import { getSession, onSessionChange, publishSession } from '../lib/session';
-import { lucideSvg } from '../lib/lucide-dom';
+import { lucideSvg, type LucideIconNode } from '../lib/lucide-dom';
 import { buttonVariants } from '../components/ui/button';
-import { Pencil, Plus, Star, Trash2 } from 'lucide-react';
+import { Pencil, Plus, Star, Trash2 } from 'lucide';
 
 const root = document.documentElement;
 const dialog = document.querySelector<HTMLDialogElement>('[data-lightbox]')!;
@@ -89,7 +89,7 @@ let manageMode: 'title' | 'delete' | null = null;
 
 const dateLabel = (photo: PrivatePhoto) => (photo.date ? dotted(photo.date) : '');
 
-function makePhotoButton(label: string, action: () => void, Icon: typeof Pencil, danger = false) {
+function makePhotoButton(label: string, action: () => void, Icon: LucideIconNode, danger = false) {
   const button = document.createElement('button');
   button.type = 'button';
   button.className = buttonVariants({ variant: 'ghost', tone: danger ? 'danger' : 'default', className: 'photo-action' });

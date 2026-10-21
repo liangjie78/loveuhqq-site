@@ -1,11 +1,7 @@
-import { createElement } from 'react';
-import { renderToStaticMarkup } from 'react-dom/server';
-import type { LucideIcon } from 'lucide-react';
+import { createElement } from 'lucide';
 
-export function lucideSvg(Icon: LucideIcon, size = 16): SVGSVGElement {
-  const markup = renderToStaticMarkup(createElement(Icon, { size, 'aria-hidden': true, focusable: false }));
-  const template = document.createElement('template') as HTMLTemplateElement;
-  if (!('content' in template)) return document.createElement('span') as unknown as SVGSVGElement;
-  template.innerHTML = markup;
-  return template.content.firstElementChild as SVGSVGElement;
+export type LucideIconNode = Parameters<typeof createElement>[0];
+
+export function lucideSvg(iconNode: LucideIconNode, size = 16): SVGSVGElement {
+  return createElement(iconNode, { width: size, height: size, 'aria-hidden': 'true', focusable: 'false' }) as SVGSVGElement;
 }
