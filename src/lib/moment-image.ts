@@ -19,7 +19,7 @@ export async function renderMomentImage(entries: MemoryForImage[], since: string
   const paper = color('--paper');
   const sheet = color('--sheet');
   const ink = color('--ink');
-  const muted = color('--muted');
+  const muted = color('--muted-foreground');
   const rose = color('--rose');
   const line = color('--line-strong');
   const serif = '"Noto Serif SC", "Songti SC", serif';

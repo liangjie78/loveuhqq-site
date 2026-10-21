@@ -64,6 +64,10 @@ function PassphraseDateInput({ formRef }: { formRef: { current: HTMLFormElement 
 export default function PassphraseGate() {
   const formRef = useRef<HTMLFormElement>(null);
 
+  useEffect(() => {
+    void import('../scripts/passphrase-gate');
+  }, []);
+
   return (
     <Card className="gate-card ui">
       <Postmark id="gate-mark" className="gate-postmark" dated={false} />

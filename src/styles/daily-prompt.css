@@ -8,7 +8,7 @@
 .daily-prompt-flower { flex: 0 0 1.9rem; color: var(--rose); rotate: -8deg; }
 .daily-prompt-flower svg { display: block; width: 100%; stroke: currentColor; stroke-width: 1.4; stroke-linecap: round; stroke-linejoin: round; }
 .daily-prompt-ring { stroke-dasharray: 2 4; opacity: .6; }
-.daily-prompt-question { flex: 1 1 12rem; min-width: 0; margin: 0; font-size: .82rem; line-height: 1.8; color: var(--muted); overflow-wrap: anywhere; }
+.daily-prompt-question { flex: 1 1 12rem; min-width: 0; margin: 0; font-size: .82rem; line-height: 1.8; color: var(--muted-foreground); overflow-wrap: anywhere; }
 .daily-prompt-shuffle { flex: none; min-height: 44px; margin-left: auto; padding-inline: .35rem; font-size: .75rem; white-space: nowrap; }
 .daily-prompt-shuffle svg { color: var(--rose); }
 .daily-prompt-question.is-turning { animation: daily-prompt-ink .3s ease-out both; }

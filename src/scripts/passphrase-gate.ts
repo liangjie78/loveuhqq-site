@@ -193,7 +193,6 @@ async function logout(showGate: boolean) {
   }
 }
 
-root.classList.add('gate-ready');
 onSessionChange(state => {
   if (logoutUnconfirmed && state.authenticated) {
     publishSession({ authenticated: false, configured: state.configured }, true);
@@ -270,3 +269,4 @@ window.addEventListener('storage', event => {
 document.addEventListener('visibilitychange', () => {
   if (!logoutUnconfirmed && document.visibilityState === 'visible') void refreshSession().catch(() => {});
 });
+root.classList.add('gate-ready');

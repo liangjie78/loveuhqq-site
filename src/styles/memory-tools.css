@@ -1,5 +1,5 @@
 /* The shared desk is drawn from global paper tokens; no local colour values here. */
-.memory-tool-hint { font-family: var(--sans); font-size: .88rem; color: var(--muted); line-height: 1.8; }
+.memory-tool-hint { font-family: var(--sans); font-size: .88rem; color: var(--muted-foreground); line-height: 1.8; }
 .memory-desk { position: relative; height: 480px; width: 100%; border: 1px solid var(--line); background: var(--paper-2); overflow: hidden; touch-action: pan-y; }
 .memory-desk-item { position: absolute; width: 145px; min-height: 95px; max-height: 200px; overflow: hidden; background: var(--paper-bright); padding: 9px; box-shadow: 0 1px 3px var(--line); border: 1px solid var(--line-strong); font-family: var(--sans); touch-action: none; cursor: grab; }
 .memory-desk-item:focus-within { z-index: 2; }
