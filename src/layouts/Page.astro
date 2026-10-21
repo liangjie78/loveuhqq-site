@@ -43,6 +43,12 @@ const image = new URL('/images/paper-heart.webp', Astro.site).href;
       (function () {
         var root = document.documentElement;
         root.classList.add('has-js');
+        var theme = 'light';
+        try { theme = localStorage.getItem('loveuhqq_theme') === 'dark' ? 'dark' : 'light'; } catch (error) { /* Theme storage is optional. */ }
+        root.classList.toggle('dark', theme === 'dark');
+        root.dataset.theme = theme;
+        document.querySelector('meta[name="color-scheme"]')?.setAttribute('content', theme);
+        document.querySelector('meta[name="theme-color"]')?.setAttribute('content', theme === 'dark' ? '#1a1717' : '#f5eee4');
         var revealEnabled = !window.matchMedia('(prefers-reduced-motion: reduce)').matches && 'IntersectionObserver' in window;
         if (revealEnabled) {
           root.classList.add('can-reveal');

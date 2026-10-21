@@ -11,7 +11,7 @@ const buttonVariants = cva(
         default:
           'ui-button-default rounded-[3px] border-[var(--line-stronger)] bg-[var(--sheet)] font-[var(--serif)] text-[var(--ink)] hover:border-[var(--rose)] hover:text-[var(--rose)] active:bg-[var(--paper-2)]',
         ghost:
-          'ui-button-ghost rounded-none border-transparent bg-transparent text-[var(--muted)] underline decoration-[var(--line-strong)] underline-offset-4 hover:text-[var(--ink)]',
+          'ui-button-ghost rounded-none border-transparent bg-transparent text-[var(--muted-foreground)] underline decoration-[var(--line-strong)] underline-offset-4 hover:text-[var(--ink)]',
         ink:
           'ui-button-ink min-h-[46px] rounded-full border-transparent bg-[var(--ink)] px-6 text-[var(--paper)] tracking-[.08em] hover:-translate-y-0.5 hover:bg-[var(--ink-soft)]',
       },

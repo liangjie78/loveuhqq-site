@@ -1,7 +1,7 @@
 ---
 import Page from '../layouts/Page.astro';
 import SiteHeader from '../components/SiteHeader.astro';
-import Postmark from '../components/Postmark.astro';
+import Postmark from '../components/Postmark';
 import Lightbox from '../components/Lightbox.astro';
 import { dotted, getRelationshipYearMonths, hundredthDayDate, monthNames, relationshipStartDate } from '../lib/anniversary';
 import { momentTitles } from '../data/moments';
@@ -55,7 +55,7 @@ let inkIndex = 0;
               <img src="/images/paper-heart.webp" alt="" width="900" height="900" decoding="async" fetchpriority="high" />
             </div>
           </div>
-          <Postmark id="hero-mark" class="hero-postmark intro" />
+          <Postmark id="hero-mark" className="hero-postmark intro" />
         </div>
 
         <div class="hero-count intro" style="--delay:.9s">

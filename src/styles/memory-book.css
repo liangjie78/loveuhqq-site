@@ -142,7 +142,7 @@
 }
 .memory-contents-list .contents-note {
   font-size: .85rem;
-  color: var(--muted);
+  color: var(--muted-foreground);
   text-align: right;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -171,7 +171,7 @@
 .memory-section-heading .section-head-title p {
   max-width: 36rem;
   line-height: 1.85;
-  color: var(--muted);
+  color: var(--muted-foreground);
   margin: 0;
 }
 .memory-sublink {
@@ -343,7 +343,7 @@ button.memory-card:hover {
   font-size: 1.05rem;
 }
 .memory-meta {
-  color: var(--muted);
+  color: var(--muted-foreground);
   font-size: .9rem;
   line-height: 1.8;
 }
@@ -445,7 +445,7 @@ button.memory-card:hover {
   margin: 1rem auto;
 }
 .memory-screening-progress {
-  color: var(--muted);
+  color: var(--muted-foreground);
   font-size: .95rem;
   margin-block: .5rem 1rem;
 }

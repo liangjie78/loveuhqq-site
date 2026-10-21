@@ -33,7 +33,7 @@ const hasNav = effectiveLinks.length > 0;
   {
     hasNav && (
       <nav class="site-nav" aria-label="页内导航">
-        {effectiveLinks.map(({ href, label }) => <a href={href}>{label}</a>)}
+        {effectiveLinks.map(({ href, label }) => <a href={href} aria-current={href === Astro.url.pathname ? 'page' : undefined}>{label}</a>)}
       </nav>
     )
   }
@@ -61,3 +61,11 @@ const hasNav = effectiveLinks.length > 0;
     )
   }
 </header>
+<script>
+  const header = document.querySelector<HTMLElement>('[data-header]');
+  if (header) {
+    const updateHeaderSurface = () => header.classList.toggle('is-scrolled', window.scrollY > 8);
+    updateHeaderSurface();
+    window.addEventListener('scroll', updateHeaderSurface, { passive: true });
+  }
+</script>
