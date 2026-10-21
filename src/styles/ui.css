@@ -4,6 +4,7 @@
 @source "../islands";
 
 :root {
+  color-scheme: light;
   --background: #f5eee4;
   --foreground: #2a1f1b;
   --card: #fffcf7;
@@ -11,11 +12,28 @@
   --primary: #b0474f;
   --primary-foreground: #fffcf7;
   --secondary: #ede3d5;
+  --muted: #ede3d5;
   --muted-foreground: #76645b;
   --border: rgb(42 31 27 / .2);
   --input: rgb(42 31 27 / .32);
   --ring: #b0474f;
   --radius: 3px;
+}
+
+.dark {
+  color-scheme: dark;
+  --background: #1a1717;
+  --foreground: #efe7df;
+  --card: #282221;
+  --card-foreground: #efe7df;
+  --primary: #b0474f;
+  --primary-foreground: #fff9f5;
+  --secondary: #352c2a;
+  --muted: #302826;
+  --muted-foreground: #b9a9a1;
+  --border: rgb(239 231 223 / .18);
+  --input: rgb(239 231 223 / .32);
+  --ring: #b0474f;
 }
 
 @theme inline {
@@ -26,6 +44,7 @@
   --color-primary: var(--primary);
   --color-primary-foreground: var(--primary-foreground);
   --color-secondary: var(--secondary);
+  --color-muted: var(--muted);
   --color-muted-foreground: var(--muted-foreground);
   --color-border: var(--border);
   --color-input: var(--input);
