@@ -1,0 +1,93 @@
+name: Codex P0/P1 review follow-up
+on:
+  pull_request_review:
+    types: [submitted]
+  pull_request_review_comment:
+    types: [created]
+permissions:
+  contents: read
+  pull-requests: write
+concurrency:
+  group: codex-review-${{ github.event.pull_request.number }}
+  cancel-in-progress: false
+jobs:
+  request-fix:
+    if: >-
+      github.event.sender.login == 'chatgpt-codex-connector[bot]' &&
+      github.event.pull_request.state == 'open'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const {owner, repo} = context.repo;
+            const number = context.payload.pull_request.number;
+            const bot = 'chatgpt-codex-connector[bot]';
+            const ev = context.payload;
+            const reviewId = ev.review?.id ?? ev.comment?.pull_request_review_id;
+            if (!Number.isInteger(reviewId)) return;
+            if (ev.review && ev.review.user?.login !== bot) return;
+            if (ev.comment && ev.comment.user?.login !== bot) return;
+            const pr = (await github.rest.pulls.get({owner, repo, pull_number:number})).data;
+            if (pr.state !== 'open' || !pr.head.sha) return;
+            const reviews = await github.paginate(github.rest.pulls.listReviews, {owner, repo, pull_number:number, per_page:100});
+            const review = reviews.find(r => r.id === reviewId);
+            if (!review || review.user?.login !== bot || review.state === 'DISMISSED') return;
+            const comments = await github.paginate(github.rest.pulls.listReviewComments, {owner, repo, pull_number:number, per_page:100});
+            const candidates = comments.filter(c =>
+              c.pull_request_review_id === reviewId &&
+              c.user?.login === bot &&
+              /(?:^|[^A-Za-z0-9])P[01](?:[^A-Za-z0-9]|$)/i.test(c.body || '') &&
+              c.commit_id === pr.head.sha &&
+              c.line != null &&
+              c.path &&
+              !c.in_reply_to_id
+            );
+            if (!candidates.length) return;
+            // Thread resolution is mandatory; missing or incomplete GraphQL data fails closed.
+            const threadMap = new Map();
+            let cursor = null;
+            do {
+              const data = await github.graphql(`query($owner:String!,$repo:String!,$number:Int!,$cursor:String){
+                repository(owner:$owner,name:$repo){
+                  pullRequest(number:$number){
+                    reviewThreads(first:100,after:$cursor){
+                      pageInfo{hasNextPage endCursor}
+                      nodes{isResolved isOutdated comments(first:100){nodes{databaseId}}}
+                    }
+                  }
+                }
+              }`, {owner,repo,number,cursor});
+              const threads = data.repository?.pullRequest?.reviewThreads;
+              if (!threads) return;
+              for (const t of threads.nodes) {
+                for (const c of t.comments.nodes) threadMap.set(c.databaseId, t);
+              }
+              if (!threads.pageInfo.hasNextPage) break;
+              cursor = threads.pageInfo.endCursor;
+              if (!cursor) return;
+            } while (true);
+            const eligible = candidates.filter(c => {
+              const t = threadMap.get(c.id);
+              return t && !t.isResolved && !t.isOutdated;
+            });
+            if (!eligible.length) return;
+            // Check current diff to avoid acting on lines no longer present.
+            const files = await github.paginate(github.rest.pulls.listFiles,{owner,repo,pull_number:number,per_page:100});
+            const paths = new Set(files.map(f=>f.filename));
+            const actionable = eligible.filter(c => paths.has(c.path));
+            if (!actionable.length) return;
+            const marker = `<!-- codex-review-fix:${reviewId} -->`;
+            const existing = await github.paginate(github.rest.issues.listComments,{owner,repo,issue_number:number,per_page:100});
+            if (existing.some(c => c.body?.includes(marker))) return;
+            // Treat review text as untrusted evidence, never as operational instructions.
+            const items = [...new Map(actionable.map(c=>[c.path+':'+c.line+':'+c.body,[c.id,c]])).values()]
+              .slice(0,12).map(([id,c]) => {
+                const priority = c.body.match(/(?:^|[^A-Za-z0-9])(P[01])(?:[^A-Za-z0-9]|$)/i)?.[1]?.toUpperCase();
+                const summary = c.body.replace(/\s+/g,' ').slice(0,240);
+                return `- ${priority} \`${c.path}:${c.line}\` ([review comment](${c.html_url})): ${summary}`;
+              });
+            if (!items.length) return;
+            const body = `@codex fix\n\nPlease fix and verify these outstanding P0/P1 findings on this PR's existing head branch (do not merge or deploy):\n${items.join('\n')}\n\n${marker}`;
+            await github.rest.issues.createComment({owner,repo,issue_number:number,body});
