@@ -44,6 +44,7 @@ function spokenDate(date: string, currentYear: number) {
 
 const grid = $('[data-year-grid]');
 const readout = $('[data-year-readout]');
+const yearFeedback = $('.year-feedback');
 const returnToday = $<HTMLButtonElement>('[data-return-today]');
 const noteJump = $<HTMLButtonElement>('[data-note-jump]');
 const verticalCalendar = window.matchMedia('(max-width: 640px)');
@@ -283,12 +284,15 @@ if (grid) {
     const target = event.target as Element;
     if (pickedCell && !grid.contains(target) && !target.closest('.day-back') && !target.closest('[data-note-jump]') && !target.closest('[data-moment-ticket]')) release();
   });
-  noteJump?.addEventListener('click', () => {
-    document.querySelector<HTMLElement>('.day-back')?.scrollIntoView({
+  const showDayBack = () => {
+    const dayBack = $('.day-back');
+    dayBack?.focus({ preventScroll: true });
+    dayBack?.scrollIntoView({
       behavior: reducedMotion.matches ? 'auto' : 'smooth',
       block: 'start',
     });
-  });
+  };
+  noteJump?.addEventListener('click', showDayBack);
 
   // Keyboard days: the grid is one tab stop, arrows walk the cells.
   const move = (target: number) => {
@@ -298,6 +302,8 @@ if (grid) {
     if (!cell) return;
     pinned = true;
     pick(cell, true);
+    // The mobile readout sticks below the header and can grow when a date wraps.
+    cell.style.scrollMarginTop = verticalCalendar.matches && yearFeedback ? `${yearFeedback.offsetHeight}px` : '';
     cell.scrollIntoView({ block: 'nearest', inline: 'nearest' });
   };
   grid.addEventListener('keydown', (event) => {
@@ -342,10 +348,7 @@ if (grid) {
         if (noteJump) noteJump.hidden = false;
         document.dispatchEvent(new CustomEvent('journal:date', { detail: date }));
       }
-      document.querySelector<HTMLElement>('.day-back')?.scrollIntoView({
-        behavior: reducedMotion.matches ? 'auto' : 'smooth',
-        block: 'start',
-      });
+      showDayBack();
     });
   }
 }

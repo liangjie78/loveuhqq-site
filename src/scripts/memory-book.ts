@@ -15,7 +15,7 @@ import { ArrowDown, ArrowRight, ArrowUp, Lock, Pencil, RotateCw, Trash2 } from '
 const $ = <T extends HTMLElement = HTMLElement>(selector: string, parent: ParentNode = document) => parent.querySelector<T>(selector)!;
 const all = <T extends HTMLElement = HTMLElement>(selector: string, parent: ParentNode = document) => [...parent.querySelectorAll<T>(selector)];
 const el = <K extends keyof HTMLElementTagNameMap>(tag: K, text = '', className = '') => { const node = document.createElement(tag); node.textContent = text; node.className = className; return node; };
-const button = (text: string, action: () => void, className = buttonVariants({ variant: 'ghost' }), Icon?: LucideIconNode) => { const node = el('button', '', className); if (Icon) node.append(lucideSvg(Icon, 15)); if (text) node.append(el('span', text)); node.type = 'button'; node.addEventListener('click', action); return node; };
+const button = (text: string, action: (trigger: HTMLButtonElement) => void, className = buttonVariants({ variant: 'ghost' }), Icon?: LucideIconNode) => { const node = el('button', '', className); if (Icon) node.append(lucideSvg(Icon, 15)); if (text) node.append(el('span', text)); node.type = 'button'; node.addEventListener('click', () => action(node)); return node; };
 const status = $('[data-memory-status]');
 const exportButton = $<HTMLButtonElement>('[data-memory-export]');
 const exportStatus = $('[data-memory-export-status]');
@@ -23,6 +23,7 @@ const privateRoot = $('[data-memory-private]');
 const storyForm = $<HTMLFormElement>('[data-story-form]');
 const letterForm = $<HTMLFormElement>('[data-letter-form]');
 const placeForm = $<HTMLFormElement>('[data-place-form]');
+const formTriggers = new Map<HTMLFormElement, HTMLElement>();
 const field = (form: HTMLFormElement, name: string) => form.elements.namedItem(name) as HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement;
 const value = (form: HTMLFormElement, name: string) => field(form, name).value;
 const set = (form: HTMLFormElement, name: string, content: string) => { field(form, name).value = content; };
@@ -155,6 +156,7 @@ function discardShownContent() {
   all<HTMLImageElement>('img', privateRoot).forEach(image => image.removeAttribute('src'));
   renderedLists.clear();
   storyForm.hidden = letterForm.hidden = placeForm.hidden = true;
+  formTriggers.clear();
   $('[data-story-detail]').hidden = $('[data-letter-detail]').hidden = true;
   $('[data-memory-identity]').hidden = true;
   $('[data-memory-identity-unselected]').hidden = true;
@@ -194,6 +196,7 @@ async function load() {
         clearSelectors();
         all<HTMLElement>('[data-story-detail], [data-letter-detail], [data-screening-stage], [data-screening-order]', privateRoot).forEach(node => node.replaceChildren());
         storyForm.hidden = letterForm.hidden = placeForm.hidden = true;
+        formTriggers.clear();
       }
       book = next;
       setCurrentMember(next.member?.id ?? null);
@@ -229,6 +232,13 @@ async function submit(form: HTMLFormElement, task: () => Promise<void>) {
   let feedback = form.querySelector<HTMLElement>('.memory-form-feedback'); if (!feedback) { feedback = el('p', '', 'memory-form-feedback'); feedback.setAttribute('role', 'status'); form.append(feedback); }
   feedback.textContent = '正在收好…';
   try { await task(); feedback.textContent = status.textContent || '这次操作已完成。'; } finally { delete form.dataset.busy; controls.forEach(({ control, inert }) => { control.inert = inert; }); }
+}
+function cancelForm(form: HTMLFormElement, fallback: HTMLElement) {
+  form.hidden = true;
+  delete form.dataset.dirty;
+  const trigger = formTriggers.get(form);
+  formTriggers.delete(form);
+  (trigger?.isConnected ? trigger : fallback).focus();
 }
 function memberName(id: string) { return id === 'one' ? '男生' : '女生'; }
 function conflictReview(form: HTMLFormElement, latest: () => { text: string; accept: () => void }) {
@@ -275,6 +285,7 @@ async function selectIdentity(id: string) {
       photos = parsePhotoManifest(manifest).photos; notebook = notes;
     } else { photos = []; notebook = null; }
     render();
+    if (book.member && document.activeElement === document.body) $('[data-switch-identity]').focus({ preventScroll: true });
     status.textContent = '';
     $('[data-memory-retry]').hidden = true;
   } catch (error) {
@@ -318,19 +329,21 @@ function render() {
   if (!member) {
     renderedLists.clear();
     all<HTMLElement>('[data-story-list], [data-story-detail], [data-letter-list], [data-letter-detail], [data-place-list], [data-screening-options], [data-screening-order]').forEach(node => node.replaceChildren());
-    storyForm.hidden = letterForm.hidden = placeForm.hidden = true; return;
+    storyForm.hidden = letterForm.hidden = placeForm.hidden = true; formTriggers.clear(); return;
   }
   renderStoryList(); renderStory(); renderWishes(); renderLetters(); renderLetter(); renderScreeningOptions(); renderPlaces();
   updateSharedDesk();
   jumpToHash();
 }
-let pendingHash = location.hash.slice(1);
+let initialHashPending = true;
 function jumpToHash() {
-  if (!pendingHash) return;
+  if (!initialHashPending) return;
+  initialHashPending = false;
   let target: HTMLElement | null = null;
-  try { target = document.getElementById(decodeURIComponent(pendingHash)); } catch { /* A malformed hash is simply ignored. */ }
-  pendingHash = '';
-  if (target && !target.hidden) target.scrollIntoView({ behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth', block: 'start' });
+  try { target = document.getElementById(decodeURIComponent(location.hash.slice(1))); } catch { /* A malformed hash is simply ignored. */ }
+  if (!target?.matches('.memory-section')) return;
+  target.querySelector<HTMLElement>('h2')?.focus({ preventScroll: true });
+  target.scrollIntoView({ behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth', block: 'start' });
 }
 function matchesFilter(story: MemoryStory) {
   const search = $<HTMLInputElement>('[data-story-search]').value.trim().toLocaleLowerCase();
@@ -377,7 +390,7 @@ function renderStory() {
   renderedStory = snapshot;
   disposeRecordings(detail); detail.replaceChildren(); detail.dataset.layout = story.layout;
   detail.append(el('p', story.date, 'memory-meta'), el('h3', story.title), el('p', story.text, 'memory-prose'));
-  detail.append(button('改这一页', () => openStoryForm(story), buttonVariants({ variant: 'ghost' }), Pencil));
+  detail.append(button('改这一页', trigger => openStoryForm(story, trigger), buttonVariants({ variant: 'ghost' }), Pencil));
   const wall = el('div', '', 'memory-story-photos'); story.photoIds.forEach(id => { const photo = photos.find(item => item.id === id); if (photo) wall.append(imageFor(photo)); }); detail.append(wall);
   const parts = el('div', '', 'memory-parts');
   for (const member of book.members) {
@@ -396,7 +409,7 @@ function renderStory() {
         text.input.maxLength = 10000; reply.input.maxLength = 3000;
         form.append(text.label, reply.label, label, recorder({ storyId: story.id }, id => { audioIds.push(id); form.dataset.dirty = 'yes'; }));
         const save = el('button', '收好自己的版本', buttonVariants({ variant: 'default' })); save.type = 'submit';
-        form.append(save, button('先不改', () => { disposeRecordings(form); form.remove(); edit.hidden = false; }));
+        form.append(save, button('先不改', () => { disposeRecordings(form); form.remove(); edit.hidden = false; edit.focus(); }));
         form.addEventListener('input', () => { form.dataset.dirty = 'yes'; });
         form.addEventListener('submit', event => { event.preventDefault(); void submit(form, async () => { const body: PartInput = { expectedVersion: partEditVersion, text: text.input.value, reply: reply.input.value, submitted: submitted.checked, audioIds }; if (await write(`/stories/${story.id}/part`, 'PUT', body)) { delete form.dataset.dirty; renderStory(); } else conflictReview(form, () => { const latest = book.stories.find(item => item.id === story.id)?.parts.find(item => item.memberId === member.id); return { text: `${latest?.text ?? ''}\n${latest?.reply ?? ''}`, accept() { partEditVersion = latest?.version ?? 0; } }; }); }); });
         section.append(form); text.input.focus();
@@ -414,7 +427,7 @@ function renderStory() {
     const edit = button('安排这件事', () => {
       edit.hidden = true;
       const form = wishPlan(wish, story);
-      form.append(button('先不改', () => { form.remove(); edit.hidden = false; })); card.append(form);
+      form.append(button('先不改', () => { form.remove(); edit.hidden = false; edit.focus(); })); card.append(form);
     });
     card.append(edit); detail.append(card);
   }
@@ -422,7 +435,8 @@ function renderStory() {
   if (locations.length) { const area = el('section'); area.append(el('h4', '这一页里的地点')); locations.forEach(place => area.append(button(`${place.name} · 查看地点`, () => { selectedPlaceYear = String(place.year); renderPlaces(); $('#places').scrollIntoView({ block: 'start' }); document.querySelector<HTMLElement>(`[data-place-id="${CSS.escape(place.id)}"]`)?.focus({ preventScroll: true }); }))); detail.append(area); }
 }
 function labeledTextarea(text: string, initial: string, maxLength = 10000) { const label = el('label', text); const input = el('textarea'); input.className = textareaVariants({ variant: 'default' }); input.rows = 5; input.maxLength = maxLength; input.value = initial; label.append(input); return { label, input }; }
-function openStoryForm(story?: MemoryStory) {
+function openStoryForm(story?: MemoryStory, trigger = $('[data-story-new]')) {
+  formTriggers.set(storyForm, trigger);
   all<HTMLElement>('[data-conflict-review]', storyForm).forEach(node => node.remove());
   storyForm.reset(); delete storyForm.dataset.dirty; storyEditVersion = story?.version ?? 0;
   set(storyForm, 'id', story?.id ?? crypto.randomUUID()); set(storyForm, 'title', story?.title ?? ''); set(storyForm, 'date', story?.date ?? filter.get('date') ?? today()); set(storyForm, 'text', story?.text ?? ''); set(storyForm, 'layout', story?.layout ?? 'journal');
@@ -454,8 +468,8 @@ function renderWishes() {
     const story = book.stories.find(item => item.id === plan?.storyId) ?? book.stories.find(item => item.wishIds.includes(wish.id));
     const card = el('article', '', 'paper-card'); card.append(el('h3', wish.text), el('p', `${wish.done ? '已经做过' : '还想一起做'}${plan?.plannedDate ? ` · 商定在 ${plan.plannedDate}` : ' · 还没定日期'}`, 'memory-meta'));
     if (story) card.append(button(`翻开后来：${story.title}`, () => openStory(story.id)));
-    const edit = button('安排这件事', () => { edit.hidden = true; const form = wishPlan(wish); const close = button('先不改', () => { form.remove(); edit.hidden = false; }); form.append(close); card.append(form); });
-    card.append(edit, button('为这件事写故事', () => { filter.set('wish', wish.id); openStoryForm(); })); list.append(card);
+    const edit = button('安排这件事', () => { edit.hidden = true; const form = wishPlan(wish); const close = button('先不改', () => { form.remove(); edit.hidden = false; edit.focus(); }); form.append(close); card.append(form); });
+    card.append(edit, button('为这件事写故事', trigger => { filter.set('wish', wish.id); openStoryForm(undefined, trigger); })); list.append(card);
   }
 }
 function wishPlan(wish: Wish, story?: MemoryStory) {
@@ -508,7 +522,7 @@ function renderLetter() {
   if (letter.pairKey) detail.append(el('p', `一起拆信的约定：${letter.pairKey}`, 'memory-meta'));
   if (letter.senderId === book.member?.id) {
     if (letter.status === 'draft') {
-      detail.append(button('接着写', () => openLetter(letter)), button('确认封好这封信', () => sealLetter(letter), buttonVariants({ variant: 'default' }), Lock));
+      detail.append(button('接着写', trigger => openLetter(letter, trigger)), button('确认封好这封信', () => sealLetter(letter), buttonVariants({ variant: 'default' }), Lock));
       detail.append(recorder({ letterId: letter.id }, async id => { if (!await write(`/letters/${letter.id}`, 'PUT', letterInput(letter, [...(letter.audioIds ?? []), id]))) throw new Error('Audio attachment failed'); }));
     } else detail.append(button('撤回为草稿', () => withdrawLetter(letter)));
   }
@@ -529,7 +543,8 @@ async function withdrawLetter(letter: MemoryLetter) {
   const ok = await write(`/letters/${letter.id}/withdraw`, 'POST', { expectedVersion: letter.version });
   if (!ok) letterFeedback(lastWriteConflict ? '这封信已在别处更新，请稍后再试。' : '这次没能撤回，信还在封存中，可以再试一次。');
 }
-function openLetter(letter?: MemoryLetter) {
+function openLetter(letter?: MemoryLetter, trigger = $('[data-letter-new]')) {
+  formTriggers.set(letterForm, trigger);
   all<HTMLElement>('[data-conflict-review]', letterForm).forEach(node => node.remove());
   letterForm.reset(); delete letterForm.dataset.dirty; letterEditVersion = letter?.version ?? 0; set(letterForm, 'id', letter?.id ?? crypto.randomUUID()); set(letterForm, 'title', letter?.title ?? ''); set(letterForm, 'text', letter?.text ?? ''); set(letterForm, 'openDate', letter?.openDate ?? today()); set(letterForm, 'pairKey', letter?.pairKey ?? ''); set(letterForm, 'recipientId', letter?.recipientId ?? (book.member?.id === 'one' ? 'two' : 'one'));
   letterForm.hidden = false; field(letterForm, 'title').focus();
@@ -631,7 +646,7 @@ function renderPlaces() {
       const card = el('article', '', 'memory-card'); card.dataset.placeId = place.id; card.tabIndex = -1;
       // Coordinates and version are not part of the render key, so resolve the latest
       // record by ID; a retained card must not reopen the editor with stale state.
-      card.append(el('h3', place.name), el('p', String(place.year), 'memory-meta'), button('改这个地点', () => openPlace(book.places.find(item => item.id === place.id) ?? place)));
+      card.append(el('h3', place.name), el('p', String(place.year), 'memory-meta'), button('改这个地点', trigger => openPlace(book.places.find(item => item.id === place.id) ?? place, trigger)));
       place.storyIds.forEach(id => { const story = book.stories.find(item => item.id === id); if (story) card.append(button(`翻开：${story.title}`, () => openStory(id))); });
       place.wishIds.forEach(id => { const wish = notebook?.wishes.find(item => item.id === id); if (wish) card.append(button(`往后的小事：${wish.text}`, () => { $('#wishes').scrollIntoView({ block: 'start' }); })); }); list.append(card);
     }
@@ -645,7 +660,8 @@ function renderPlaces() {
   }
   year.value = selectedPlaceYear;
 }
-function openPlace(place?: MemoryPlace) {
+function openPlace(place?: MemoryPlace, trigger = $('[data-place-new]')) {
+  formTriggers.set(placeForm, trigger);
   all<HTMLElement>('[data-conflict-review]', placeForm).forEach(node => node.remove());
   placeForm.querySelector('details')?.removeAttribute('open');
   placeForm.reset(); delete placeForm.dataset.dirty; placeEditVersion = place?.version ?? 0; set(placeForm, 'id', place?.id ?? crypto.randomUUID()); set(placeForm, 'name', place?.name ?? ''); set(placeForm, 'year', String(place?.year ?? Number(today().slice(0, 4)))); set(placeForm, 'latitude', place?.lat == null ? '' : String(place.lat)); set(placeForm, 'longitude', place?.lng == null ? '' : String(place.lng));
@@ -726,11 +742,11 @@ window.addEventListener('storage', event => { if (event.key === 'loveuhqq_member
 $('[data-memory-retry]').addEventListener('click', () => { void load(); });
 exportButton.addEventListener('click', () => { void exportVisibleRecords(); });
 $('[data-story-new]').addEventListener('click', () => openStoryForm());
-$('[data-story-cancel]').addEventListener('click', () => { storyForm.hidden = true; delete storyForm.dataset.dirty; });
+$('[data-story-cancel]').addEventListener('click', () => cancelForm(storyForm, $('[data-story-new]')));
 $('[data-letter-new]').addEventListener('click', () => openLetter());
-$('[data-letter-cancel]').addEventListener('click', () => { letterForm.hidden = true; delete letterForm.dataset.dirty; });
+$('[data-letter-cancel]').addEventListener('click', () => cancelForm(letterForm, $('[data-letter-new]')));
 $('[data-place-new]').addEventListener('click', () => openPlace());
-$('[data-place-cancel]').addEventListener('click', () => { placeForm.hidden = true; delete placeForm.dataset.dirty; });
+$('[data-place-cancel]').addEventListener('click', () => cancelForm(placeForm, $('[data-place-new]')));
 $<HTMLInputElement>('[data-story-search]').addEventListener('input', renderStoryList);
 $('[data-story-filter-clear]').addEventListener('click', () => { filter = new URLSearchParams(); $<HTMLInputElement>('[data-story-search]').value = ''; renderStoryList(); });
 $<HTMLSelectElement>('[data-place-year]').addEventListener('change', event => { selectedPlaceYear = (event.target as HTMLSelectElement).value; renderPlaces(); });
@@ -767,4 +783,3 @@ function initNavObserver() {
 
 void getSession().catch(report);
 initNavObserver();
-jumpToHash();

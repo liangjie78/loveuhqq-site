@@ -1,5 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useStore } from 'zustand';
+import { Check, ChevronDown } from 'lucide-react';
+import { Popover } from 'radix-ui';
 import { ToggleGroup, ToggleGroupItem } from '../components/ui/toggle-group';
 import { api } from '../lib/cloud-notebook';
 import { beginMemberRequest, isLatestMemberRequest, selectMember, setCurrentMember } from '../lib/member';
@@ -43,6 +45,7 @@ export default function SignatureChoice() {
   const [unlocked, setUnlocked] = useState(false);
   const [status, setStatus] = useState('');
   const [busy, setBusy] = useState(false);
+  const [open, setOpen] = useState(false);
   const generation = useRef(0);
 
   const isUnlocked = useCallback(() => authenticated && !document.documentElement.classList.contains('is-locked'), [authenticated]);
@@ -50,9 +53,9 @@ export default function SignatureChoice() {
     const token = ++generation.current;
     const requestId = beginMemberRequest();
     const ready = isUnlocked();
-    document.documentElement.classList.toggle('signature-room', ready);
     if (!ready) {
       setUnlocked(false);
+      setOpen(false);
       setStatus('');
       setCurrentMember(null);
       return;
@@ -79,14 +82,14 @@ export default function SignatureChoice() {
       setUnlocked(false);
       setStatus('');
       setCurrentMember(null);
-      document.documentElement.classList.remove('signature-room');
+      setOpen(false);
     };
     const onPageShow = (event: PageTransitionEvent) => {
       if (!event.persisted) return;
       void refreshSession().then(state => {
         if (!state.authenticated) return;
         void refresh();
-      }).catch(() => { setUnlocked(false); document.documentElement.classList.remove('signature-room'); });
+      }).catch(() => { setUnlocked(false); setOpen(false); });
     };
     const onChannel = (event: MessageEvent) => {
       const data: unknown = event.data;
@@ -116,7 +119,7 @@ export default function SignatureChoice() {
       setCurrentMember(null);
       setUnlocked(false);
       setStatus('');
-      document.documentElement.classList.remove('signature-room');
+      setOpen(false);
       return;
     }
     if (!document.documentElement.classList.contains('is-locked')) void refresh();
@@ -133,10 +136,11 @@ export default function SignatureChoice() {
       if (token !== generation.current || !isLatestMemberRequest(requestId) || !isUnlocked() || id === memberStore.getState().memberId) return;
       if (elsewhere && !window.confirm(discardIdentityMessage)) return;
       setStatus('正在选择…');
-      const book = await selectMember(id as 'one' | 'two', undefined, requestId);
+      const book = await selectMember(id, undefined, requestId);
       if (!book || token !== generation.current || !isLatestMemberRequest(requestId) || !isUnlocked()) return;
       setUnlocked(true);
       setStatus('');
+      setOpen(false);
       broadcastMemberChange(channel);
       document.dispatchEvent(new Event('memory:identity-changed'));
     } catch {
@@ -148,21 +152,34 @@ export default function SignatureChoice() {
   }
 
   return (
-    <div className="signature-choice ui" data-signature-choice hidden={!unlocked}>
-      <p className="signature-label" data-signature-label aria-hidden="true">请选择身份</p>
-      <ToggleGroup
-        type="single"
-        value={memberId ?? ''}
-        onValueChange={value => { if (value) void choose(value); }}
-        className="signature-options"
-        aria-label="请选择身份"
-        disabled={busy}
-        data-signature-options
-      >
-        <ToggleGroupItem value="one" data-signature="one">男生</ToggleGroupItem>
-        <ToggleGroupItem value="two" data-signature="two">女生</ToggleGroupItem>
-      </ToggleGroup>
-      <p className="signature-status" data-signature-status role="status">{status}</p>
-    </div>
+    <span className="signature-choice" data-signature-choice hidden={!unlocked}>
+      <Popover.Root open={open} onOpenChange={setOpen}>
+        <Popover.Trigger asChild>
+          <button className="signature-trigger" type="button" disabled={busy} aria-label={memberId ? '切换身份' : '请选择身份'}>
+            {memberId === 'one' ? '男生' : memberId === 'two' ? '女生' : '选择身份'}
+            <ChevronDown size={14} aria-hidden="true" />
+          </button>
+        </Popover.Trigger>
+        <Popover.Portal>
+          <Popover.Content className="signature-menu ui" align="end" sideOffset={10} collisionPadding={16}>
+            <Popover.Title className="sr-only">请选择身份</Popover.Title>
+            <ToggleGroup
+              type="single"
+              value={memberId ?? ''}
+              onValueChange={value => { if (value) void choose(value); }}
+              orientation="vertical"
+              className="signature-options"
+              aria-label="请选择身份"
+              disabled={busy}
+              data-signature-options
+            >
+              <ToggleGroupItem value="one" data-signature="one">男生<Check size={14} aria-hidden="true" /></ToggleGroupItem>
+              <ToggleGroupItem value="two" data-signature="two">女生<Check size={14} aria-hidden="true" /></ToggleGroupItem>
+            </ToggleGroup>
+            <p className="signature-status" data-signature-status role="status">{status}</p>
+          </Popover.Content>
+        </Popover.Portal>
+      </Popover.Root>
+    </span>
   );
 }
