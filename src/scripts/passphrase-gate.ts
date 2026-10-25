@@ -61,7 +61,7 @@ function openGate(trigger?: HTMLElement) {
   stage = 'date'; clearPassphrase(); password.value = '';
   input.removeAttribute('aria-invalid'); password.removeAttribute('aria-invalid');
   row.hidden = logoutUnconfirmed; passwordPanel.hidden = true;
-  title.textContent = logoutUnconfirmed ? '暂时没能退出' : '我们，是从哪天开始的？';
+  title.textContent = logoutUnconfirmed ? '暂时没能退出' : '我们，\n是从哪天开始的？';
   hint.textContent = logoutUnconfirmed ? '这台设备可能仍保持登录。' : '月和日，四位数字';
   error.textContent = logoutUnconfirmed ? '请联网后重试退出。' : '';
   visit.hidden = logoutUnconfirmed; retryLogout.hidden = !logoutUnconfirmed;

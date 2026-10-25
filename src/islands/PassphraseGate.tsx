@@ -73,7 +73,7 @@ export default function PassphraseGate() {
       <Postmark id="gate-mark" className="gate-postmark" dated={false} />
       <CardHeader className="gate-header">
         <CardTitle className="gate-title">
-          <h2 className="gate-title-text" id="gate-title">我们，是从哪天开始的？</h2>
+          <h2 className="gate-title-text" id="gate-title">{'我们，\n是从哪天开始的？'}</h2>
         </CardTitle>
         <CardDescription className="gate-hint" id="gate-hint">月和日，四位数字</CardDescription>
       </CardHeader>

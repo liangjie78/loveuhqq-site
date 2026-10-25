@@ -31,7 +31,7 @@
 .note-search-field button { flex: none; min-height: 44px; font-size: .75rem; color: var(--rose-deep); }
 .note-index-empty { padding-block: .75rem; font-size: .85rem; color: var(--muted-foreground); line-height: 1.8; }
 .year-cells > .is-written { outline: 1px solid var(--ink-2); outline-offset: 2px; }
-.moment-archive { margin-top: 4rem; }
+.moment-archive { margin-top: clamp(3rem, 6vw, 4rem); }
 .moment-archive-head h3 { font: 400 1.5rem/1.5 var(--serif); }
 .moment-archive-list { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 1.25rem; list-style: none; padding: 0; margin: 1.5rem 0 0; }
 .memory-ticket { position: relative; padding: 0; border-left: 1px dashed var(--line-stronger); background: var(--paper-bright); }
@@ -44,7 +44,7 @@
 .memory-ticket-title { margin-top: .65rem; font: 400 1.1rem/1.7 var(--serif); }
 .memory-ticket [data-moment-status]:not([hidden]) { justify-self: start; display: inline-block; font-size: .7rem; border: 1px solid var(--line-strong); padding: 0 .4rem; margin-top: .6rem; color: var(--muted-foreground); }
 .future { background: var(--paper-2); }
-.future-spread { display: grid; grid-template-columns: 1fr 1.15fr; gap: 3rem 5rem; align-items: start; }
+.future-spread { display: grid; width: min(100%, 60rem); margin-inline: auto; grid-template-columns: minmax(0, .9fr) minmax(0, 1.1fr); gap: 3rem clamp(2rem, 5vw, 4rem); align-items: start; }
 .future-intro { padding-top: 1.5rem; }
 .future-intro h2 { font: 400 clamp(2rem, 4.4vw, 3.2rem)/1.55 var(--serif); letter-spacing: .04em; margin: 1rem 0; }
 .future-intro > p:not(.draw-result) { line-height: 2; color: var(--muted-foreground); }
