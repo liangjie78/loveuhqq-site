@@ -1555,7 +1555,11 @@ html.is-unlocking body > :not(.gate) { visibility: visible; }
   .year .tape-corner { top: -.35rem; left: -1rem; width: 4.75rem; }
   .year-ends, .year-hint, .year-feedback, .year-legend { padding-left: 0; }
   .year-ends { margin-bottom: 1rem; }
-  .year-feedback { position: sticky; top: calc(var(--header) + env(safe-area-inset-top)); z-index: 3; min-height: 3rem; margin-bottom: .5rem; padding-block: .25rem; }
+  .year-feedback { position: sticky; top: calc(var(--header) + env(safe-area-inset-top)); z-index: 3; display: grid; grid-template-columns: 1fr auto; gap: .15rem 1rem; min-height: 3rem; margin-bottom: .5rem; padding-block: .25rem; }
+  .year-feedback .year-readout { grid-column: 1 / -1; }
+  .year-note-jump { justify-self: start; }
+  .year-today { grid-column: 2; justify-self: end; }
+  .year-today:disabled { display: none; }
   .year-grid { touch-action: pan-y; }
   .year-grid {
     grid-template-columns: repeat(var(--months), minmax(0, 1fr));

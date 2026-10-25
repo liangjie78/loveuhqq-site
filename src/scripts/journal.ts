@@ -44,6 +44,7 @@ function spokenDate(date: string, currentYear: number) {
 
 const grid = $('[data-year-grid]');
 const readout = $('[data-year-readout]');
+const yearFeedback = $('.year-feedback');
 const returnToday = $<HTMLButtonElement>('[data-return-today]');
 const noteJump = $<HTMLButtonElement>('[data-note-jump]');
 const verticalCalendar = window.matchMedia('(max-width: 640px)');
@@ -298,6 +299,8 @@ if (grid) {
     if (!cell) return;
     pinned = true;
     pick(cell, true);
+    // The mobile readout sticks below the header and can grow when a date wraps.
+    cell.style.scrollMarginTop = verticalCalendar.matches && yearFeedback ? `${yearFeedback.offsetHeight}px` : '';
     cell.scrollIntoView({ block: 'nearest', inline: 'nearest' });
   };
   grid.addEventListener('keydown', (event) => {
