@@ -4,8 +4,9 @@ import { Moon, Sun } from 'lucide-react';
 import { Toggle } from '../components/ui/toggle';
 import { buttonVariants } from '../components/ui/button';
 import { sessionStore } from '../stores/session';
+import SignatureChoice from './SignatureChoice';
 
-export default function SiteSession() {
+export default function SiteSession({ showSignature = false }: { showSignature?: boolean }) {
   const authenticated = useStore(sessionStore, state => state.authenticated);
   const [dark, setDark] = useState(false);
 
@@ -45,7 +46,7 @@ export default function SiteSession() {
       >
         访客
       </button>
-      <span data-session-label hidden={!authenticated}>我们的手账</span>
+      <span data-session-label hidden={!authenticated}>{showSignature ? <SignatureChoice /> : '我们的手账'}</span>
       <button
         type="button"
         className={buttonVariants({ variant: 'ghost' })}

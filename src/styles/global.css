@@ -1675,41 +1675,40 @@ html.is-unlocking body > :not(.gate) { visibility: visible; }
 
 /* ---------- Signature choice ---------- */
 
-html.signature-room .hero {
-  padding-top: calc(var(--header) + env(safe-area-inset-top) + 5.4rem);
-}
-
-.signature-choice {
-  position: absolute;
-  z-index: 4;
-  top: calc(var(--header) + env(safe-area-inset-top) + .55rem);
-  left: 50%;
-  translate: -50% 0;
+.signature-choice { display: inline-flex; }
+.signature-trigger {
   display: inline-flex;
   align-items: center;
-  justify-content: center;
-  flex-wrap: wrap;
-  gap: .35rem .5rem;
-  width: max-content;
-  max-width: calc(100% - 2rem);
-  margin: 0;
-  padding: .2rem .35rem .2rem .85rem;
-  background: var(--sheet);
-  border: 1px solid var(--line-strong);
-  border-radius: 99px;
-  font-size: .88rem;
+  gap: .35rem;
+  min-height: 44px;
+  padding-inline: .5rem;
+  color: var(--ink);
+  cursor: pointer;
 }
+.signature-trigger svg { transition: rotate .2s var(--ease-out); }
+.signature-trigger[data-state="open"] svg { rotate: 180deg; }
+.signature-trigger:hover { color: var(--rose); }
 
 html.is-locked .signature-choice,
 .signature-choice[hidden] { display: none !important; }
 
-.signature-label {
-  color: var(--muted-foreground);
-  letter-spacing: .06em;
-  user-select: none;
+.signature-menu {
+  z-index: 70;
+  width: 10rem;
+  max-width: calc(100vw - 2rem);
+  padding: .45rem;
+  border: 1px solid var(--line-strong);
+  border-radius: 3px;
+  background: var(--sheet);
+  color: var(--ink);
+  box-shadow: var(--shadow-paper);
+  animation: fade .16s var(--ease-out);
 }
-
-.signature-options { display: inline-flex; flex-wrap: wrap; align-items: center; gap: .35rem; }
-
+.signature-options { display: grid; width: 100%; gap: .25rem; }
+.signature-options > button { justify-content: space-between; min-height: 44px; padding-inline: .8rem; border: 0; border-radius: 2px; background: transparent; font-weight: 400; box-shadow: none; }
+.signature-options > button:hover { background: var(--paper-2); }
+.signature-options > button[data-state="on"] { background: var(--nav-current); color: var(--rose); }
+.signature-options > button svg { opacity: 0; }
+.signature-options > button[data-state="on"] svg { opacity: 1; }
 .signature-status:empty { display: none; }
-.signature-status { flex-basis: 100%; margin: 0; text-align: center; font-size: .82rem; color: var(--muted-foreground); }
+.signature-status { margin: .5rem .35rem .25rem; font-size: .78rem; line-height: 1.7; color: var(--muted-foreground); }

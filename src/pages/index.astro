@@ -13,7 +13,6 @@ import MemoryEntry from '../components/MemoryEntry.astro';
 import MomentArchive from '../components/MomentArchive.astro';
 import { buttonVariants } from '../components/ui/button';
 import { ArrowDown, ArrowLeft, ArrowUp, ArrowRight, ChevronRight, Lock, X } from 'lucide-react';
-import SignatureChoice from '../islands/SignatureChoice';
 import '../styles/notebook.css';
 import '../styles/memory-entry.css';
 import '../styles/album-transition.css';
@@ -36,7 +35,6 @@ let inkIndex = 0;
   <SiteHeader home />
   <main id="main" tabindex="-1">
     <section class="hero" id="top" aria-labelledby="hero-title">
-      <SignatureChoice client:load />
       <div class="hero-inner">
         <div class="hero-words">
           <h1 class="hero-title" id="hero-title" aria-label="爱你，何青青。">
