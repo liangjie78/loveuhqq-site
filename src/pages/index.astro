@@ -69,67 +69,71 @@ let inkIndex = 0;
 
     <section class="section days" id="days" aria-labelledby="days-title">
       <div class="section-inner">
-        <header class="section-head" data-reveal>
-          <h2 id="days-title">一天，记一格。</h2>
-          <p>从 {startLabel} 开始，走过的日子都涂上了颜色。</p>
-        </header>
+        <div class="days-spread">
+          <header class="section-head days-head" data-reveal>
+            <h2 id="days-title"><span>一天，</span><span>记一格。</span></h2>
+            <p>从 {startLabel} 开始，走过的日子都涂上了颜色。</p>
+          </header>
 
-        <div class="sheet year" data-reveal>
-          <span class="tape tape-corner" aria-hidden="true"></span>
-          <div class="year-ends" aria-hidden="true">
-            <span><b>第一天</b><time data-year-first>{startLabel}</time></span>
-            <span><b data-year-label>一周年</b><time data-year-last>{dotted(lastDay.date)}</time></span>
-          </div>
-          <div class="year-nav" data-year-nav data-needs-js hidden>
-            <button class:list={[buttonVariants({ variant: 'ghost' }), 'year-step']} type="button" data-year-prev><ArrowLeft size={15} aria-hidden="true" /> 上一年</button>
-            <button class:list={[buttonVariants({ variant: 'ghost' }), 'year-step']} type="button" data-year-next>下一年 <ChevronRight size={15} aria-hidden="true" /></button>
-          </div>
-          <p class="year-hint" id="year-hint" data-needs-js>点一格，翻到那一天的背面。手机上可以左右轻扫，也可以用方向键翻看。</p>
-          <div class="year-feedback">
-            <p class="year-readout" data-year-readout aria-live="polite">{startLabel} — {dotted(lastDay.date)}</p>
-            <button class:list={[buttonVariants({ variant: 'ghost' }), 'year-note-jump']} type="button" data-note-jump hidden>翻看这天 <ArrowDown size={15} aria-hidden="true" /></button>
-            <button class:list={[buttonVariants({ variant: 'ghost' }), 'year-today']} type="button" data-return-today data-needs-js disabled>回到今天</button>
-          </div>
-          <div class="year-grid" data-year-grid role="group" tabindex="0" aria-describedby="year-hint" aria-label={`第一年的日历，从 ${startLabel} 到 ${dotted(lastDay.date)}，可用方向键翻看`} style={`--months:${months.length}`}>
-            {months.map((month) => (
-              <div class="year-row">
-                <span class="year-month">{monthNames[month.month - 1]}</span>
-                <span class="year-cells" style={`--start:${month.days[0].dayOfMonth}`}>
-                  {month.days.map((day) => (
-                    <span
-                      data-day={day.day}
-                      class:list={[
-                        day.day === 100 && 'is-hundred',
-                        day.day === lastDay.day && 'is-anniversary',
-                        momentTitles.has(day.date) && 'is-moment',
-                      ]}
-                    />
-                  ))}
-                </span>
+          <div class="days-calendar">
+            <div class="sheet year" data-reveal>
+              <span class="tape tape-corner" aria-hidden="true"></span>
+              <div class="year-ends" aria-hidden="true">
+                <span><b>第一天</b><time data-year-first>{startLabel}</time></span>
+                <span><b data-year-label>一周年</b><time data-year-last>{dotted(lastDay.date)}</time></span>
               </div>
-            ))}
-          </div>
-          <ul class="year-legend">
-            <li><i class="is-past" aria-hidden="true"></i>走过的日子</li>
-            <li><i aria-hidden="true"></i>还没到的日子</li>
-            <li><i class="is-mark" aria-hidden="true"></i>纪念日</li>
-            {momentTitles.size > 0 && <li><i class="is-moment" aria-hidden="true"></i>有故事的日子</li>}
-          </ul>
-        </div>
+              <div class="year-nav" data-year-nav data-needs-js hidden>
+                <button class:list={[buttonVariants({ variant: 'ghost' }), 'year-step']} type="button" data-year-prev><ArrowLeft size={15} aria-hidden="true" /> 上一年</button>
+                <button class:list={[buttonVariants({ variant: 'ghost' }), 'year-step']} type="button" data-year-next>下一年 <ChevronRight size={15} aria-hidden="true" /></button>
+              </div>
+              <p class="year-hint" id="year-hint" data-needs-js>点一格，翻到那一天的背面。手机上可以左右轻扫，也可以用方向键翻看。</p>
+              <div class="year-feedback">
+                <p class="year-readout" data-year-readout aria-live="polite">{startLabel} — {dotted(lastDay.date)}</p>
+                <button class:list={[buttonVariants({ variant: 'ghost' }), 'year-note-jump']} type="button" data-note-jump hidden>翻看这天 <ArrowDown size={15} aria-hidden="true" /></button>
+                <button class:list={[buttonVariants({ variant: 'ghost' }), 'year-today']} type="button" data-return-today data-needs-js disabled>回到今天</button>
+              </div>
+              <div class="year-grid" data-year-grid role="group" tabindex="0" aria-describedby="year-hint" aria-label={`第一年的日历，从 ${startLabel} 到 ${dotted(lastDay.date)}，可用方向键翻看`} style={`--months:${months.length}`}>
+                {months.map((month) => (
+                  <div class="year-row">
+                    <span class="year-month">{monthNames[month.month - 1]}</span>
+                    <span class="year-cells" style={`--start:${month.days[0].dayOfMonth}`}>
+                      {month.days.map((day) => (
+                        <span
+                          data-day={day.day}
+                          class:list={[
+                            day.day === 100 && 'is-hundred',
+                            day.day === lastDay.day && 'is-anniversary',
+                            momentTitles.has(day.date) && 'is-moment',
+                          ]}
+                        />
+                      ))}
+                    </span>
+                  </div>
+                ))}
+              </div>
+              <ul class="year-legend">
+                <li><i class="is-past" aria-hidden="true"></i>走过的日子</li>
+                <li><i aria-hidden="true"></i>还没到的日子</li>
+                <li><i class="is-mark" aria-hidden="true"></i>纪念日</li>
+                {momentTitles.size > 0 && <li><i class="is-moment" aria-hidden="true"></i>有故事的日子</li>}
+              </ul>
+            </div>
 
-        <Notebook />
-        <dl class="days-stats" data-reveal data-needs-js>
-          <div class="stat">
-            <dt>已经涂了</dt>
-            <dd><strong data-filled>—</strong>格</dd>
-            <dd class="stat-date">这一年共 <span data-year-total>{months.flatMap((month) => month.days).length}</span> 格</dd>
+            <Notebook />
           </div>
-          <div class="stat">
-            <dt>下一个纪念日 · <span data-next-title>第 100 天</span></dt>
-            <dd><span data-next-prefix>还有</span><strong data-next-days>—</strong><span data-next-suffix>天</span></dd>
-            <dd class="stat-date"><time data-next-date datetime={hundredthDayDate}>{hundredthLabel}</time></dd>
-          </div>
-        </dl>
+          <dl class="days-stats" data-reveal data-needs-js>
+            <div class="stat">
+              <dt>已经涂了</dt>
+              <dd><strong data-filled>—</strong>格</dd>
+              <dd class="stat-date">这一年共 <span data-year-total>{months.flatMap((month) => month.days).length}</span> 格</dd>
+            </div>
+            <div class="stat">
+              <dt>下一个纪念日 · <span data-next-title>第 100 天</span></dt>
+              <dd><span data-next-prefix>还有</span><strong data-next-days>—</strong><span data-next-suffix>天</span></dd>
+              <dd class="stat-date"><time data-next-date datetime={hundredthDayDate}>{hundredthLabel}</time></dd>
+            </div>
+          </dl>
+        </div>
         <MomentArchive />
       </div>
     </section>
