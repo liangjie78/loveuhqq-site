@@ -284,12 +284,15 @@ if (grid) {
     const target = event.target as Element;
     if (pickedCell && !grid.contains(target) && !target.closest('.day-back') && !target.closest('[data-note-jump]') && !target.closest('[data-moment-ticket]')) release();
   });
-  noteJump?.addEventListener('click', () => {
-    document.querySelector<HTMLElement>('.day-back')?.scrollIntoView({
+  const showDayBack = () => {
+    const dayBack = $('.day-back');
+    dayBack?.focus({ preventScroll: true });
+    dayBack?.scrollIntoView({
       behavior: reducedMotion.matches ? 'auto' : 'smooth',
       block: 'start',
     });
-  });
+  };
+  noteJump?.addEventListener('click', showDayBack);
 
   // Keyboard days: the grid is one tab stop, arrows walk the cells.
   const move = (target: number) => {
@@ -345,10 +348,7 @@ if (grid) {
         if (noteJump) noteJump.hidden = false;
         document.dispatchEvent(new CustomEvent('journal:date', { detail: date }));
       }
-      document.querySelector<HTMLElement>('.day-back')?.scrollIntoView({
-        behavior: reducedMotion.matches ? 'auto' : 'smooth',
-        block: 'start',
-      });
+      showDayBack();
     });
   }
 }
