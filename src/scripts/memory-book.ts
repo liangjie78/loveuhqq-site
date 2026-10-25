@@ -275,6 +275,7 @@ async function selectIdentity(id: string) {
       photos = parsePhotoManifest(manifest).photos; notebook = notes;
     } else { photos = []; notebook = null; }
     render();
+    if (book.member && document.activeElement === document.body) $('[data-switch-identity]').focus({ preventScroll: true });
     status.textContent = '';
     $('[data-memory-retry]').hidden = true;
   } catch (error) {
@@ -324,13 +325,15 @@ function render() {
   updateSharedDesk();
   jumpToHash();
 }
-let pendingHash = location.hash.slice(1);
+let initialHashPending = true;
 function jumpToHash() {
-  if (!pendingHash) return;
+  if (!initialHashPending) return;
+  initialHashPending = false;
   let target: HTMLElement | null = null;
-  try { target = document.getElementById(decodeURIComponent(pendingHash)); } catch { /* A malformed hash is simply ignored. */ }
-  pendingHash = '';
-  if (target && !target.hidden) target.scrollIntoView({ behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth', block: 'start' });
+  try { target = document.getElementById(decodeURIComponent(location.hash.slice(1))); } catch { /* A malformed hash is simply ignored. */ }
+  if (!target?.matches('.memory-section')) return;
+  target.querySelector<HTMLElement>('h2')?.focus({ preventScroll: true });
+  target.scrollIntoView({ behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth', block: 'start' });
 }
 function matchesFilter(story: MemoryStory) {
   const search = $<HTMLInputElement>('[data-story-search]').value.trim().toLocaleLowerCase();
@@ -767,4 +770,3 @@ function initNavObserver() {
 
 void getSession().catch(report);
 initNavObserver();
-jumpToHash();

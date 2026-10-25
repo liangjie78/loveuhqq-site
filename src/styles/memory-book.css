@@ -153,7 +153,7 @@
 .memory-section {
   position: relative;
   padding: clamp(5rem, 11vw, 9rem) var(--gutter);
-  scroll-margin-top: calc(var(--header) + 2rem);
+  scroll-margin-top: env(safe-area-inset-top);
 }
 .memory-section-heading {
   display: flex;
@@ -521,6 +521,7 @@ button.memory-card:hover {
     flex-wrap: wrap;
     row-gap: 0;
     padding-bottom: .15rem;
+    padding-inline: max(.65rem, env(safe-area-inset-left)) max(.65rem, env(safe-area-inset-right));
   }
   /* Wordmark, then the account and back links, each on one line: a three-line
      header would be taller than --header and cover the top of the page. */
@@ -530,6 +531,7 @@ button.memory-card:hover {
     margin-left: auto;
   }
   .memory-page .header-guest { gap: .35rem; font-size: .8rem; }
+  .memory-page .header-actions [data-session-label] { display: none; }
   .memory-page .site-nav {
     order: 3;
     flex: 1 0 100%;
