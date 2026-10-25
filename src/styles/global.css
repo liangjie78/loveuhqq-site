@@ -1473,7 +1473,7 @@ html.is-unlocking body > :not(.gate) { visibility: visible; }
     margin-block: 1.25rem auto;
   }
   .hero-inner::before { display: none; }
-  .hero-words { grid-area: cover; }
+  .hero-words { grid-area: cover; pointer-events: none; }
   .hero-title { font-size: clamp(3rem, 16vw, 5rem); }
   .hero-name { margin-inline-start: .25em; margin-block-start: 2.5em; }
   .hero-keepsake { grid-area: cover; justify-self: end; align-self: start; width: 58%; max-width: 20rem; margin-top: 3.8rem; }
