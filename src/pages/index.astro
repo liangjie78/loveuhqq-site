@@ -50,10 +50,10 @@ let inkIndex = 0;
 
         <div class="hero-keepsake">
           <div class="heart intro" style="--delay:.15s">
-            <div class="heart-body" data-heart>
+            <button class="heart-body" type="button" data-heart aria-label="爱你，何青青。">
               <span class="tape tape-pink" aria-hidden="true"></span>
               <img src="/images/paper-heart.webp" alt="" width="900" height="900" decoding="async" fetchpriority="high" />
-            </div>
+            </button>
           </div>
           <Postmark id="hero-mark" className="hero-postmark intro" />
         </div>
@@ -154,12 +154,12 @@ let inkIndex = 0;
 
     <section class="section note" id="note" aria-labelledby="note-title">
       <div class="section-inner">
-        <h2 class="sr-only" id="note-title">心里话</h2>
+        <h2 class="note-heading" id="note-title" data-reveal>心里话</h2>
         <div class="note-stack" data-reveal>
           <div class="note-paper">
             <p class="note-line" style="--line:0">记录生活，</p>
             <p class="note-line" style="--line:1">慢慢往前走。</p>
-            <p class="note-sign" style="--line:2">平平淡淡，踏实过好每一天。</p>
+            <p class="note-sign" style="--line:2"><span>平平淡淡，</span><span>踏实过好每一天。</span></p>
           </div>
           <span class="tape note-tape" aria-hidden="true"></span>
         </div>
@@ -180,7 +180,7 @@ let inkIndex = 0;
         </div>
         <div class="letter-copy" data-reveal>
           <span class="stamp" data-letter-stamp>待拆</span>
-          <h2 id="letter-title">写给第 100 天</h2>
+          <h2 id="letter-title">写给第 <span class="letter-day">100</span> 天</h2>
           <p><span data-letter-wait>等到 <time datetime={hundredthDayDate}>{hundredthLabel}</time> 那天，再拆开这封信。</span><span data-letter-ready hidden>这封信可以拆开了。</span><br /><span data-letter-guest-copy>解锁共同手账后，才能读到信里的文字。</span><span data-letter-open-copy hidden>拆开信封，读这封写给第 100 天的信。</span></p>
           <p class="letter-count" data-letter-count hidden></p>
         </div>

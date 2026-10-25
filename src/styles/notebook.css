@@ -43,10 +43,11 @@
 .memory-ticket time { font: 400 .82rem var(--serif); color: var(--muted-foreground); font-variant-numeric: tabular-nums; }
 .memory-ticket-title { margin-top: .65rem; font: 400 1.1rem/1.7 var(--serif); }
 .memory-ticket [data-moment-status]:not([hidden]) { justify-self: start; display: inline-block; font-size: .7rem; border: 1px solid var(--line-strong); padding: 0 .4rem; margin-top: .6rem; color: var(--muted-foreground); }
-.future { background: var(--paper-2); }
+.future { background: var(--paper-2); background-image: var(--grain); }
 .future-spread { display: grid; width: min(100%, 60rem); margin-inline: auto; grid-template-columns: minmax(0, .9fr) minmax(0, 1.1fr); gap: 3rem clamp(2rem, 5vw, 4rem); align-items: start; }
 .future-intro { padding-top: 1.5rem; }
 .future-intro h2 { font: 400 clamp(2rem, 4.4vw, 3.2rem)/1.55 var(--serif); letter-spacing: .04em; margin: 1rem 0; }
+.future-intro h2 span { color: var(--rose); }
 .future-intro > p:not(.draw-result) { line-height: 2; color: var(--muted-foreground); }
 .draw-button { display: flex; align-items: center; gap: .75rem; min-height: 48px; border-bottom: 1px solid var(--line-stronger); margin-top: 2rem; font-size: .85rem; }
 .draw-button svg { color: var(--rose); transition: transform .3s; }
