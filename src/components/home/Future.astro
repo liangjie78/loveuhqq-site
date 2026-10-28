@@ -1,0 +1,48 @@
+---
+import Icon from '../Icon.astro';
+import { Shuffle } from 'lucide';
+import { common, future } from '../../content/copy';
+---
+<section class="chapter future" id="future" aria-labelledby="future-title">
+  <div class="wrap future-grid">
+    <header class="future-intro">
+      <p class="eyebrow" data-reveal><span class="numeral">04</span>往后</p>
+      <h2 class="future-title display" id="future-title" data-split><span>{future.title[0]}</span><span class="is-soft">{future.title[1]}</span></h2>
+      <p class="lede" data-reveal>{future.lede[0]}<br />{future.lede[1]}</p>
+      <div class="future-draw" data-reveal>
+        <button class="btn" type="button" data-wish-draw data-needs-js data-magnetic hidden><Icon icon={Shuffle} size={16} /> {future.draw}</button>
+        <p class="future-draw-result serif" data-wish-result role="status" data-needs-js hidden></p>
+      </div>
+    </header>
+    <div class="wishlist sheet" data-reveal>
+      <div class="wishlist-head">
+        <h3 class="serif">{future.list}</h3>
+        <span class="meta" data-wish-count data-needs-js hidden>{future.empty}</span>
+      </div>
+      <div class="wishlist-guest" data-wish-guest>
+        <p>解锁后，翻看我们的记录</p>
+        <button class="btn btn-solid" type="button" data-open-login data-needs-js>{common.unlock}</button>
+      </div>
+      <div class="wishlist-loading" data-wish-loading hidden>
+        <p data-wish-loading-status role="status">正在打开手账…</p>
+        <button class="btn btn-sm" type="button" data-wish-retry hidden>重新连接</button>
+      </div>
+      <div data-wish-private hidden>
+        <p class="wishlist-empty serif" data-wish-empty>第一件，留给我们自己写。</p>
+        <ul class="wishlist-items" data-wish-list></ul>
+        <form class="wishlist-form" data-wish-form>
+          <label class="sr-only" for="wish-text">想一起做的小事</label>
+          <input class="input" id="wish-text" type="text" maxlength="120" required placeholder="写下一件想一起做的事" autocomplete="off" />
+          <button class="btn btn-solid" type="submit">记上</button>
+        </form>
+        <p class="status-line" data-wish-status role="status"></p>
+        <div class="row-actions">
+          <button class="btn btn-sm" type="button" data-wish-refresh hidden>刷新查看</button>
+          <button class="btn btn-sm" type="button" data-wish-undo hidden>撤销刚才的移除</button>
+        </div>
+        <p class="meta wishlist-note">写进手账里，换个地方也能接着看。</p>
+      </div>
+      <noscript><p class="meta">开启 JavaScript 后，可以解锁共同手账。</p></noscript>
+    </div>
+  </div>
+</section>

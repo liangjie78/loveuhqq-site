@@ -1,0 +1,113 @@
+---
+import Icon from '../Icon.astro';
+import DayBack from './DayBack.astro';
+import { ArrowDown, ArrowLeft, ArrowRight, CornerDownLeft } from 'lucide';
+import { days } from '../../content/copy';
+import { dotted, getRelationshipYearMonths, hundredthDayDate, monthNames, relationshipStartDate } from '../../lib/anniversary';
+import { moments } from '../../data/moments';
+
+const start = dotted(relationshipStartDate);
+const months = getRelationshipYearMonths(1);
+const lastDay = months.at(-1)!.days.at(-1)!;
+const momentDates = new Set(moments.map(({ date }) => date));
+const total = months.flatMap(month => month.days).length;
+
+const entries = new Map(moments.map(({ date, title }) => [date, title]));
+entries.set(relationshipStartDate, entries.get(relationshipStartDate) ?? days.firstDay);
+const timeline = [...entries].map(([date, title]) => ({ date, title })).sort((a, b) => a.date.localeCompare(b.date));
+---
+
+<section class="chapter days" id="days" aria-labelledby="days-title">
+  <div class="wrap days-grid">
+    <aside class="days-aside">
+      <div class="days-aside-sticky">
+        <p class="eyebrow" data-reveal><span class="numeral">01</span>日子</p>
+        <h2 class="days-title display" id="days-title" data-split>
+          <span>{days.title[0]}</span><span>{days.title[1]}</span>
+        </h2>
+        <p class="lede days-lede" data-reveal>{days.lede(start)}</p>
+        <dl class="days-stats" data-needs-js data-reveal-group>
+          <div class="stat" data-reveal>
+            <dt>{days.filled}</dt>
+            <dd class="stat-figure"><strong class="numeral" data-filled>0</strong><span>{days.cells}</span></dd>
+            <dd class="meta">{days.yearTotal} <span class="numeral" data-year-total>{total}</span> {days.cells}</dd>
+          </div>
+          <div class="stat" data-reveal>
+            <dt>{days.next} · <span data-next-title>第 100 天</span></dt>
+            <dd class="stat-figure"><span data-next-prefix>{days.remaining}</span><strong class="numeral" data-next-days>0</strong><span data-next-suffix>{days.day}</span></dd>
+            <dd class="meta"><time class="numeral" data-next-date datetime={hundredthDayDate}>{dotted(hundredthDayDate)}</time></dd>
+          </div>
+        </dl>
+      </div>
+    </aside>
+
+    <div class="days-main">
+      <div class="calendar" data-reveal>
+        <div class="calendar-ends" aria-hidden="true">
+          <span><b data-year-first-label>{days.firstDay}</b><time class="numeral" data-year-first>{start}</time></span>
+          <span class="calendar-ends-rule"></span>
+          <span><b data-year-label>{days.firstAnniversary}</b><time class="numeral" data-year-last>{dotted(lastDay.date)}</time></span>
+        </div>
+        <div class="calendar-nav" data-year-nav data-needs-js hidden>
+          <button class="btn btn-sm" type="button" data-year-prev><Icon icon={ArrowLeft} size={15} /> {days.prevYear}</button>
+          <button class="btn btn-sm" type="button" data-year-next>{days.nextYear} <Icon icon={ArrowRight} size={15} /></button>
+        </div>
+        <div class="calendar-readout-bar">
+          <p class="calendar-readout serif" data-year-readout aria-live="polite">{start} — {dotted(lastDay.date)}</p>
+          <div class="calendar-readout-actions">
+            <button class="btn btn-sm btn-quiet" type="button" data-note-jump hidden>{days.jump} <Icon icon={ArrowDown} size={15} /></button>
+            <button class="btn btn-sm btn-quiet" type="button" data-return-today data-needs-js disabled><Icon icon={CornerDownLeft} size={15} /> {days.today}</button>
+          </div>
+        </div>
+        <p class="calendar-hint meta" id="year-hint" data-needs-js>{days.hint}</p>
+        <div
+          class="calendar-grid"
+          data-year-grid
+          role="group"
+          tabindex="0"
+          aria-describedby="year-hint"
+          aria-label={`第一年的日历，从 ${start} 到 ${dotted(lastDay.date)}，可用方向键翻看`}
+          style={`--months:${months.length}`}
+        >
+          {months.map(month => (
+            <div class="calendar-row">
+              <span class="calendar-month">{monthNames[month.month - 1]}</span>
+              <span class="calendar-cells" style={`--start:${month.days[0].dayOfMonth}`}>
+                {month.days.map(day => (
+                  <span
+                    data-day={day.day}
+                    class:list={[day.day === 100 && 'is-hundred', day.day === lastDay.day && 'is-anniversary', momentDates.has(day.date) && 'is-moment']}
+                  ></span>
+                ))}
+              </span>
+            </div>
+          ))}
+        </div>
+        <ul class="calendar-legend">
+          <li><i class="is-past" aria-hidden="true"></i>{days.legend.past}</li>
+          <li><i aria-hidden="true"></i>{days.legend.future}</li>
+          <li><i class="is-mark" aria-hidden="true"></i>{days.legend.mark}</li>
+          {momentDates.size > 0 && <li><i class="is-moment" aria-hidden="true"></i>{days.legend.moment}</li>}
+        </ul>
+      </div>
+
+      <DayBack />
+    </div>
+  </div>
+
+  <div class="wrap moments" aria-labelledby="moments-title">
+    <h3 class="moments-title serif" id="moments-title" data-reveal>{days.moments}</h3>
+    <ol class="moments-line" data-reveal-group>
+      {timeline.map(({ date, title }) => (
+        <li class="moment" data-reveal>
+          <button class="moment-button" type="button" data-moment-ticket data-moment-ticket-date={date} aria-label={`${dotted(date)}，${title}`}>
+            <span class="moment-dot" aria-hidden="true"></span>
+            <time class="numeral" data-moment-date datetime={date}>{dotted(date)}</time>
+            <span class="moment-title serif">{title}</span>
+            <span class="moment-status" data-moment-status hidden>还没到</span>
+          </button>
+        </li>
+      ))}
+    </ol>
+  </div>
+</section>

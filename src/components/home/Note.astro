@@ -1,0 +1,17 @@
+---
+import { note } from '../../content/copy';
+let index = 0;
+---
+<section class="note" id="note" aria-labelledby="note-title" data-note-scrub>
+  <div class="note-stage">
+    <div class="wrap note-inner">
+      <h2 class="eyebrow note-eyebrow" id="note-title"><span class="numeral">03</span>{note.title}</h2>
+      <p class="note-words display" aria-label={note.lines.join('')}>
+        {note.lines.map(line => (
+          <span class="note-line" aria-hidden="true">{[...line].map(char => <span class="note-ch" style={`--i:${index++}`}>{char}</span>)}</span>
+        ))}
+      </p>
+      <p class="note-sign serif"><span>{note.sign[0]}</span><span>{note.sign[1]}</span></p>
+    </div>
+  </div>
+</section>

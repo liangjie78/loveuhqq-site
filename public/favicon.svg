@@ -1,1 +1,11 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><rect width="64" height="64" rx="15" fill="#f5eee4"/><path d="M32 51.5 28.3 48C17.4 38.1 10.5 31.8 10.5 23.9 10.5 17.6 15.4 12.6 21.8 12.6c3.6 0 7.1 1.7 10.2 4.6 3.1-2.9 6.6-4.6 10.2-4.6 6.4 0 11.3 5 11.3 11.3 0 7.9-6.9 14.2-17.8 24.1z" fill="#b0474f"/></svg>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <defs>
+    <radialGradient id="g" cx="62%" cy="40%" r="62%">
+      <stop offset="0" stop-color="#ffe6c7"/>
+      <stop offset=".5" stop-color="#f7b79a"/>
+      <stop offset="1" stop-color="#f6f0e8"/>
+    </radialGradient>
+  </defs>
+  <rect width="64" height="64" rx="16" fill="url(#g)"/>
+  <path d="M32 50C19.5 41 13 34 13 25.8 13 20 17.4 16 22.6 16c4 0 7.3 2.2 9.4 5.6C34.1 18.2 37.4 16 41.4 16 46.6 16 51 20 51 25.8 51 34 44.5 41 32 50Z" fill="none" stroke="#b23a48" stroke-width="2.6" stroke-linejoin="round"/>
+</svg>

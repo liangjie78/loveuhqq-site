@@ -4,20 +4,9 @@
   "description": "一本写给何青青的纸上手账。",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#f5eee4",
-  "theme_color": "#f5eee4",
+  "background_color": "#f6f0e8",
+  "theme_color": "#f6f0e8",
   "orientation": "portrait",
-  "icons": [
-    {
-      "src": "/favicon.svg",
-      "sizes": "any",
-      "type": "image/svg+xml",
-      "purpose": "any"
-    }
-  ],
-  "categories": [
-    "lifestyle",
-    "personalization"
-  ],
-  "lang": "zh-CN"
+  "lang": "zh-CN",
+  "icons": [{ "src": "/favicon.svg", "sizes": "any", "type": "image/svg+xml" }]
 }

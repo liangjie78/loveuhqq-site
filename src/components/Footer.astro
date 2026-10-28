@@ -1,0 +1,37 @@
+---
+import Icon from './Icon.astro';
+import { ArrowLeft, ArrowUp, Lock } from 'lucide';
+import { common, footer, site } from '../content/copy';
+import { dotted, relationshipStartDate } from '../lib/anniversary';
+
+interface Props {
+  /** The home page closes on the big words; sub-pages get a quiet line. */
+  grand?: boolean;
+  backHref?: string;
+  lockLabel?: string;
+}
+
+const { grand = false, backHref, lockLabel = footer.lock } = Astro.props;
+---
+
+<footer class:list={['colophon', grand && 'is-night is-grand']} data-colophon>
+  {grand && (
+    <>
+      <canvas class="aura aura-footer" data-aura="footer" aria-hidden="true"></canvas>
+      <div class="wrap colophon-words">
+        <p class="display split" data-split>
+          <span class="colophon-line">{footer.words[0]}</span>
+          <span class="colophon-line is-soft">{footer.words[1]}</span>
+        </p>
+      </div>
+    </>
+  )}
+  <div class="wrap colophon-meta">
+    <span class="colophon-sign"><span class="latin">{site.name}</span> · 始于 <time class="numeral" datetime={relationshipStartDate}>{dotted(relationshipStartDate)}</time></span>
+    <div class="colophon-actions">
+      {backHref && <a class="btn btn-sm" href={backHref}><Icon icon={ArrowLeft} size={15} class="icon-back" /> {common.backToJournal}</a>}
+      <button class="btn btn-sm" type="button" data-lock-site><Icon icon={Lock} size={15} /> {lockLabel}</button>
+      {grand && <a class="btn btn-sm" href="#top" data-to-top>{footer.top} <Icon icon={ArrowUp} size={15} class="icon-lift" /></a>}
+    </div>
+  </div>
+</footer>

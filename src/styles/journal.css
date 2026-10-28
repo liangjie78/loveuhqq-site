@@ -1,0 +1,251 @@
+/* 余温 · the year of lights, the back of the day and the list for later. */
+
+/* ---------- Calendar ---------- */
+
+.calendar { display: grid; gap: 1.1rem; min-width: 0; }
+.calendar-ends { display: flex; align-items: center; gap: 1rem; font-size: var(--step--1); color: var(--ink-2); }
+.calendar-ends b { margin-right: .5rem; font-weight: 400; letter-spacing: .1em; }
+.calendar-ends .numeral { font-size: 1.25em; }
+.calendar-ends-rule { flex: 1; height: 1px; background: var(--hairline); }
+.calendar-nav { display: flex; gap: .5rem; }
+.calendar-readout-bar {
+  position: sticky;
+  z-index: 3;
+  top: var(--header-h);
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: .5rem 1rem;
+  padding-block: .9rem;
+  background: linear-gradient(var(--paper) 75%, transparent);
+}
+.calendar-readout { font-size: var(--step-2); line-height: 1.35; color: var(--ink-2); transition: color var(--t-ui) var(--ease-out); }
+.calendar-readout.is-picked { color: var(--ink); }
+.calendar-readout-actions { display: flex; gap: .25rem; }
+.calendar-readout-actions [data-return-today]:disabled { display: none; }
+.calendar-hint { max-width: 36rem; }
+
+.calendar-grid {
+  display: grid;
+  gap: .2rem;
+  padding: .75rem .25rem .75rem 0;
+  border-radius: var(--radius-m);
+  outline-offset: .5rem;
+  touch-action: pan-y;
+  user-select: none;
+  -webkit-user-select: none;
+}
+.calendar-grid:focus-visible { outline: 1px dashed var(--rouge); }
+.calendar-row { display: grid; grid-template-columns: 3.25rem minmax(0, 1fr); align-items: center; }
+.calendar-month { font-size: var(--step--2); letter-spacing: .1em; color: var(--ink-3); }
+.calendar-cells { display: grid; grid-template-columns: repeat(31, minmax(0, 1fr)); }
+.calendar-cells > :first-child { grid-column-start: var(--start); }
+.calendar-cells > span {
+  position: relative;
+  display: grid;
+  place-items: center;
+  aspect-ratio: 1;
+  cursor: pointer;
+  transition: transform 420ms var(--ease-out);
+}
+/* Each day is a dot; lit days glow. */
+.calendar-cells > span::before {
+  content: "";
+  width: 32%;
+  aspect-ratio: 1;
+  border-radius: 50%;
+  background: var(--dot-empty);
+  transition: background-color 600ms var(--ease-out), box-shadow 600ms var(--ease-out), width 420ms var(--ease-out), transform 600ms var(--ease-out);
+}
+.calendar-cells > .is-past::before { width: 52%; background: var(--dot, var(--dot-2)); box-shadow: 0 0 .5rem -.05rem color-mix(in oklab, var(--dot, var(--dot-2)) 55%, transparent); }
+.calendar-cells > [data-tone="0"] { --dot: var(--dot-1); }
+.calendar-cells > [data-tone="1"] { --dot: var(--dot-2); }
+.calendar-cells > [data-tone="2"] { --dot: var(--dot-3); }
+.calendar-cells > [data-tone="3"] { --dot: var(--dot-4); }
+/* Lighting the string, one dot after another, the first time it is seen. */
+.calendar-grid.is-unlit .is-past::before { width: 32%; background: var(--dot-empty); box-shadow: none; }
+.calendar-grid.is-lighting .is-past::before { transition-delay: calc(var(--n, 0) * 1ms); }
+.calendar-cells > .is-today::before { width: 62%; background: var(--rouge); box-shadow: 0 0 0 .2rem var(--rouge-wash), 0 0 1rem var(--glow-1); animation: breathe 2.6s var(--ease-in-out) infinite; }
+@keyframes breathe { 50% { box-shadow: 0 0 0 .38rem var(--rouge-wash), 0 0 1.6rem var(--glow-1); } }
+.calendar-cells > .is-hundred::before, .calendar-cells > .is-anniversary::before {
+  width: 78%;
+  border-radius: 0;
+  background: var(--dot-empty);
+  box-shadow: none;
+  mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M12 21C6 16.7 2 13.2 2 8.8 2 5.9 4.3 3.6 7.1 3.6c2 0 3.8 1.1 4.9 2.8 1.1-1.7 2.9-2.8 4.9-2.8 2.8 0 5.1 2.3 5.1 5.2 0 4.4-4 7.9-10 12.2Z'/%3E%3C/svg%3E") center / contain no-repeat;
+}
+.calendar-cells > .is-hundred.is-past::before, .calendar-cells > .is-anniversary.is-past::before, .calendar-cells > .is-hundred.is-today::before { background: var(--rouge); }
+.calendar-cells > .is-moment::after {
+  content: "";
+  position: absolute;
+  width: 14%;
+  aspect-ratio: 1;
+  border-radius: 50%;
+  background: var(--paper);
+  box-shadow: 0 0 0 1px var(--ink-2);
+}
+.calendar-cells > .is-written:not(.is-moment)::after {
+  content: "";
+  position: absolute;
+  inset: 12%;
+  border: 1px solid var(--ink-2);
+  border-radius: 50%;
+  opacity: .55;
+}
+.calendar-cells > .is-picked { z-index: 2; transform: scale(1.9); }
+.calendar-cells > .is-picked::before { box-shadow: 0 0 0 .14rem var(--paper), 0 0 0 .22rem var(--rouge); }
+@media (hover: hover) and (pointer: fine) {
+  .calendar-cells > span:hover { z-index: 2; transform: scale(1.9); }
+  .calendar-cells > span:has(+ span:hover), .calendar-cells > span:hover + span { transform: scale(1.4); }
+}
+
+.calendar-legend { display: flex; flex-wrap: wrap; gap: .5rem 1.4rem; font-size: var(--step--1); color: var(--ink-2); }
+.calendar-legend li { display: inline-flex; align-items: center; gap: .5rem; }
+.calendar-legend i { width: .55rem; height: .55rem; border-radius: 50%; background: var(--dot-empty); }
+.calendar-legend i.is-past { background: var(--dot-2); }
+.calendar-legend i.is-mark { width: .75rem; height: .75rem; border-radius: 0; background: var(--rouge); mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M12 21C6 16.7 2 13.2 2 8.8 2 5.9 4.3 3.6 7.1 3.6c2 0 3.8 1.1 4.9 2.8 1.1-1.7 2.9-2.8 4.9-2.8 2.8 0 5.1 2.3 5.1 5.2 0 4.4-4 7.9-10 12.2Z'/%3E%3C/svg%3E") center / contain no-repeat; }
+.calendar-legend i.is-moment { background: var(--paper); box-shadow: 0 0 0 1px var(--ink-2); width: .4rem; height: .4rem; }
+
+/* On phones the year turns on its side: months are columns, days run down. */
+@media (max-width: 40rem) {
+  .calendar-grid {
+    grid-template-columns: repeat(var(--months), minmax(0, 1fr));
+    gap: 0;
+    padding: 0;
+  }
+  .calendar-row { grid-template-columns: none; grid-template-rows: 2.75rem auto; justify-items: center; }
+  .calendar-month { writing-mode: vertical-rl; align-self: end; padding-bottom: .4rem; font-size: .68rem; letter-spacing: .05em; }
+  .calendar-cells { grid-template-columns: none; grid-template-rows: repeat(31, auto); width: 100%; }
+  .calendar-cells > :first-child { grid-column-start: auto; grid-row-start: var(--start); }
+  .calendar-readout { font-size: var(--step-1); width: 100%; }
+}
+
+/* ---------- The back of the day ---------- */
+
+.dayback {
+  position: relative;
+  padding: clamp(1.5rem, 4vw, 3rem);
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius-l);
+  background: var(--paper-raised);
+  box-shadow: var(--shadow-1);
+  scroll-margin-top: calc(var(--header-h) + 5rem);
+}
+.dayback:focus-visible { outline-offset: 4px; border-radius: var(--radius-l); }
+.dayback-guest { display: grid; justify-items: start; gap: 1rem; }
+.dayback-guest-copy { font-size: var(--step-3); line-height: 1.35; font-weight: 300; }
+.dayback-loading { display: flex; flex-wrap: wrap; align-items: center; gap: 1rem; color: var(--ink-2); }
+.dayback-private { display: grid; gap: 1.5rem; }
+.dayback-head { display: flex; flex-wrap: wrap; align-items: end; justify-content: space-between; gap: 1rem; }
+.dayback-date { font-size: var(--step-4); line-height: 1; margin-top: .4rem; }
+.dayback-date:focus { outline: none; }
+.dayback-text { font-size: var(--step-1); line-height: 1.95; white-space: pre-wrap; color: var(--ink); }
+.dayback-text:empty { display: none; }
+.dayback-text strong { font-family: var(--font-serif); font-weight: 500; color: var(--rouge-ink); }
+.dayback-stories { justify-self: start; font-size: var(--step--1); }
+.dayback-editor { display: grid; gap: 1rem; }
+.dayback-textarea { min-height: 10rem; font-size: var(--step-1); line-height: 1.95; background: repeating-linear-gradient(to bottom, transparent 0 calc(1.95em - 1px), var(--hairline) calc(1.95em - 1px) 1.95em) 0 1rem / 100% 1.95em local, var(--paper); }
+.row-actions { display: flex; flex-wrap: wrap; align-items: center; gap: .5rem; }
+.row-actions:not(:has(:not([hidden]))) { display: none; }
+.notice { display: grid; gap: .75rem; justify-items: start; padding: 1rem 1.25rem; border-radius: var(--radius-m); background: var(--rouge-wash); color: var(--ink); font-size: var(--step--1); }
+.notice-latest { color: var(--ink-2); white-space: pre-wrap; }
+
+.prompt {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: .9rem;
+  padding: .9rem 1rem .9rem .9rem;
+  border-radius: var(--radius-m);
+  background: color-mix(in oklab, var(--rouge-wash) 60%, transparent);
+}
+.prompt-flower { width: 1.75rem; fill: none; stroke: var(--rouge); stroke-width: 1.1; animation: spin 24s linear infinite; }
+@keyframes spin { to { transform: rotate(1turn); } }
+.prompt-question { font-size: var(--step-0); line-height: 1.6; }
+.prompt-question.is-turning { animation: develop-soft 800ms var(--ease-out); }
+@keyframes develop-soft { from { opacity: 0; filter: blur(6px); transform: translateY(.3rem); } }
+@media (max-width: 34rem) {
+  .prompt { grid-template-columns: auto 1fr; }
+  .prompt .btn { grid-column: 1 / -1; justify-self: start; }
+}
+
+.dayback-foot { display: grid; gap: 1rem; padding-top: 1.5rem; border-top: 1px solid var(--hairline); }
+.bookmark { display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 1rem; }
+.bookmark h4 { font-family: var(--font-serif); font-weight: 400; font-size: var(--step-1); line-height: 1.3; }
+.bookmark-icon { color: var(--rouge); }
+@media (max-width: 30rem) { .bookmark { grid-template-columns: auto 1fr; } .bookmark .btn { grid-column: 2; justify-self: start; } }
+
+.note-index summary {
+  display: flex;
+  align-items: center;
+  gap: .6rem;
+  min-height: 2.75rem;
+  cursor: pointer;
+  list-style: none;
+  font-size: var(--step--1);
+  color: var(--ink-2);
+}
+.note-index summary::-webkit-details-marker { display: none; }
+.note-index summary::after { content: ""; width: .5rem; height: .5rem; margin-left: .25rem; border-right: 1px solid; border-bottom: 1px solid; transform: rotate(45deg) translateY(-.15rem); transition: transform var(--t-ui) var(--ease-out); }
+.note-index[open] summary::after { transform: rotate(225deg); }
+.note-index-count { font-size: 1.3em; color: var(--rouge); }
+.note-search { display: grid; gap: .4rem; margin-block: .5rem 1rem; }
+.note-search-field { position: relative; display: flex; align-items: center; gap: .5rem; }
+.note-search-field .input { padding-left: 1.6rem; }
+.note-search-icon { position: absolute; left: 0; color: var(--ink-3); }
+.note-list { display: grid; max-height: 22rem; overflow-y: auto; overscroll-behavior: contain; }
+.note-entry {
+  display: grid;
+  grid-template-columns: 6.5rem minmax(0, 1fr);
+  gap: 1rem;
+  padding: .8rem .5rem;
+  border: 0;
+  border-bottom: 1px solid var(--hairline);
+  background: none;
+  text-align: left;
+  transition: background-color var(--t-ui) var(--ease-out);
+}
+.note-entry:hover { background: var(--rouge-wash); }
+.note-entry[aria-current] time { color: var(--rouge); }
+.note-entry time { font-family: var(--font-latin); font-style: italic; font-size: var(--step-1); line-height: 1.3; }
+.note-entry span { color: var(--ink-2); font-size: var(--step--1); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; align-self: center; }
+
+/* ---------- The list for later ---------- */
+
+.wishlist { display: grid; gap: 1.25rem; }
+.wishlist-head { display: flex; align-items: baseline; justify-content: space-between; gap: 1rem; padding-bottom: 1rem; border-bottom: 1px solid var(--hairline); }
+.wishlist-head h3 { font-size: var(--step-2); font-weight: 400; }
+.wishlist-guest { display: grid; justify-items: start; gap: 1rem; color: var(--ink-2); }
+.wishlist-loading { display: flex; flex-wrap: wrap; gap: 1rem; align-items: center; color: var(--ink-2); }
+.wishlist-empty { color: var(--ink-3); font-size: var(--step-1); padding-block: .5rem; }
+.wishlist-items { display: grid; }
+.wish {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: .5rem 1rem;
+  padding-block: .9rem;
+  border-bottom: 1px solid var(--hairline);
+  animation: rise 700ms var(--ease-out) both;
+}
+.wish-label { display: flex; align-items: flex-start; gap: .8rem; cursor: pointer; }
+.wish-text {
+  font-size: var(--step-1);
+  line-height: 1.5;
+  background: linear-gradient(var(--ink-3), var(--ink-3)) 0 55% / 0 1px no-repeat;
+  transition: background-size 700ms var(--ease-out), color var(--t-ui) var(--ease-out);
+}
+.wish.is-done .wish-text { color: var(--ink-3); background-size: 100% 1px; }
+.wish-actions { display: flex; gap: .1rem; opacity: .9; }
+.wish-actions .btn { min-height: 2.25rem; padding: .3rem .7rem; font-size: var(--step--2); }
+@media (hover: hover) and (pointer: fine) {
+  .wish-actions { opacity: 0; transition: opacity var(--t-ui) var(--ease-out); }
+  .wish:hover .wish-actions, .wish:focus-within .wish-actions { opacity: 1; }
+}
+@media (max-width: 34rem) { .wish { grid-template-columns: 1fr; } .wish-actions { margin-left: 2rem; } }
+.wish-edit { display: grid; gap: .75rem; padding-block: .9rem; border-bottom: 1px solid var(--hairline); }
+.wish-conflict { font-size: var(--step--1); color: var(--rouge-ink); }
+.wishlist-form { display: flex; align-items: end; gap: 1rem; margin-top: .5rem; }
+.wishlist-form .input { flex: 1; }
+.wishlist-note { padding-top: .5rem; }

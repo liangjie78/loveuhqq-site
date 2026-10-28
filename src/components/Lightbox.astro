@@ -1,34 +1,28 @@
 ---
-import { buttonVariants } from './ui/button';
-import { ArrowUpRight, ChevronLeft, ChevronRight, X } from 'lucide-react';
+import Icon from './Icon.astro';
+import { ArrowUpRight, ChevronLeft, ChevronRight, Pencil, Star, Trash2, X } from 'lucide';
 ---
-
 <dialog class="lightbox" data-lightbox aria-labelledby="lightbox-title">
-  <figure class="lightbox-print">
-    <img data-lightbox-image alt="" width="800" height="1000" />
-    <figcaption>
-      <span class="lightbox-title" id="lightbox-title" data-lightbox-title></span>
-      <span class="lightbox-meta" data-lightbox-meta aria-live="polite"></span>
-      <a class={buttonVariants({ variant: 'ghost' })} data-photo-stories hidden>翻到照片里的故事 <ArrowUpRight size={16} aria-hidden="true" /></a>
-    </figcaption>
-    <p class="lightbox-feedback" data-lightbox-feedback hidden>
-      <span data-lightbox-status role="status"></span>
-      <button class={buttonVariants({ variant: 'ghost' })} type="button" data-lightbox-retry hidden>再试一次</button>
-    </p>
-    <div class="photo-management lightbox-management" data-lightbox-management hidden>
-      <button class={buttonVariants({ variant: 'ghost' })} type="button" data-lightbox-edit>改标题</button>
-      <button class={buttonVariants({ variant: 'ghost' })} type="button" data-lightbox-feature>设为首页精选</button>
-      <button class={buttonVariants({ variant: 'ghost', tone: 'danger' })} type="button" data-lightbox-delete>从相册取下</button>
-    </div>
-  </figure>
-  <button class="lightbox-button lightbox-close" type="button" data-lightbox-close aria-label="关闭">
-    <X size={20} aria-hidden="true" />
-  </button>
-  <button class="lightbox-button lightbox-prev" type="button" data-lightbox-prev aria-label="上一张">
-    <ChevronLeft size={24} aria-hidden="true" />
-  </button>
-  <button class="lightbox-button lightbox-next" type="button" data-lightbox-next aria-label="下一张">
-    <ChevronRight size={24} aria-hidden="true" />
-  </button>
+  <div class="lightbox-stage">
+    <figure class="lightbox-print">
+      <div class="lightbox-frame"><img data-lightbox-image alt="" width="800" height="1000" /></div>
+      <figcaption class="lightbox-caption">
+        <span class="lightbox-title" id="lightbox-title" data-lightbox-title></span>
+        <span class="lightbox-meta numeral" data-lightbox-meta aria-live="polite"></span>
+        <a class="link lightbox-story" data-photo-stories hidden>翻到照片里的故事 <Icon icon={ArrowUpRight} size={15} /></a>
+      </figcaption>
+      <p class="lightbox-feedback" data-lightbox-feedback hidden>
+        <span data-lightbox-status role="status"></span>
+        <button class="btn btn-sm" type="button" data-lightbox-retry hidden>再试一次</button>
+      </p>
+      <div class="lightbox-manage" data-lightbox-management hidden>
+        <button class="btn btn-sm" type="button" data-lightbox-edit><Icon icon={Pencil} size={14} /> 改标题</button>
+        <button class="btn btn-sm" type="button" data-lightbox-feature><Icon icon={Star} size={14} /> <span data-lightbox-feature-label>设为首页精选</span></button>
+        <button class="btn btn-sm btn-danger" type="button" data-lightbox-delete><Icon icon={Trash2} size={14} /> 从相册取下</button>
+      </div>
+    </figure>
+  </div>
+  <button class="icon-btn lightbox-close" type="button" data-lightbox-close aria-label="关闭"><Icon icon={X} size={20} /></button>
+  <button class="icon-btn lightbox-step lightbox-prev" type="button" data-lightbox-prev aria-label="上一张"><Icon icon={ChevronLeft} size={22} /></button>
+  <button class="icon-btn lightbox-step lightbox-next" type="button" data-lightbox-next aria-label="下一张"><Icon icon={ChevronRight} size={22} /></button>
 </dialog>
-<script src="../scripts/gallery.ts"></script>

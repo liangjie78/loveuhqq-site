@@ -1,0 +1,23 @@
+---
+import Icon from './Icon.astro';
+import { ArrowUpRight } from 'lucide';
+import { memoryBook, memoryChapters } from '../content/copy';
+import '../styles/index.css';
+interface Props { base?: string }
+const { base = '/memories/' } = Astro.props;
+---
+<nav class="index" aria-label={memoryBook.contents}>
+  <p class="index-head meta">{memoryBook.contents}</p>
+  <ol>
+    {memoryChapters.map((chapter, number) => (
+      <li data-reveal>
+        <a class="index-row" href={`${base}#${chapter.id}`}>
+          <span class="index-no numeral">{String(number + 1).padStart(2, '0')}</span>
+          <span class="index-title serif">{chapter.title}</span>
+          <span class="index-note">{chapter.note}</span>
+          <Icon icon={ArrowUpRight} size={20} class="index-arrow" />
+        </a>
+      </li>
+    ))}
+  </ol>
+</nav>
