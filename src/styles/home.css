@@ -317,30 +317,10 @@
 /* ---------- Letter ---------- */
 
 .letter-grid { display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); column-gap: var(--gutter); row-gap: 3rem; align-items: center; }
-.envelope-stage { grid-column: 1 / span 6; padding-block: 2rem; position: relative; display: grid; justify-items: center; perspective: 1400px; }
+.envelope-stage { grid-column: 1 / span 6; padding-block: 2rem; position: relative; display: grid; justify-items: center; }
 .letter-copy { grid-column: 7 / -1; padding-left: clamp(0rem, 3vw, 3rem); position: relative; display: grid; gap: 1.5rem; justify-items: start; }
 .letter-title { font-size: clamp(2.6rem, 1.3rem + 3.8vw, 6.4rem); line-height: 1.1; white-space: nowrap; }
 .letter-title .numeral { padding-inline: .08em; font-size: 1.45em; color: var(--rouge); line-height: .8; }
-.letter-stamp {
-  position: absolute;
-  z-index: 2;
-  top: 0;
-  right: max(0rem, calc(50% - 15rem));
-  display: grid;
-  place-items: center;
-  width: 4.75rem;
-  height: 4.75rem;
-  background: var(--paper);
-  border: 1px solid var(--rouge);
-  border-radius: 50%;
-  color: var(--rouge-ink);
-  font-family: var(--font-serif);
-  font-size: var(--step-0);
-  letter-spacing: .2em;
-  transform: rotate(-12deg);
-}
-.letter-stamp::before { content: ""; position: absolute; inset: .3rem; border: 1px dashed var(--rouge); border-radius: 50%; opacity: .45; }
-.letter-stamp.is-ready { background: var(--rouge); color: var(--on-rouge); }
 .letter-count { font-family: var(--font-serif); color: var(--ink-2); }
 .letter-count strong { font-family: var(--font-latin); font-style: italic; font-weight: 400; font-size: var(--step-3); color: var(--ink); padding-inline: .15em; }
 @media (max-width: 63.99rem) {
@@ -348,79 +328,292 @@
   .letter-copy { order: -1; padding-left: 0; }
 }
 
+/* The envelope: layered paper that really opens. Its paper stays warm cream in
+   both themes, a lamp-lit object rather than a themed panel. */
+.wax-defs { position: absolute; width: 0; height: 0; overflow: hidden; }
+/* Wax colours live on the stage: the seal's gradients resolve them where they are defined. */
+.envelope-stage { --wax: #b5706c; --wax-hi: #d9a29b; --wax-lo: #85494a; overflow-x: clip; }
 .envelope {
+  --e-flap: #f4f1ea;
+  --e-front: #f0ece4;
+  --e-side: #ebe6dd;
+  --e-in: #e2dbcf;
+  --e-edge: rgb(110 80 60 / .14);
+  --e-ink: #2a1f1b;
+  --e-liner: rgb(178 58 72 / .2);
+  --rx: 0deg;
+  --ry: 0deg;
+  --mx: 50%;
   position: relative;
-  width: min(100%, 30rem);
+  width: min(100%, 31rem);
   padding: 0;
   border: 0;
   background: none;
-  transform-style: preserve-3d;
-  animation: float 7s var(--ease-in-out) infinite;
+  container-type: inline-size;
+  animation: float 8s var(--ease-in-out) infinite;
   -webkit-tap-highlight-color: transparent;
 }
-@keyframes float { 50% { transform: translateY(-.75rem) rotate(-1deg); } }
+.dark .envelope {
+  --e-flap: #e9e3d8;
+  --e-front: #e4ddd1;
+  --e-side: #ddd5c8;
+  --e-in: #cfc5b6;
+  --e-edge: rgb(40 20 10 / .3);
+}
+.dark .envelope-shadow { background: radial-gradient(closest-side, rgb(0 0 0 / .6), transparent); }
+@keyframes float { 50% { transform: translateY(-.6rem); } }
+
+.envelope-tilt {
+  position: relative;
+  display: block;
+  padding-top: 7%;
+  transform: perspective(1400px) rotateX(var(--rx)) rotateY(var(--ry)) rotate(-3deg);
+  transition: transform 900ms var(--ease-out);
+}
+.envelope.is-tracking .envelope-tilt { transition-duration: 240ms; }
+.envelope-shadow {
+  position: absolute;
+  inset: auto 8% -9% 8%;
+  height: 16%;
+  border-radius: 50%;
+  background: radial-gradient(closest-side, rgb(70 35 25 / .34), transparent);
+  filter: blur(10px);
+  animation: shadow-breathe 8s var(--ease-in-out) infinite;
+}
+@keyframes shadow-breathe { 50% { transform: scale(.9); opacity: .7; } }
+
 .envelope-body {
   position: relative;
   display: block;
   aspect-ratio: 1.5;
-  border: 1px solid var(--hairline);
-  border-radius: .5rem;
-  background: linear-gradient(160deg, var(--paper-raised), color-mix(in oklab, var(--paper-sunk) 70%, var(--paper-raised)));
-  box-shadow: var(--shadow-2);
-  transform: rotate(-4deg);
-  transform-style: preserve-3d;
-  transition: transform 900ms var(--ease-out);
+  isolation: isolate;
 }
-.envelope-back {
+.env-back {
   position: absolute;
   inset: 0;
-  border-radius: inherit;
+  z-index: 1;
+  border-radius: 3px;
   background:
-    linear-gradient(to top right, transparent calc(50% - .5px), var(--hairline-strong) 50%, transparent calc(50% + .5px)) left bottom / 50% 62% no-repeat,
-    linear-gradient(to top left, transparent calc(50% - .5px), var(--hairline-strong) 50%, transparent calc(50% + .5px)) right bottom / 50% 62% no-repeat;
+    radial-gradient(120% 90% at 50% 0%, transparent 40%, rgb(80 40 25 / .14)),
+    repeating-linear-gradient(135deg, var(--e-liner) 0 1px, transparent 1px 9px),
+    var(--e-in);
+  box-shadow: 0 0 0 1px var(--e-edge);
 }
-.envelope-paper {
+
+.env-letter {
   position: absolute;
-  inset: 8% 7% 12%;
-  border-radius: .3rem;
-  background: repeating-linear-gradient(to bottom, transparent 0 1.4rem, var(--hairline) 1.4rem calc(1.4rem + 1px)), var(--paper-raised);
-  box-shadow: var(--shadow-1);
-  transform: translateZ(-1px);
-  transition: transform 1100ms var(--ease-out) 350ms;
+  inset: 6% 5.5% 5%;
+  z-index: 2;
+  display: grid;
+  align-content: start;
+  gap: 7cqi;
+  padding: 7cqi 8cqi;
+  border-radius: 2px;
+  background:
+    linear-gradient(to bottom, rgb(255 255 255 / .7), transparent 30%),
+    #fffdf9;
+  box-shadow: 0 1px 2px rgb(80 40 25 / .12), 0 8px 20px -12px rgb(80 40 25 / .3);
+  color: var(--e-ink);
+  transition: transform 700ms var(--ease-in-out) 0ms;
 }
-.envelope-flap {
+.env-letter-head { font-family: var(--font-serif); font-size: 5.4cqi; font-weight: 400; letter-spacing: .06em; }
+.env-letter-head i { font-family: var(--font-latin); font-size: 1.3em; color: #a8323f; padding-inline: .05em; }
+.env-letter-lines {
+  height: 20cqi;
+  background: repeating-linear-gradient(to bottom, transparent 0 4.6cqi, rgb(42 31 27 / .14) 4.6cqi calc(4.6cqi + 1px));
+}
+
+.env-glow {
+  position: absolute;
+  inset: -45% 0 25%;
+  z-index: 3;
+  background: radial-gradient(50% 50% at 50% 58%, rgb(255 214 160 / .75), rgb(247 183 154 / .32) 42%, transparent 70%);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 600ms var(--ease-soft) 0ms;
+}
+
+.env-pocket {
+  position: absolute;
+  inset: 0;
+  z-index: 4;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+  filter: drop-shadow(0 0 .5px var(--e-edge));
+}
+.env-side { fill: var(--e-side); }
+.env-side.is-right { fill: color-mix(in oklab, var(--e-side) 80%, var(--e-front)); }
+.env-bottom-shade { fill: rgb(90 60 40 / .08); }
+.env-bottom { fill: var(--e-front); stroke: rgb(255 255 255 / .75); stroke-width: .8; vector-effect: non-scaling-stroke; }
+.env-crease { fill: none; stroke: rgb(255 255 255 / .7); stroke-width: 1; vector-effect: non-scaling-stroke; }
+
+.env-flap-shadow {
   position: absolute;
   inset: 0 0 auto;
-  height: 58%;
-  clip-path: polygon(0 0, 100% 0, 50% 100%);
-  background: linear-gradient(to bottom, color-mix(in oklab, var(--paper-sunk) 55%, var(--paper-raised)), var(--paper-raised));
-  border-radius: .5rem .5rem 0 0;
-  transform-origin: top;
-  transition: transform 900ms var(--ease-in-out);
-  filter: drop-shadow(0 1px 0 var(--hairline-strong));
+  z-index: 5;
+  height: 60%;
+  filter: blur(3px);
+  opacity: .9;
+  transform: translateY(5px);
+  transition: opacity 300ms var(--ease-soft) 900ms;
 }
-.envelope-seal {
+.env-flap-shadow span {
   position: absolute;
-  top: 58%;
-  left: 50%;
-  display: grid;
-  place-items: center;
-  width: 17%;
-  aspect-ratio: 1;
-  border-radius: 50%;
-  background: radial-gradient(circle at 35% 30%, color-mix(in oklab, var(--rouge) 70%, white), var(--rouge) 55%, color-mix(in oklab, var(--rouge) 70%, black));
-  box-shadow: 0 .3rem .8rem -.2rem rgb(120 30 40 / .45), inset 0 0 0 .3rem rgb(0 0 0 / .08);
-  transform: translate(-50%, -50%);
-  transition: transform 700ms var(--ease-out), opacity 500ms var(--ease-out);
+  inset: 0;
+  background: rgb(90 60 40 / .16);
+  clip-path: polygon(0 0, 100% 0, 55% 92%, 52.5% 97.5%, 50% 100%, 47.5% 97.5%, 45% 92%);
 }
-.envelope-seal svg { width: 46%; fill: none; stroke: rgb(255 240 235 / .75); stroke-width: 1.4; }
-.envelope:hover .envelope-body { transform: rotate(-2deg) translateY(-.4rem); }
-.envelope:hover .envelope-seal { transform: translate(-50%, -50%) scale(1.06); }
-.envelope.is-opening { animation: none; }
-.envelope.is-opening .envelope-seal { transform: translate(-50%, -50%) scale(1.4) rotate(20deg); opacity: 0; }
-.envelope.is-opening .envelope-flap { transform: rotateX(178deg); }
-.envelope.is-opening .envelope-paper { transform: translateY(-38%); }
-.envelope.is-opening .envelope-body { transform: rotate(0deg); }
+.env-flap {
+  position: absolute;
+  inset: 0 0 auto;
+  z-index: 6;
+  height: 60%;
+  transform-origin: 50% 0;
+  transform-style: preserve-3d;
+  transform: perspective(1200px) rotateX(0deg);
+  transition: transform 900ms var(--ease-in-out) 650ms, z-index 900ms linear 650ms;
+}
+.env-flap-face {
+  position: absolute;
+  inset: 0;
+  clip-path: polygon(0 0, 100% 0, 55% 92%, 52.5% 97.5%, 50% 100%, 47.5% 97.5%, 45% 92%);
+  backface-visibility: hidden;
+}
+.env-flap-face.is-outer {
+  background:
+    radial-gradient(120% 80% at 30% 0%, rgb(255 255 255 / .5), transparent 60%),
+    linear-gradient(to bottom, var(--e-flap), color-mix(in oklab, var(--e-flap) 75%, var(--e-side)));
+}
+.env-flap-face.is-inner {
+  transform: rotateX(180deg);
+  background:
+    linear-gradient(to top, rgb(80 40 25 / .18), transparent 60%),
+    repeating-linear-gradient(135deg, var(--e-liner) 0 1px, transparent 1px 9px),
+    var(--e-in);
+}
+
+.env-seal {
+  position: absolute;
+  top: 60%;
+  left: 50%;
+  z-index: 7;
+  width: 23%;
+  aspect-ratio: 1;
+  transform: translate(-50%, -54%);
+  filter: drop-shadow(0 .3rem .45rem rgb(90 40 40 / .28)) drop-shadow(0 1px 1px rgb(70 30 30 / .3));
+  transition: transform 700ms var(--ease-out) 1100ms;
+}
+.env-seal-half {
+  position: absolute;
+  inset: 0;
+  transition: transform 700ms var(--ease-out) 1100ms, opacity 400ms var(--ease-soft) 1100ms;
+}
+.env-seal-half svg { display: block; width: 100%; height: 100%; }
+.env-seal-half.is-left { clip-path: polygon(0 0, 53% 0, 47% 28%, 55% 50%, 46% 72%, 52% 100%, 0 100%); }
+.env-seal-half.is-right { clip-path: polygon(53% 0, 100% 0, 100% 100%, 52% 100%, 46% 72%, 55% 50%, 47% 28%); }
+
+.env-paper {
+  position: absolute;
+  inset: 0;
+  z-index: 8;
+  border-radius: 3px;
+  background-image: var(--paper-fibre);
+  background-size: 260px 260px;
+  mix-blend-mode: multiply;
+  opacity: .45;
+  pointer-events: none;
+}
+.envelope {
+  --paper-fibre: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='260' height='260'%3E%3Cfilter id='g'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 .55 0 0 0 0 .48 0 0 0 0 .4 0 0 0 .22 0'/%3E%3C/filter%3E%3Cfilter id='f'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.012 .32' numOctaves='2' seed='7' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 .6 0 0 0 0 .52 0 0 0 0 .44 0 0 0 .35 -.08'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23g)'/%3E%3Crect width='100%25' height='100%25' filter='url(%23f)' transform='rotate(18 130 130)'/%3E%3C/svg%3E");
+}
+.env-sheen {
+  position: absolute;
+  inset: 0;
+  z-index: 8;
+  background: linear-gradient(115deg, transparent calc(var(--mx) - 22%), rgb(255 250 240 / .4) var(--mx), transparent calc(var(--mx) + 22%));
+  mix-blend-mode: soft-light;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 600ms var(--ease-soft);
+}
+.envelope.is-tracking .env-paper {
+  position: absolute;
+  inset: 0;
+  z-index: 8;
+  border-radius: 3px;
+  background-image: var(--paper-fibre);
+  background-size: 260px 260px;
+  mix-blend-mode: multiply;
+  opacity: .45;
+  pointer-events: none;
+}
+.envelope {
+  --paper-fibre: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='260' height='260'%3E%3Cfilter id='g'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 .55 0 0 0 0 .48 0 0 0 0 .4 0 0 0 .22 0'/%3E%3C/filter%3E%3Cfilter id='f'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.012 .32' numOctaves='2' seed='7' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 .6 0 0 0 0 .52 0 0 0 0 .44 0 0 0 .35 -.08'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23g)'/%3E%3Crect width='100%25' height='100%25' filter='url(%23f)' transform='rotate(18 130 130)'/%3E%3C/svg%3E");
+}
+.env-sheen { opacity: 1; }
+
+.env-postmark {
+  position: absolute;
+  bottom: 5%;
+  right: 3%;
+  z-index: 9;
+  width: 40%;
+  color: #9a4a4c;
+  opacity: .55;
+  mix-blend-mode: multiply;
+  transform: rotate(-9deg);
+  pointer-events: none;
+}
+.env-postmark svg { display: block; width: 100%; fill: none; stroke: currentColor; stroke-width: 1.4; }
+.env-postmark circle:last-child { stroke-width: .8; stroke-dasharray: 2 3; }
+.env-postmark-text {
+  position: absolute;
+  top: 50%;
+  left: 77.3%;
+  display: grid;
+  justify-items: center;
+  gap: .1em;
+  transform: translate(-50%, -50%);
+  font-size: 3.4cqi;
+  line-height: 1.1;
+}
+.env-postmark-text b { font-family: var(--font-serif); font-weight: 500; font-size: 1.25em; letter-spacing: .2em; padding-left: .2em; }
+.env-postmark-text small { font-family: var(--font-latin); font-size: .82em; letter-spacing: .04em; }
+
+/* Hover: the envelope lifts toward the light, and the seal catches it. */
+@media (hover: hover) {
+  .envelope:hover .envelope-tilt { transform: perspective(1400px) rotateX(var(--rx)) rotateY(var(--ry)) rotate(-1deg) translateY(-.5rem); }
+  .envelope:hover .env-seal { transform: translate(-50%, -54%) scale(1.05); transition-delay: 0ms; }
+}
+
+/* Opening: the seal cracks, the flap swings back, light spills out, the letter rises.
+   Each part carries its own delay both ways, so closing plays the story in reverse. */
+.envelope.is-opening { animation-play-state: paused; }
+.envelope.is-opening .envelope-tilt { transform: perspective(1400px) rotateX(0deg) rotateY(0deg) rotate(0deg); }
+.envelope.is-opening .env-seal-half { transition-delay: 0ms; opacity: 0; }
+.envelope.is-opening .env-seal-half.is-left { transform: translate(-22%, 34%) rotate(-24deg); }
+.envelope.is-opening .env-seal-half.is-right { transform: translate(24%, 30%) rotate(20deg); }
+.envelope.is-opening .env-flap-shadow { opacity: 0; transition-delay: 150ms; }
+.envelope.is-opening .env-flap { transform: perspective(1200px) rotateX(180deg); z-index: 0; transition-delay: 250ms, 250ms; }
+.envelope.is-opening .env-glow { opacity: 1; transition-delay: 550ms; transition-duration: 900ms; }
+.envelope.is-opening .env-letter { transform: translateY(-56%); transition-duration: 1000ms; transition-timing-function: var(--ease-out); transition-delay: 950ms; }
+.envelope.is-opening .env-paper {
+  position: absolute;
+  inset: 0;
+  z-index: 8;
+  border-radius: 3px;
+  background-image: var(--paper-fibre);
+  background-size: 260px 260px;
+  mix-blend-mode: multiply;
+  opacity: .45;
+  pointer-events: none;
+}
+.envelope {
+  --paper-fibre: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='260' height='260'%3E%3Cfilter id='g'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 .55 0 0 0 0 .48 0 0 0 0 .4 0 0 0 .22 0'/%3E%3C/filter%3E%3Cfilter id='f'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.012 .32' numOctaves='2' seed='7' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 .6 0 0 0 0 .52 0 0 0 0 .44 0 0 0 .35 -.08'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23g)'/%3E%3Crect width='100%25' height='100%25' filter='url(%23f)' transform='rotate(18 130 130)'/%3E%3C/svg%3E");
+}
+.env-sheen { opacity: 0; }
+
 .envelope:focus-visible { outline-offset: 1.25rem; border-radius: 1rem; }
 .envelope.is-static { animation: none; }
 .envelope-note {
