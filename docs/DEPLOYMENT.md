@@ -2,9 +2,9 @@
 
 ## 唯一来源与拓扑
 
-`GitHub liangjie78/loveuhqq-site 的 main → 同提交本地构建 → dist → Cloudflare Worker Static Assets loveuhqq-site → loveuhqq.x23.shop`
+`GitHub liangjie78/loveuhqq-site 的 main → CI 通过 → GitHub Actions 同提交构建 → dist → Cloudflare Worker Static Assets loveuhqq-site → loveuhqq.x23.shop`
 
-当前为手动 Wrangler 部署，Cloudflare 没有配置 Git 自动构建来源。没有第二个源码仓库。GitHub 自动部署尚未配置，当前 GitHub CLI 登录读取 App installations 返回 403；不绕过权限。
+当前由 GitHub Actions 自动部署：`main` 上 `CI` 工作流成功后触发 `.github/workflows/deploy-loveuhqq.yml`，用仓库 Secrets 中的 Cloudflare 凭据运行项目级 Wrangler 发布，因此合并 PR 即上线。该工作流也可在 Actions 页面手动运行。Cloudflare 没有配置 Git 自动构建来源，没有第二个源码仓库。
 
 ## 目标
 
@@ -107,7 +107,7 @@ npx wrangler deploy --config wrangler.memory-preview.jsonc
 
 不读取、回显或提交密码、Token、Cookie、API Key。使用现有安全登录机制；不提交 node_modules、dist、.wrangler、.env 或 .dev.vars。不修改 x23.shop 根域、blogtext.x23.shop、x23-personal-site 或其他资源。
 
-未来启用 GitHub 自动部署前核实 Git Integration 权限，只关联本私有仓库，生产分支限定 main，构建 `npm run build`，部署使用项目级 Wrangler。保持用户手动 Merge，更新 README、AGENTS 和本文件，再验证真实触发与部署结果。
+自动部署只在 `main` 上 `CI` 成功后触发，构建 `npm run build`，部署使用项目级 Wrangler。保持用户手动 Merge；改变部署方式时同步更新 README、AGENTS 和本文件，并验证真实触发与部署结果。
 
 ## 首次部署证据（2026-09-13，Asia/Shanghai）
 

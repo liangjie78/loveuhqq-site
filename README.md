@@ -46,13 +46,13 @@ npm run preview
 
 ## 部署路径
 
-当前采用手动项目级 Wrangler 部署：经用户授权后，从已合并的 `main` 干净源码运行 `npm ci` 和 `npm run deploy`。`npm run deploy` 会先构建，再把 `dist/` 上传到独立 Worker `loveuhqq-site`，并绑定正式 Custom Domain：
+正式站由 GitHub Actions 自动部署：PR 合并进 `main` 后，`CI` 工作流通过即触发 [`deploy-loveuhqq.yml`](.github/workflows/deploy-loveuhqq.yml)，用同一提交运行 `npm ci`、生产绑定检查和 `npm run build`，再用项目级 Wrangler 把 `dist/` 上传到独立 Worker `loveuhqq-site`，并绑定正式 Custom Domain：
 
 ```text
 GitHub main → npm run build → dist/ → Cloudflare Worker → loveuhqq.x23.shop
 ```
 
-GitHub 自动部署尚未配置；没有绕过权限或创建额外凭据。GitHub 是唯一正式源码，生产构建来自本仓库相同提交，不使用其他仓库或 Sites 托管副本。
+**合并 PR 即上线**：合并前先在临时预览站验收。也可以在 Actions 页面手动运行该工作流重新部署；本地仍可用 `npm run deploy` 手动部署，需当前任务明确授权。GitHub 是唯一正式源码，生产构建来自本仓库相同提交，不使用其他仓库或 Sites 托管副本。
 
 ## 临时预览
 
@@ -77,7 +77,7 @@ GitHub 自动部署尚未配置；没有绕过权限或创建额外凭据。GitH
 
 ## 生产状态说明
 
-当前采用手动发布，合并 PR 不会自动更新正式网站。本次手账改版的源码和截图不构成生产已更新的证明，正式网站版本须以对应部署记录及域名、正文、资源核验为准。既往 V2 工作记录见 [PR #6](https://github.com/liangjie78/loveuhqq-site/pull/6)，已有部署证据保留在 [部署说明](docs/DEPLOYMENT.md) 中。
+合并 PR 到 `main` 且 CI 通过后，正式网站会自动更新。正式网站版本须以对应的「Deploy loveuhqq」运行记录及域名、正文、资源核验为准，源码和截图本身不构成生产已更新的证明。既往 V2 工作记录见 [PR #6](https://github.com/liangjie78/loveuhqq-site/pull/6)，已有部署证据保留在 [部署说明](docs/DEPLOYMENT.md) 中。
 
 
 ### 当前身份选择方式
