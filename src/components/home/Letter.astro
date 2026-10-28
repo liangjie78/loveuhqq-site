@@ -9,39 +9,18 @@ const date = dotted(hundredthDayDate);
 <section class="chapter letter" id="letter" aria-labelledby="letter-title">
   <div class="wrap letter-grid">
     <div class="envelope-stage" data-reveal data-envelope-stage>
-      <svg class="wax-defs" aria-hidden="true" focusable="false">
-        <defs>
-          <radialGradient id="wax-body" cx="38%" cy="32%" r="75%">
-            <stop offset="0" stop-color="var(--wax-hi)" />
-            <stop offset=".45" stop-color="var(--wax)" />
-            <stop offset="1" stop-color="var(--wax-lo)" />
-          </radialGradient>
-          <radialGradient id="wax-pool" cx="56%" cy="60%" r="62%">
-            <stop offset="0" stop-color="var(--wax)" />
-            <stop offset="1" stop-color="var(--wax-lo)" />
-          </radialGradient>
-          <symbol id="wax-seal" viewBox="0 0 100 100">
-            <path fill="url(#wax-body)" d="M50 4C63 3 73 9 81 16c9 8 15 19 14 33 2 13-4 24-12 32-9 9-20 15-33 14-14 2-25-4-33-12C9 75 3 63 4 50 2 37 9 25 18 17 27 9 37 3 50 4Z" />
-            <circle cx="50" cy="51" r="31" fill="url(#wax-pool)" />
-            <circle cx="50" cy="51" r="31" fill="none" stroke="var(--wax-lo)" stroke-width="2.4" opacity=".55" />
-            <circle cx="50" cy="49.6" r="32.5" fill="none" stroke="var(--wax-hi)" stroke-width="1.2" opacity=".55" />
-            <path transform="translate(30.8 31) scale(1.6)" fill="var(--wax-lo)" d="M12 19.5C7 16 4 13.3 4 10.1 4 7.8 5.8 6 8 6c1.6 0 3 .9 4 2.3C13 6.9 14.4 6 16 6c2.2 0 4 1.8 4 4.1 0 3.2-3 5.9-8 9.4Z" />
-            <path transform="translate(30.8 32.2) scale(1.6)" fill="none" stroke="var(--wax-hi)" stroke-width=".7" opacity=".8" d="M12 19.5C7 16 4 13.3 4 10.1 4 7.8 5.8 6 8 6c1.6 0 3 .9 4 2.3C13 6.9 14.4 6 16 6c2.2 0 4 1.8 4 4.1 0 3.2-3 5.9-8 9.4Z" />
-            <ellipse cx="34" cy="24" rx="13" ry="6" fill="#fff" opacity=".14" transform="rotate(-28 34 24)" />
-          </symbol>
-        </defs>
-      </svg>
       <button class="envelope" type="button" data-envelope aria-describedby="envelope-note" aria-haspopup="dialog" hidden>
-        <EnvelopeArt date={date} label={letter.waiting} />
+        <EnvelopeArt />
         <span class="sr-only">{letter.open}</span>
       </button>
       <noscript>
-        <div class="envelope is-static" role="img" aria-label={letter.envelope}><EnvelopeArt date={date} label={letter.waiting} /></div>
+        <div class="envelope is-static" role="img" aria-label={letter.envelope}><EnvelopeArt /></div>
       </noscript>
       <p class="envelope-note" id="envelope-note" data-envelope-note role="status"></p>
     </div>
     <div class="letter-copy">
       <p class="eyebrow" data-reveal><span class="numeral">05</span>信</p>
+      <span class="letter-stamp" data-letter-stamp data-reveal>{letter.waiting}</span>
       <h2 class="letter-title display" id="letter-title" data-reveal>{letter.title[0]}<span class="numeral">{letter.title[1]}</span>{letter.title[2]}</h2>
       <p class="lede" data-reveal>
         <span data-letter-wait>等到 <time class="numeral" datetime={hundredthDayDate}>{date}</time> 那天，再拆开这封信。</span><span data-letter-ready hidden>{letter.readyCopy}</span><br />

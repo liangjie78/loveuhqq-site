@@ -1,51 +1,23 @@
 ---
 /**
- * The hundred-day envelope, drawn in layers so it can really open:
- * lined inside, the letter, a warm light, the folded pocket, a two-sided flap,
- * a wax seal that cracks in two, and a postmark that carries the day.
+ * The hundred-day envelope, cut from a real photograph so the paper and wax
+ * stay real: the pocket stays, the flap (with the top of the seal) swings open,
+ * warm light spills out and the letter rises from inside.
  */
-interface Props { date: string; label: string }
-const { date, label } = Astro.props;
-const half = '<svg viewBox="0 0 100 100"><use href="#wax-seal"></use></svg>';
 ---
 <span class="envelope-tilt" aria-hidden="true">
   <span class="envelope-shadow"></span>
   <span class="envelope-body">
     <span class="env-back"></span>
+    <span class="env-glow"></span>
     <span class="env-letter">
       <span class="env-letter-head">写给第 <i>100</i> 天</span>
       <span class="env-letter-lines"></span>
     </span>
-    <span class="env-glow"></span>
-    <svg class="env-pocket" viewBox="0 0 300 200" preserveAspectRatio="none">
-      <path class="env-side" d="M0 0 L144 107 Q149 111 144 115 L0 200 Z" />
-      <path class="env-side is-right" d="M300 0 L156 107 Q151 111 156 115 L300 200 Z" />
-      <path class="env-bottom-shade" d="M0 200 C58 160 118 121 150 113 C182 121 242 160 300 200 Z" />
-      <path class="env-bottom" d="M0 200 C58 162 118 124 150 116 C182 124 242 162 300 200 Z" />
-      <path class="env-crease" d="M2 4 L143 108" opacity=".5" />
-      <path class="env-crease" d="M298 4 L157 108" opacity=".5" />
-    </svg>
-    <span class="env-flap-shadow"><span></span></span>
+    <span class="env-pocket"></span>
     <span class="env-flap">
       <span class="env-flap-face is-outer"></span>
       <span class="env-flap-face is-inner"></span>
     </span>
-    <span class="env-seal">
-      <span class="env-seal-half is-left" set:html={half} />
-      <span class="env-seal-half is-right" set:html={half} />
-    </span>
-    <span class="env-paper"></span>
-    <span class="env-sheen"></span>
-  </span>
-  <span class="env-postmark">
-    <svg viewBox="0 0 220 100">
-      <path d="M0 34 q12 -7 24 0 t24 0 t24 0 t24 0 t24 0" />
-      <path d="M0 46 q12 -7 24 0 t24 0 t24 0 t24 0 t24 0" />
-      <path d="M0 58 q12 -7 24 0 t24 0 t24 0 t24 0 t24 0" />
-      <path d="M0 70 q12 -7 24 0 t24 0 t24 0 t24 0 t24 0" />
-      <circle cx="170" cy="50" r="44" />
-      <circle cx="170" cy="50" r="38" />
-    </svg>
-    <span class="env-postmark-text"><b data-letter-stamp>{label}</b><small>{date}</small></span>
   </span>
 </span>

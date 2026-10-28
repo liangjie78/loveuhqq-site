@@ -75,9 +75,8 @@ function updateDates() {
 function waitForDate() {
   showNote(`还没到拆的时候，${dotted(hundredthDayDate)} 再来。`);
   if (calm.matches) return;
-  // A small shake, the seal holding fast. Individual properties leave the CSS transforms alone.
+  // A small shake, the seal holding fast; individual properties leave the CSS transforms alone.
   envelope.querySelector('.envelope-body')!.animate({ rotate: ['0deg', '3deg', '-4deg', '2deg', '-1deg', '0deg'], translate: ['0 0', '0 -6px', '0 0', '0 -3px', '0 0', '0 0'] }, { duration: 800, easing: 'ease-in-out' });
-  envelope.querySelector('.env-seal')!.animate({ scale: ['1', '1.12', '.96', '1.04', '1'] }, { duration: 700, easing: 'ease-out' });
 }
 
 async function loadLetter() {
@@ -139,7 +138,7 @@ function openLetter() {
 
 envelope.hidden = false;
 
-// The envelope leans toward a fine pointer and a soft sheen follows it.
+// The envelope leans a little toward a fine pointer.
 const stage = document.querySelector<HTMLElement>('[data-envelope-stage]')!;
 const fine = matchMedia('(hover: hover) and (pointer: fine)');
 stage.addEventListener('pointermove', event => {
@@ -148,13 +147,12 @@ stage.addEventListener('pointermove', event => {
   const x = Math.min(1, Math.max(0, (event.clientX - box.left) / box.width));
   const y = Math.min(1, Math.max(0, (event.clientY - box.top) / box.height));
   envelope.classList.add('is-tracking');
-  envelope.style.setProperty('--ry', `${((x - .5) * 14).toFixed(2)}deg`);
-  envelope.style.setProperty('--rx', `${((.5 - y) * 10).toFixed(2)}deg`);
-  envelope.style.setProperty('--mx', `${(x * 100).toFixed(1)}%`);
+  envelope.style.setProperty('--ry', `${((x - .5) * 10).toFixed(2)}deg`);
+  envelope.style.setProperty('--rx', `${((.5 - y) * 7).toFixed(2)}deg`);
 });
 stage.addEventListener('pointerleave', () => {
   envelope.classList.remove('is-tracking');
-  for (const name of ['--rx', '--ry', '--mx']) envelope.style.removeProperty(name);
+  for (const name of ['--rx', '--ry']) envelope.style.removeProperty(name);
 });
 envelope.addEventListener('click', () => {
   if (!authenticated) { pendingLogin = true; envelope.setAttribute('data-open-login', ''); return; }

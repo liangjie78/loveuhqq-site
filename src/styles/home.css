@@ -321,6 +321,19 @@
 .letter-copy { grid-column: 7 / -1; padding-left: clamp(0rem, 3vw, 3rem); position: relative; display: grid; gap: 1.5rem; justify-items: start; }
 .letter-title { font-size: clamp(2.6rem, 1.3rem + 3.8vw, 6.4rem); line-height: 1.1; white-space: nowrap; }
 .letter-title .numeral { padding-inline: .08em; font-size: 1.45em; color: var(--rouge); line-height: .8; }
+.letter-stamp {
+  justify-self: start;
+  padding: .3em .7em .3em .9em;
+  border: 1px solid currentColor;
+  border-radius: 2px;
+  color: var(--rouge-ink);
+  font-family: var(--font-serif);
+  font-size: var(--step--1);
+  letter-spacing: .5em;
+  opacity: .8;
+  transform: rotate(-4deg);
+}
+.letter-stamp.is-ready { background: var(--rouge-wash); }
 .letter-count { font-family: var(--font-serif); color: var(--ink-2); }
 .letter-count strong { font-family: var(--font-latin); font-style: italic; font-weight: 400; font-size: var(--step-3); color: var(--ink); padding-inline: .15em; }
 @media (max-width: 63.99rem) {
@@ -328,22 +341,16 @@
   .letter-copy { order: -1; padding-left: 0; }
 }
 
-/* The envelope: layered paper that really opens. Its paper stays warm cream in
-   both themes, a lamp-lit object rather than a themed panel. */
-.wax-defs { position: absolute; width: 0; height: 0; overflow: hidden; }
-/* Wax colours live on the stage: the seal's gradients resolve them where they are defined. */
-.envelope-stage { --wax: #b5706c; --wax-hi: #d9a29b; --wax-lo: #85494a; overflow-x: clip; }
+/* The envelope: a real photograph cut along its fold, so it opens without
+   losing the paper. The same pixels make the flap and the pocket. */
+.envelope-stage { overflow-x: clip; }
 .envelope {
-  --e-flap: #f4f1ea;
-  --e-front: #f0ece4;
-  --e-side: #ebe6dd;
-  --e-in: #e2dbcf;
-  --e-edge: rgb(110 80 60 / .14);
-  --e-ink: #2a1f1b;
-  --e-liner: rgb(178 58 72 / .2);
   --rx: 0deg;
   --ry: 0deg;
-  --mx: 50%;
+  --flap: polygon(0 0, 100% 0, 100% 5%, 96.7% 9.4%, 90.1% 18.2%, 83.6% 26.3%, 77% 34%, 70.4% 41.8%, 63.8% 49.6%, 58.9% 55.5%, 50% 66%, 41.1% 55.5%, 36.2% 49.6%, 29.6% 41.8%, 23% 34%, 16.4% 26.3%, 9.9% 18.2%, 3.3% 9.4%, 0 5%);
+  --pocket: polygon(0 4%, 3.3% 8.4%, 9.9% 17.2%, 16.4% 25.3%, 23% 33%, 29.6% 40.8%, 36.2% 48.6%, 41.1% 54.5%, 50% 65%, 58.9% 54.5%, 63.8% 48.6%, 70.4% 40.8%, 77% 33%, 83.6% 25.3%, 90.1% 17.2%, 96.7% 8.4%, 100% 4%, 100% 100%, 0 100%);
+  --photo: url("/images/letter-envelope.webp");
+  --paper-photo: url("/images/letter-paper.webp");
   position: relative;
   width: min(100%, 31rem);
   padding: 0;
@@ -353,81 +360,75 @@
   animation: float 8s var(--ease-in-out) infinite;
   -webkit-tap-highlight-color: transparent;
 }
-.dark .envelope {
-  --e-flap: #e9e3d8;
-  --e-front: #e4ddd1;
-  --e-side: #ddd5c8;
-  --e-in: #cfc5b6;
-  --e-edge: rgb(40 20 10 / .3);
-}
-.dark .envelope-shadow { background: radial-gradient(closest-side, rgb(0 0 0 / .6), transparent); }
-@keyframes float { 50% { transform: translateY(-.6rem); } }
+@keyframes float { 50% { transform: translateY(-.5rem); } }
 
 .envelope-tilt {
   position: relative;
   display: block;
-  padding-top: 7%;
-  transform: perspective(1400px) rotateX(var(--rx)) rotateY(var(--ry)) rotate(-3deg);
-  transition: transform 900ms var(--ease-out);
+  padding-top: 8%;
+  transform: perspective(1600px) rotateX(var(--rx)) rotateY(var(--ry)) rotate(-3deg);
+  transition: transform 1000ms var(--ease-out);
 }
-.envelope.is-tracking .envelope-tilt { transition-duration: 240ms; }
+.envelope.is-tracking .envelope-tilt { transition-duration: 300ms; }
 .envelope-shadow {
   position: absolute;
-  inset: auto 8% -9% 8%;
-  height: 16%;
+  inset: auto 6% -7% 6%;
+  height: 18%;
   border-radius: 50%;
-  background: radial-gradient(closest-side, rgb(70 35 25 / .34), transparent);
-  filter: blur(10px);
+  background: radial-gradient(closest-side, rgb(80 55 40 / .3), transparent);
+  filter: blur(12px);
   animation: shadow-breathe 8s var(--ease-in-out) infinite;
 }
-@keyframes shadow-breathe { 50% { transform: scale(.9); opacity: .7; } }
+.dark .envelope-shadow { background: radial-gradient(closest-side, rgb(0 0 0 / .7), transparent); }
+@keyframes shadow-breathe { 50% { transform: scale(.92); opacity: .75; } }
 
 .envelope-body {
   position: relative;
   display: block;
-  aspect-ratio: 1.5;
+  aspect-ratio: 608 / 462;
   isolation: isolate;
+  box-shadow: 0 1px 2px rgb(80 55 40 / .1), 0 14px 30px -18px rgb(80 55 40 / .35);
 }
+.dark .envelope-body { filter: brightness(.9) sepia(.08); }
+
 .env-back {
   position: absolute;
   inset: 0;
   z-index: 1;
-  border-radius: 3px;
   background:
-    radial-gradient(120% 90% at 50% 0%, transparent 40%, rgb(80 40 25 / .14)),
-    repeating-linear-gradient(135deg, var(--e-liner) 0 1px, transparent 1px 9px),
-    var(--e-in);
-  box-shadow: 0 0 0 1px var(--e-edge);
+    linear-gradient(to bottom, rgb(70 45 30 / .05), rgb(70 45 30 / .22) 70%),
+    var(--paper-photo) center / cover;
+  filter: brightness(.9);
 }
 
 .env-letter {
   position: absolute;
-  inset: 6% 5.5% 5%;
-  z-index: 2;
+  inset: 5% 6% 4%;
+  z-index: 3;
   display: grid;
   align-content: start;
-  gap: 7cqi;
+  gap: 6cqi;
   padding: 7cqi 8cqi;
-  border-radius: 2px;
   background:
-    linear-gradient(to bottom, rgb(255 255 255 / .7), transparent 30%),
-    #fffdf9;
-  box-shadow: 0 1px 2px rgb(80 40 25 / .12), 0 8px 20px -12px rgb(80 40 25 / .3);
-  color: var(--e-ink);
+    linear-gradient(rgb(255 254 250 / .55), rgb(255 254 250 / .55)),
+    var(--paper-photo) center / cover;
+  box-shadow: 0 1px 2px rgb(80 55 40 / .15), 0 10px 24px -14px rgb(80 55 40 / .35);
+  color: #2a1f1b;
   transition: transform 700ms var(--ease-in-out) 0ms;
 }
-.env-letter-head { font-family: var(--font-serif); font-size: 5.4cqi; font-weight: 400; letter-spacing: .06em; }
-.env-letter-head i { font-family: var(--font-latin); font-size: 1.3em; color: #a8323f; padding-inline: .05em; }
+.env-letter-head { font-family: var(--font-serif); font-size: 5.2cqi; font-weight: 400; letter-spacing: .06em; }
+.env-letter-head i { font-family: var(--font-latin); font-size: 1.3em; color: #a14a4c; padding-inline: .05em; }
 .env-letter-lines {
-  height: 20cqi;
-  background: repeating-linear-gradient(to bottom, transparent 0 4.6cqi, rgb(42 31 27 / .14) 4.6cqi calc(4.6cqi + 1px));
+  height: 22cqi;
+  background: repeating-linear-gradient(to bottom, transparent 0 4.6cqi, rgb(42 31 27 / .12) 4.6cqi calc(4.6cqi + 1px));
 }
 
 .env-glow {
   position: absolute;
-  inset: -45% 0 25%;
-  z-index: 3;
-  background: radial-gradient(50% 50% at 50% 58%, rgb(255 214 160 / .75), rgb(247 183 154 / .32) 42%, transparent 70%);
+  inset: -55% -4% 30%;
+  z-index: 2;
+  background: radial-gradient(50% 50% at 50% 62%, rgb(255 210 150 / .75), rgb(247 183 154 / .3) 50%, transparent 72%);
+  filter: blur(6px);
   opacity: 0;
   pointer-events: none;
   transition: opacity 600ms var(--ease-soft) 0ms;
@@ -437,182 +438,45 @@
   position: absolute;
   inset: 0;
   z-index: 4;
-  width: 100%;
-  height: 100%;
-  overflow: visible;
-  filter: drop-shadow(0 0 .5px var(--e-edge));
+  background: var(--photo) 0 0 / 100% 100%;
+  clip-path: var(--pocket);
 }
-.env-side { fill: var(--e-side); }
-.env-side.is-right { fill: color-mix(in oklab, var(--e-side) 80%, var(--e-front)); }
-.env-bottom-shade { fill: rgb(90 60 40 / .08); }
-.env-bottom { fill: var(--e-front); stroke: rgb(255 255 255 / .75); stroke-width: .8; vector-effect: non-scaling-stroke; }
-.env-crease { fill: none; stroke: rgb(255 255 255 / .7); stroke-width: 1; vector-effect: non-scaling-stroke; }
 
-.env-flap-shadow {
-  position: absolute;
-  inset: 0 0 auto;
-  z-index: 5;
-  height: 60%;
-  filter: blur(3px);
-  opacity: .9;
-  transform: translateY(5px);
-  transition: opacity 300ms var(--ease-soft) 900ms;
-}
-.env-flap-shadow span {
-  position: absolute;
-  inset: 0;
-  background: rgb(90 60 40 / .16);
-  clip-path: polygon(0 0, 100% 0, 55% 92%, 52.5% 97.5%, 50% 100%, 47.5% 97.5%, 45% 92%);
-}
 .env-flap {
   position: absolute;
-  inset: 0 0 auto;
+  inset: 0;
   z-index: 6;
-  height: 60%;
   transform-origin: 50% 0;
   transform-style: preserve-3d;
-  transform: perspective(1200px) rotateX(0deg);
-  transition: transform 900ms var(--ease-in-out) 650ms, z-index 900ms linear 650ms;
+  transform: perspective(1400px) rotateX(0deg);
+  transition: transform 1000ms var(--ease-in-out) 650ms, z-index 1000ms linear 650ms;
 }
-.env-flap-face {
-  position: absolute;
-  inset: 0;
-  clip-path: polygon(0 0, 100% 0, 55% 92%, 52.5% 97.5%, 50% 100%, 47.5% 97.5%, 45% 92%);
-  backface-visibility: hidden;
-}
-.env-flap-face.is-outer {
-  background:
-    radial-gradient(120% 80% at 30% 0%, rgb(255 255 255 / .5), transparent 60%),
-    linear-gradient(to bottom, var(--e-flap), color-mix(in oklab, var(--e-flap) 75%, var(--e-side)));
-}
+.env-flap-face { position: absolute; inset: 0; backface-visibility: hidden; }
+.env-flap-face.is-outer { background: var(--photo) 0 0 / 100% 100%; clip-path: var(--flap); }
+/* The back of the flap: the same paper turned over, a little in its own shade.
+   It is flipped about its middle, so its shape is the flap mirrored top to bottom. */
 .env-flap-face.is-inner {
   transform: rotateX(180deg);
   background:
-    linear-gradient(to top, rgb(80 40 25 / .18), transparent 60%),
-    repeating-linear-gradient(135deg, var(--e-liner) 0 1px, transparent 1px 9px),
-    var(--e-in);
+    linear-gradient(to top, rgb(70 45 30 / .2), rgb(70 45 30 / .04) 30%),
+    var(--paper-photo) center bottom / 100% 66%;
+  filter: brightness(.94);
+  clip-path: polygon(0 100%, 100% 100%, 100% 95%, 96.7% 90.6%, 90.1% 81.8%, 83.6% 73.7%, 77% 66%, 70.4% 58.2%, 63.8% 50.4%, 58.9% 44.5%, 50% 34%, 41.1% 44.5%, 36.2% 50.4%, 29.6% 58.2%, 23% 66%, 16.4% 73.7%, 9.9% 81.8%, 3.3% 90.6%, 0 95%);
 }
 
-.env-seal {
-  position: absolute;
-  top: 60%;
-  left: 50%;
-  z-index: 7;
-  width: 23%;
-  aspect-ratio: 1;
-  transform: translate(-50%, -54%);
-  filter: drop-shadow(0 .3rem .45rem rgb(90 40 40 / .28)) drop-shadow(0 1px 1px rgb(70 30 30 / .3));
-  transition: transform 700ms var(--ease-out) 1100ms;
-}
-.env-seal-half {
-  position: absolute;
-  inset: 0;
-  transition: transform 700ms var(--ease-out) 1100ms, opacity 400ms var(--ease-soft) 1100ms;
-}
-.env-seal-half svg { display: block; width: 100%; height: 100%; }
-.env-seal-half.is-left { clip-path: polygon(0 0, 53% 0, 47% 28%, 55% 50%, 46% 72%, 52% 100%, 0 100%); }
-.env-seal-half.is-right { clip-path: polygon(53% 0, 100% 0, 100% 100%, 52% 100%, 46% 72%, 55% 50%, 47% 28%); }
-
-.env-paper {
-  position: absolute;
-  inset: 0;
-  z-index: 8;
-  border-radius: 3px;
-  background-image: var(--paper-fibre);
-  background-size: 260px 260px;
-  mix-blend-mode: multiply;
-  opacity: .45;
-  pointer-events: none;
-}
-.envelope {
-  --paper-fibre: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='260' height='260'%3E%3Cfilter id='g'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 .55 0 0 0 0 .48 0 0 0 0 .4 0 0 0 .22 0'/%3E%3C/filter%3E%3Cfilter id='f'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.012 .32' numOctaves='2' seed='7' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 .6 0 0 0 0 .52 0 0 0 0 .44 0 0 0 .35 -.08'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23g)'/%3E%3Crect width='100%25' height='100%25' filter='url(%23f)' transform='rotate(18 130 130)'/%3E%3C/svg%3E");
-}
-.env-sheen {
-  position: absolute;
-  inset: 0;
-  z-index: 8;
-  background: linear-gradient(115deg, transparent calc(var(--mx) - 22%), rgb(255 250 240 / .4) var(--mx), transparent calc(var(--mx) + 22%));
-  mix-blend-mode: soft-light;
-  opacity: 0;
-  pointer-events: none;
-  transition: opacity 600ms var(--ease-soft);
-}
-.envelope.is-tracking .env-paper {
-  position: absolute;
-  inset: 0;
-  z-index: 8;
-  border-radius: 3px;
-  background-image: var(--paper-fibre);
-  background-size: 260px 260px;
-  mix-blend-mode: multiply;
-  opacity: .45;
-  pointer-events: none;
-}
-.envelope {
-  --paper-fibre: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='260' height='260'%3E%3Cfilter id='g'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 .55 0 0 0 0 .48 0 0 0 0 .4 0 0 0 .22 0'/%3E%3C/filter%3E%3Cfilter id='f'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.012 .32' numOctaves='2' seed='7' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 .6 0 0 0 0 .52 0 0 0 0 .44 0 0 0 .35 -.08'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23g)'/%3E%3Crect width='100%25' height='100%25' filter='url(%23f)' transform='rotate(18 130 130)'/%3E%3C/svg%3E");
-}
-.env-sheen { opacity: 1; }
-
-.env-postmark {
-  position: absolute;
-  bottom: 5%;
-  right: 3%;
-  z-index: 9;
-  width: 40%;
-  color: #9a4a4c;
-  opacity: .55;
-  mix-blend-mode: multiply;
-  transform: rotate(-9deg);
-  pointer-events: none;
-}
-.env-postmark svg { display: block; width: 100%; fill: none; stroke: currentColor; stroke-width: 1.4; }
-.env-postmark circle:last-child { stroke-width: .8; stroke-dasharray: 2 3; }
-.env-postmark-text {
-  position: absolute;
-  top: 50%;
-  left: 77.3%;
-  display: grid;
-  justify-items: center;
-  gap: .1em;
-  transform: translate(-50%, -50%);
-  font-size: 3.4cqi;
-  line-height: 1.1;
-}
-.env-postmark-text b { font-family: var(--font-serif); font-weight: 500; font-size: 1.25em; letter-spacing: .2em; padding-left: .2em; }
-.env-postmark-text small { font-family: var(--font-latin); font-size: .82em; letter-spacing: .04em; }
-
-/* Hover: the envelope lifts toward the light, and the seal catches it. */
+/* Hover: the envelope lifts a little toward the light. */
 @media (hover: hover) {
-  .envelope:hover .envelope-tilt { transform: perspective(1400px) rotateX(var(--rx)) rotateY(var(--ry)) rotate(-1deg) translateY(-.5rem); }
-  .envelope:hover .env-seal { transform: translate(-50%, -54%) scale(1.05); transition-delay: 0ms; }
+  .envelope:hover .envelope-tilt { transform: perspective(1600px) rotateX(var(--rx)) rotateY(var(--ry)) rotate(-1.5deg) translateY(-.4rem); }
 }
 
-/* Opening: the seal cracks, the flap swings back, light spills out, the letter rises.
-   Each part carries its own delay both ways, so closing plays the story in reverse. */
+/* Opening: the flap swings back taking the top of the seal, light spills out,
+   the letter rises. Each part keeps its own delay both ways, so closing plays
+   the story in reverse. */
 .envelope.is-opening { animation-play-state: paused; }
-.envelope.is-opening .envelope-tilt { transform: perspective(1400px) rotateX(0deg) rotateY(0deg) rotate(0deg); }
-.envelope.is-opening .env-seal-half { transition-delay: 0ms; opacity: 0; }
-.envelope.is-opening .env-seal-half.is-left { transform: translate(-22%, 34%) rotate(-24deg); }
-.envelope.is-opening .env-seal-half.is-right { transform: translate(24%, 30%) rotate(20deg); }
-.envelope.is-opening .env-flap-shadow { opacity: 0; transition-delay: 150ms; }
-.envelope.is-opening .env-flap { transform: perspective(1200px) rotateX(180deg); z-index: 0; transition-delay: 250ms, 250ms; }
-.envelope.is-opening .env-glow { opacity: 1; transition-delay: 550ms; transition-duration: 900ms; }
-.envelope.is-opening .env-letter { transform: translateY(-56%); transition-duration: 1000ms; transition-timing-function: var(--ease-out); transition-delay: 950ms; }
-.envelope.is-opening .env-paper {
-  position: absolute;
-  inset: 0;
-  z-index: 8;
-  border-radius: 3px;
-  background-image: var(--paper-fibre);
-  background-size: 260px 260px;
-  mix-blend-mode: multiply;
-  opacity: .45;
-  pointer-events: none;
-}
-.envelope {
-  --paper-fibre: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='260' height='260'%3E%3Cfilter id='g'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 .55 0 0 0 0 .48 0 0 0 0 .4 0 0 0 .22 0'/%3E%3C/filter%3E%3Cfilter id='f'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.012 .32' numOctaves='2' seed='7' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 .6 0 0 0 0 .52 0 0 0 0 .44 0 0 0 .35 -.08'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23g)'/%3E%3Crect width='100%25' height='100%25' filter='url(%23f)' transform='rotate(18 130 130)'/%3E%3C/svg%3E");
-}
-.env-sheen { opacity: 0; }
+.envelope.is-opening .envelope-tilt { transform: perspective(1600px) rotateX(0deg) rotateY(0deg) rotate(0deg); }
+.envelope.is-opening .env-flap { transform: perspective(1400px) rotateX(180deg); z-index: 0; transition-delay: 150ms, 150ms; }
+.envelope.is-opening .env-glow { opacity: 1; transition-delay: 500ms; transition-duration: 900ms; }
+.envelope.is-opening .env-letter { transform: translateY(-58%); transition-duration: 1000ms; transition-timing-function: var(--ease-out); transition-delay: 850ms; }
 
 .envelope:focus-visible { outline-offset: 1.25rem; border-radius: 1rem; }
 .envelope.is-static { animation: none; }
