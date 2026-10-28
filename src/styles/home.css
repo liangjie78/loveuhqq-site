@@ -317,110 +317,185 @@
 /* ---------- Letter ---------- */
 
 .letter-grid { display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); column-gap: var(--gutter); row-gap: 3rem; align-items: center; }
-.envelope-stage { grid-column: 1 / span 6; padding-block: 2rem; position: relative; display: grid; justify-items: center; perspective: 1400px; }
+.envelope-stage { grid-column: 1 / span 6; padding-block: 2rem; position: relative; display: grid; justify-items: center; }
 .letter-copy { grid-column: 7 / -1; padding-left: clamp(0rem, 3vw, 3rem); position: relative; display: grid; gap: 1.5rem; justify-items: start; }
 .letter-title { font-size: clamp(2.6rem, 1.3rem + 3.8vw, 6.4rem); line-height: 1.1; white-space: nowrap; }
 .letter-title .numeral { padding-inline: .08em; font-size: 1.45em; color: var(--rouge); line-height: .8; }
 .letter-stamp {
-  position: absolute;
-  z-index: 2;
-  top: 0;
-  right: max(0rem, calc(50% - 15rem));
-  display: grid;
-  place-items: center;
-  width: 4.75rem;
-  height: 4.75rem;
-  background: var(--paper);
-  border: 1px solid var(--rouge);
-  border-radius: 50%;
+  justify-self: start;
+  padding: .3em .7em .3em .9em;
+  border: 1px solid currentColor;
+  border-radius: 2px;
   color: var(--rouge-ink);
   font-family: var(--font-serif);
-  font-size: var(--step-0);
-  letter-spacing: .2em;
-  transform: rotate(-12deg);
+  font-size: var(--step--1);
+  letter-spacing: .5em;
+  opacity: .8;
+  transform: rotate(-4deg);
 }
-.letter-stamp::before { content: ""; position: absolute; inset: .3rem; border: 1px dashed var(--rouge); border-radius: 50%; opacity: .45; }
-.letter-stamp.is-ready { background: var(--rouge); color: var(--on-rouge); }
+.letter-stamp.is-ready { background: var(--rouge-wash); }
 .letter-count { font-family: var(--font-serif); color: var(--ink-2); }
 .letter-count strong { font-family: var(--font-latin); font-style: italic; font-weight: 400; font-size: var(--step-3); color: var(--ink); padding-inline: .15em; }
 @media (max-width: 63.99rem) {
   .envelope-stage, .letter-copy { grid-column: 1 / -1; }
+  .envelope-stage { padding-top: clamp(4rem, 18vw, 7rem); }
   .letter-copy { order: -1; padding-left: 0; }
 }
 
+/* The envelope: a real photograph cut along its fold, so it opens without
+   losing the paper. The same pixels make the flap and the pocket. */
+.envelope-stage { overflow-x: clip; }
 .envelope {
+  --rx: 0deg;
+  --ry: 0deg;
+  --flap: polygon(0 0, 100% 0, 100% 5%, 96.7% 9.4%, 90.1% 18.2%, 83.6% 26.3%, 77% 34%, 70.4% 41.8%, 63.8% 49.6%, 58.9% 55.5%, 50% 66%, 41.1% 55.5%, 36.2% 49.6%, 29.6% 41.8%, 23% 34%, 16.4% 26.3%, 9.9% 18.2%, 3.3% 9.4%, 0 5%);
+  --pocket: polygon(0 4%, 3.3% 8.4%, 9.9% 17.2%, 16.4% 25.3%, 23% 33%, 29.6% 40.8%, 36.2% 48.6%, 41.1% 54.5%, 50% 65%, 58.9% 54.5%, 63.8% 48.6%, 70.4% 40.8%, 77% 33%, 83.6% 25.3%, 90.1% 17.2%, 96.7% 8.4%, 100% 4%, 100% 100%, 0 100%);
+  --photo: url("/images/letter-envelope.webp");
+  --paper-photo: url("/images/letter-paper.webp");
   position: relative;
-  width: min(100%, 30rem);
+  width: min(80%, 27rem);
   padding: 0;
   border: 0;
   background: none;
-  transform-style: preserve-3d;
-  animation: float 7s var(--ease-in-out) infinite;
+  container-type: inline-size;
+  translate: -10% 0;
+  animation: float 8s var(--ease-in-out) infinite;
   -webkit-tap-highlight-color: transparent;
 }
-@keyframes float { 50% { transform: translateY(-.75rem) rotate(-1deg); } }
+@keyframes float { 50% { transform: translateY(-.5rem); } }
+
+.envelope-tilt {
+  position: relative;
+  display: block;
+  padding-top: 8%;
+  transform: perspective(1600px) rotateX(var(--rx)) rotateY(var(--ry)) rotate(-3deg);
+  transition: transform 1000ms var(--ease-out);
+}
+.envelope.is-tracking .envelope-tilt { transition-duration: 300ms; }
+.envelope-shadow {
+  position: absolute;
+  inset: auto 6% -7% 6%;
+  height: 18%;
+  border-radius: 50%;
+  background: radial-gradient(closest-side, rgb(80 55 40 / .3), transparent);
+  filter: blur(12px);
+  animation: shadow-breathe 8s var(--ease-in-out) infinite;
+}
+.dark .envelope-shadow { background: radial-gradient(closest-side, rgb(0 0 0 / .7), transparent); }
+@keyframes shadow-breathe { 50% { transform: scale(.92); opacity: .75; } }
+
 .envelope-body {
   position: relative;
   display: block;
-  aspect-ratio: 1.5;
-  border: 1px solid var(--hairline);
-  border-radius: .5rem;
-  background: linear-gradient(160deg, var(--paper-raised), color-mix(in oklab, var(--paper-sunk) 70%, var(--paper-raised)));
-  box-shadow: var(--shadow-2);
-  transform: rotate(-4deg);
-  transform-style: preserve-3d;
-  transition: transform 900ms var(--ease-out);
+  aspect-ratio: 608 / 462;
+  isolation: isolate;
+  box-shadow: 0 1px 2px rgb(80 55 40 / .1), 0 14px 30px -18px rgb(80 55 40 / .35);
 }
-.envelope-back {
+.dark .envelope-body { filter: brightness(.9) sepia(.08); }
+
+.env-back {
   position: absolute;
   inset: 0;
-  border-radius: inherit;
+  z-index: 1;
   background:
-    linear-gradient(to top right, transparent calc(50% - .5px), var(--hairline-strong) 50%, transparent calc(50% + .5px)) left bottom / 50% 62% no-repeat,
-    linear-gradient(to top left, transparent calc(50% - .5px), var(--hairline-strong) 50%, transparent calc(50% + .5px)) right bottom / 50% 62% no-repeat;
+    linear-gradient(to bottom, rgb(70 45 30 / .05), rgb(70 45 30 / .22) 70%),
+    var(--paper-photo) center / cover;
+  filter: brightness(.9);
 }
-.envelope-paper {
+
+.env-letter {
   position: absolute;
-  inset: 8% 7% 12%;
-  border-radius: .3rem;
-  background: repeating-linear-gradient(to bottom, transparent 0 1.4rem, var(--hairline) 1.4rem calc(1.4rem + 1px)), var(--paper-raised);
-  box-shadow: var(--shadow-1);
-  transform: translateZ(-1px);
-  transition: transform 1100ms var(--ease-out) 350ms;
-}
-.envelope-flap {
-  position: absolute;
-  inset: 0 0 auto;
-  height: 58%;
-  clip-path: polygon(0 0, 100% 0, 50% 100%);
-  background: linear-gradient(to bottom, color-mix(in oklab, var(--paper-sunk) 55%, var(--paper-raised)), var(--paper-raised));
-  border-radius: .5rem .5rem 0 0;
-  transform-origin: top;
-  transition: transform 900ms var(--ease-in-out);
-  filter: drop-shadow(0 1px 0 var(--hairline-strong));
-}
-.envelope-seal {
-  position: absolute;
-  top: 58%;
-  left: 50%;
+  inset: 5% 6% 4%;
+  z-index: 3;
   display: grid;
-  place-items: center;
-  width: 17%;
-  aspect-ratio: 1;
-  border-radius: 50%;
-  background: radial-gradient(circle at 35% 30%, color-mix(in oklab, var(--rouge) 70%, white), var(--rouge) 55%, color-mix(in oklab, var(--rouge) 70%, black));
-  box-shadow: 0 .3rem .8rem -.2rem rgb(120 30 40 / .45), inset 0 0 0 .3rem rgb(0 0 0 / .08);
-  transform: translate(-50%, -50%);
-  transition: transform 700ms var(--ease-out), opacity 500ms var(--ease-out);
+  align-content: start;
+  gap: 6cqi;
+  padding: 7cqi 8cqi;
+  background:
+    linear-gradient(rgb(255 254 250 / .55), rgb(255 254 250 / .55)),
+    var(--paper-photo) center / cover;
+  box-shadow: 0 1px 2px rgb(80 55 40 / .15), 0 10px 24px -14px rgb(80 55 40 / .35);
+  color: #2a1f1b;
+  transition: transform 700ms var(--ease-in-out) 0ms;
 }
-.envelope-seal svg { width: 46%; fill: none; stroke: rgb(255 240 235 / .75); stroke-width: 1.4; }
-.envelope:hover .envelope-body { transform: rotate(-2deg) translateY(-.4rem); }
-.envelope:hover .envelope-seal { transform: translate(-50%, -50%) scale(1.06); }
-.envelope.is-opening { animation: none; }
-.envelope.is-opening .envelope-seal { transform: translate(-50%, -50%) scale(1.4) rotate(20deg); opacity: 0; }
-.envelope.is-opening .envelope-flap { transform: rotateX(178deg); }
-.envelope.is-opening .envelope-paper { transform: translateY(-38%); }
-.envelope.is-opening .envelope-body { transform: rotate(0deg); }
+.env-letter-head { font-family: var(--font-serif); font-size: 5.2cqi; font-weight: 400; letter-spacing: .06em; }
+.env-letter-head i { font-family: var(--font-latin); font-size: 1.3em; color: #a14a4c; padding-inline: .05em; }
+.env-letter-lines {
+  height: 22cqi;
+  background: repeating-linear-gradient(to bottom, transparent 0 4.6cqi, rgb(42 31 27 / .12) 4.6cqi calc(4.6cqi + 1px));
+}
+
+.env-glow {
+  position: absolute;
+  inset: -55% -4% 30%;
+  z-index: 2;
+  background: radial-gradient(50% 50% at 50% 62%, rgb(255 210 150 / .75), rgb(247 183 154 / .3) 50%, transparent 72%);
+  filter: blur(6px);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 600ms var(--ease-soft) 0ms;
+}
+
+.env-pocket {
+  position: absolute;
+  inset: 0;
+  z-index: 4;
+  background: var(--photo) 0 0 / 100% 100%;
+  clip-path: var(--pocket);
+}
+
+.env-flap {
+  position: absolute;
+  inset: 0;
+  z-index: 6;
+  transform-origin: 50% 0;
+  transform-style: preserve-3d;
+  transform: perspective(1400px) rotateX(0deg);
+  transition: transform 1000ms var(--ease-in-out) 650ms, z-index 1000ms linear 650ms;
+}
+.env-flap-face { position: absolute; inset: 0; backface-visibility: hidden; }
+.env-flap-face.is-outer { background: var(--photo) 0 0 / 100% 100%; clip-path: var(--flap); }
+/* The back of the flap: the same paper turned over, a little in its own shade.
+   It is flipped about its middle, so its shape is the flap mirrored top to bottom. */
+.env-flap-face.is-inner {
+  transform: rotateX(180deg);
+  background:
+    linear-gradient(to top, rgb(70 45 30 / .2), rgb(70 45 30 / .04) 30%),
+    var(--paper-photo) center bottom / 100% 66%;
+  filter: brightness(.94);
+  clip-path: polygon(0 100%, 100% 100%, 100% 95%, 96.7% 90.6%, 90.1% 81.8%, 83.6% 73.7%, 77% 66%, 70.4% 58.2%, 63.8% 50.4%, 58.9% 44.5%, 50% 34%, 41.1% 44.5%, 36.2% 50.4%, 29.6% 58.2%, 23% 66%, 16.4% 73.7%, 9.9% 81.8%, 3.3% 90.6%, 0 95%);
+}
+
+/* The dried flowers from the photograph, cut out and laid back on top. */
+.env-flowers {
+  position: absolute;
+  left: 86.35%;
+  top: -5.2%;
+  z-index: 10;
+  width: 35.03%;
+  height: 120.13%;
+  background: url("/images/letter-flowers.webp") 0 0 / 100% 100% no-repeat;
+  filter: drop-shadow(0 6px 8px rgb(80 55 40 / .12));
+  transform-origin: 40% 95%;
+  transition: transform 1100ms var(--ease-out) 250ms;
+  pointer-events: none;
+}
+
+/* Hover: the envelope lifts a little toward the light. */
+@media (hover: hover) {
+  .envelope:hover .envelope-tilt { transform: perspective(1600px) rotateX(var(--rx)) rotateY(var(--ry)) rotate(-1.5deg) translateY(-.4rem); }
+}
+
+/* Opening: the flap swings back taking the top of the seal, light spills out,
+   the letter rises. Each part keeps its own delay both ways, so closing plays
+   the story in reverse. */
+.envelope.is-opening { animation-play-state: paused; }
+.envelope.is-opening .envelope-tilt { transform: perspective(1600px) rotateX(0deg) rotateY(0deg) rotate(0deg); }
+.envelope.is-opening .env-flap { transform: perspective(1400px) rotateX(180deg); z-index: 0; transition-delay: 150ms, 150ms; }
+.envelope.is-opening .env-flowers { transform: translateX(6%) rotate(4deg); transition-delay: 0ms; }
+.envelope.is-opening .env-glow { opacity: 1; transition-delay: 500ms; transition-duration: 900ms; }
+.envelope.is-opening .env-letter { transform: translateY(-58%); transition-duration: 1000ms; transition-timing-function: var(--ease-out); transition-delay: 850ms; }
+
 .envelope:focus-visible { outline-offset: 1.25rem; border-radius: 1rem; }
 .envelope.is-static { animation: none; }
 .envelope-note {

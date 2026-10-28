@@ -1,4 +1,3 @@
-import { animate } from 'motion';
 import { dotted, getAnniversaryDay, getNextShanghaiMidnight, hundredthDayDate } from '../lib/anniversary';
 import { api, ApiError } from '../lib/cloud-notebook';
 import { getSession, onSessionChange, publishSession } from '../lib/session';
@@ -76,7 +75,8 @@ function updateDates() {
 function waitForDate() {
   showNote(`还没到拆的时候，${dotted(hundredthDayDate)} 再来。`);
   if (calm.matches) return;
-  animate(envelope.querySelector('.envelope-body')!, { rotate: [-4, 0, -7, -2, -5, -4], y: [0, -6, 0, -3, 0] }, { duration: .8, ease: 'easeInOut' });
+  // A small shake, the seal holding fast; individual properties leave the CSS transforms alone.
+  envelope.querySelector('.envelope-body')!.animate({ rotate: ['0deg', '3deg', '-4deg', '2deg', '-1deg', '0deg'], translate: ['0 0', '0 -6px', '0 0', '0 -3px', '0 0', '0 0'] }, { duration: 800, easing: 'ease-in-out' });
 }
 
 async function loadLetter() {
@@ -130,12 +130,30 @@ function openLetter() {
     void loadLetter();
   };
   if (calm.matches) { reveal(); return; }
-  // The seal gives, the flap lifts, the page rises — then the reading opens.
+  // The seal cracks, the flap swings back, light spills out, the page rises — then the reading opens.
+  envelope.classList.remove('is-tracking');
   envelope.classList.add('is-opening');
-  window.setTimeout(reveal, 1050);
+  window.setTimeout(reveal, 1800);
 }
 
 envelope.hidden = false;
+
+// The envelope leans a little toward a fine pointer.
+const stage = document.querySelector<HTMLElement>('[data-envelope-stage]')!;
+const fine = matchMedia('(hover: hover) and (pointer: fine)');
+stage.addEventListener('pointermove', event => {
+  if (!fine.matches || calm.matches || envelope.classList.contains('is-opening')) return;
+  const box = envelope.getBoundingClientRect();
+  const x = Math.min(1, Math.max(0, (event.clientX - box.left) / box.width));
+  const y = Math.min(1, Math.max(0, (event.clientY - box.top) / box.height));
+  envelope.classList.add('is-tracking');
+  envelope.style.setProperty('--ry', `${((x - .5) * 10).toFixed(2)}deg`);
+  envelope.style.setProperty('--rx', `${((.5 - y) * 7).toFixed(2)}deg`);
+});
+stage.addEventListener('pointerleave', () => {
+  envelope.classList.remove('is-tracking');
+  for (const name of ['--rx', '--ry']) envelope.style.removeProperty(name);
+});
 envelope.addEventListener('click', () => {
   if (!authenticated) { pendingLogin = true; envelope.setAttribute('data-open-login', ''); return; }
   envelope.removeAttribute('data-open-login');
