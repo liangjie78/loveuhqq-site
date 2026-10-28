@@ -144,7 +144,7 @@ test.describe('memory book', () => {
   signIn();
   test('a signature is chosen and a story is written', async ({ page }) => {
     await page.goto('/memories/');
-    const choose = page.locator('[data-select-identity="one"]');
+    const choose = page.locator('[data-memory-identity-unselected] [data-select-identity="one"]');
     // Wait until the book knows whether a signature is already chosen.
     await expect(page.locator('[data-memory-identity]:not([hidden]), [data-memory-identity-unselected]:not([hidden])')).toBeVisible();
     if (await choose.isVisible()) await choose.click();
@@ -157,6 +157,33 @@ test.describe('memory book', () => {
     await form.getByRole('button', { name: '收好故事' }).click();
     await expect(page.locator('[data-story-detail]')).toContainText(title);
   });
+});
+
+test('signing in from the locked memory book unlocks it', async ({ page }) => {
+  const problems = watchConsole(page);
+  await page.goto('/memories/');
+  await page.locator('[data-gate-visit]').click();
+  await page.locator('#stories [data-open-login]').click();
+  await page.locator('[data-gate-input]').fill('0701');
+  await expect(page.locator('[data-gate-password-panel]')).toBeVisible();
+  await page.locator('[data-gate-password]').fill(password);
+  await page.locator('[data-gate-password]').press('Enter');
+  await expect(page.locator('[data-gate]')).toBeHidden();
+  await expect(page.locator('[data-memory-locked]')).toBeHidden();
+  await expect(page.locator('[data-memory-identity]:not([hidden]), [data-memory-identity-unselected]:not([hidden])')).toBeVisible();
+  const choose = page.locator('#stories [data-section-identity]');
+  await expect(choose).toBeVisible();
+  await expect(page.locator('#stories [data-section-guest]')).toBeHidden();
+  await choose.locator('[data-select-identity="one"]').click();
+  await expect(page.locator('#stories [data-section-private]')).toBeVisible();
+  // The fixed header tucks away while reading down; return to the top as a reader would.
+  await page.evaluate(() => window.scrollTo({ top: 0, behavior: 'instant' }));
+  await expect(page.locator('[data-header]')).not.toHaveClass(/is-tucked/);
+  await page.locator('[data-session-logout]').click();
+  await expect(page.locator('#stories [data-section-guest]')).toBeVisible();
+  await expect(choose).toBeHidden();
+  await expect(page.locator('#stories [data-section-private]')).toBeHidden();
+  expect(problems).toEqual([]);
 });
 
 test.describe('every page, signed in', () => {

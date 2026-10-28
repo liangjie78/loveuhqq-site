@@ -76,9 +76,18 @@ const newButtons: Record<string, { attr: string; label: string }> = {
             </header>
 
             <div class="lock-card" data-section-locked>
-              <p><Icon icon={LockKeyhole} size={18} /> {head.locked}</p>
-              <button class="btn btn-solid" type="button" data-open-login data-needs-js>{common.unlock}</button>
-              <noscript><p>{common.noscriptUnlock}</p></noscript>
+              <div data-section-guest>
+                <p><Icon icon={LockKeyhole} size={18} /> {head.locked}</p>
+                <button class="btn btn-solid" type="button" data-open-login data-needs-js>{common.unlock}</button>
+                <noscript><p>{common.noscriptUnlock}</p></noscript>
+              </div>
+              <div data-section-identity hidden>
+                <p>请选择身份</p>
+                <div class="identity-card-options">
+                  <button type="button" class="btn btn-solid" data-select-identity="one">男生</button>
+                  <button type="button" class="btn btn-solid" data-select-identity="two">女生</button>
+                </div>
+              </div>
             </div>
 
             <div class="book-body" data-section-private hidden>

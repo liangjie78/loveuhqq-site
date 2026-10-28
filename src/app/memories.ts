@@ -162,6 +162,8 @@ function discardShownContent() {
   $('[data-memory-identity]').hidden = true;
   $('[data-memory-identity-unselected]').hidden = true;
   all<HTMLElement>('[data-section-locked]').forEach(node => { node.hidden = false; });
+  all<HTMLElement>('[data-section-guest]').forEach(node => { node.hidden = false; });
+  all<HTMLElement>('[data-section-identity]').forEach(node => { node.hidden = true; });
   all<HTMLElement>('[data-section-private]').forEach(node => { node.hidden = true; });
   all<HTMLElement>('[data-needs-member]').forEach(node => { node.hidden = true; });
 }
@@ -323,6 +325,8 @@ function render() {
     unselectedCard.hidden = false;
     resetMedia(); stopScreening(); screening = []; screeningIndex = 0; emitSharedDeskUpdate(null); setCurrentMember(null);
     all<HTMLElement>('[data-section-locked]').forEach(node => { node.hidden = false; });
+    all<HTMLElement>('[data-section-guest]').forEach(node => { node.hidden = true; });
+    all<HTMLElement>('[data-section-identity]').forEach(node => { node.hidden = false; });
     all<HTMLElement>('[data-section-private]').forEach(node => { node.hidden = true; });
     all<HTMLElement>('[data-needs-member]').forEach(node => { node.hidden = true; });
   }
