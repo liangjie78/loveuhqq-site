@@ -176,9 +176,13 @@ test('signing in from the locked memory book unlocks it', async ({ page }) => {
   await expect(page.locator('#stories [data-section-guest]')).toBeHidden();
   await choose.locator('[data-select-identity="one"]').click();
   await expect(page.locator('#stories [data-section-private]')).toBeVisible();
+  // The fixed header tucks away while reading down; return to the top as a reader would.
+  await page.evaluate(() => window.scrollTo({ top: 0, behavior: 'instant' }));
+  await expect(page.locator('[data-header]')).not.toHaveClass(/is-tucked/);
   await page.locator('[data-session-logout]').click();
   await expect(page.locator('#stories [data-section-guest]')).toBeVisible();
   await expect(choose).toBeHidden();
+  await expect(page.locator('#stories [data-section-private]')).toBeHidden();
   expect(problems).toEqual([]);
 });
 
