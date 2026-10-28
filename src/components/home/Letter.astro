@@ -1,0 +1,50 @@
+---
+import Icon from '../Icon.astro';
+import { X } from 'lucide';
+import { letter } from '../../content/copy';
+import { dotted, hundredthDayDate } from '../../lib/anniversary';
+const date = dotted(hundredthDayDate);
+---
+<section class="chapter letter" id="letter" aria-labelledby="letter-title">
+  <div class="wrap letter-grid">
+    <div class="envelope-stage" data-reveal>
+      <button class="envelope" type="button" data-envelope aria-describedby="envelope-note" aria-haspopup="dialog" hidden>
+        <span class="envelope-body" aria-hidden="true">
+          <span class="envelope-paper"></span>
+          <span class="envelope-back"></span>
+          <span class="envelope-flap"></span>
+          <span class="envelope-seal"><svg viewBox="0 0 24 24"><path d="M12 19.5C7 16 4 13.3 4 10.1 4 7.8 5.8 6 8 6c1.6 0 3 .9 4 2.3C13 6.9 14.4 6 16 6c2.2 0 4 1.8 4 4.1 0 3.2-3 5.9-8 9.4Z"></path></svg></span>
+        </span>
+        <span class="sr-only">{letter.open}</span>
+      </button>
+      <noscript>
+        <div class="envelope is-static" role="img" aria-label={letter.envelope}><span class="envelope-body"><span class="envelope-back"></span><span class="envelope-flap"></span><span class="envelope-seal"></span></span></div>
+      </noscript>
+      <span class="letter-stamp" data-letter-stamp>{letter.waiting}</span>
+      <p class="envelope-note" id="envelope-note" data-envelope-note role="status"></p>
+    </div>
+    <div class="letter-copy">
+      <p class="eyebrow" data-reveal><span class="numeral">05</span>信</p>
+      <h2 class="letter-title display" id="letter-title" data-reveal>{letter.title[0]}<span class="numeral">{letter.title[1]}</span>{letter.title[2]}</h2>
+      <p class="lede" data-reveal>
+        <span data-letter-wait>等到 <time class="numeral" datetime={hundredthDayDate}>{date}</time> 那天，再拆开这封信。</span><span data-letter-ready hidden>{letter.readyCopy}</span><br />
+        <span data-letter-guest-copy>{letter.guestCopy}</span><span data-letter-open-copy hidden>{letter.openCopy}</span>
+      </p>
+      <p class="letter-count" data-letter-count hidden></p>
+    </div>
+  </div>
+</section>
+
+<dialog class="reading" data-letter-dialog aria-labelledby="letter-dialog-title">
+  <div class="reading-sheet">
+    <header class="reading-head">
+      <h2 class="serif" id="letter-dialog-title">写给第 <span class="numeral">100</span> 天</h2>
+      <button class="btn btn-sm" type="button" data-letter-close autofocus>{letter.close} <Icon icon={X} size={15} /></button>
+    </header>
+    <div class="reading-body" data-letter-scroll data-lenis-prevent>
+      <p class="status-line" data-letter-status role="status" aria-live="polite"></p>
+      <button class="btn btn-sm" type="button" data-letter-retry hidden>{letter.retry}</button>
+      <article class="reading-text" data-letter-reading hidden></article>
+    </div>
+  </div>
+</dialog>

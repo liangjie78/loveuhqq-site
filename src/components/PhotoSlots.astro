@@ -1,0 +1,11 @@
+---
+import { photos } from '../content/copy';
+interface Props { count: number }
+const { count } = Astro.props;
+---
+{Array.from({ length: count }, (_, index) => (
+  <div class="frame frame-empty" style={`--i:${index}`}>
+    <span class="frame-veil" aria-hidden="true"></span>
+    <span class="frame-pending">{photos.pending}</span>
+  </div>
+))}

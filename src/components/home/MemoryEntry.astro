@@ -1,0 +1,17 @@
+---
+import Icon from '../Icon.astro';
+import MemoryIndex from '../MemoryIndex.astro';
+import { ArrowUpRight } from 'lucide';
+import { memoryBook } from '../../content/copy';
+---
+<section class="chapter entry" id="memories" aria-labelledby="entry-title">
+  <div class="wrap entry-grid">
+    <header class="entry-intro">
+      <p class="eyebrow" data-reveal>{memoryBook.eyebrow}</p>
+      <h2 class="entry-title display" id="entry-title" data-split>{memoryBook.title}</h2>
+      <p class="lede" data-reveal>{memoryBook.lede}</p>
+      <p data-reveal><a class="btn btn-solid" href="/memories/" data-magnetic>{memoryBook.open} <Icon icon={ArrowUpRight} size={16} class="icon-lift" /></a></p>
+    </header>
+    <MemoryIndex />
+  </div>
+</section>

@@ -1,0 +1,23 @@
+---
+import Icon from '../Icon.astro';
+import PhotoSlots from '../PhotoSlots.astro';
+import PhotosLocked from '../PhotosLocked.astro';
+import { ArrowRight } from 'lucide';
+import { photos } from '../../content/copy';
+---
+<section class="chapter photos is-night" id="photos" aria-labelledby="photos-title">
+  <div class="wrap">
+    <header class="photos-head">
+      <p class="eyebrow" data-reveal><span class="numeral">02</span>照片</p>
+      <h2 class="photos-title display" id="photos-title" data-split>{photos.title}</h2>
+      <p class="lede photos-lede" data-reveal>{photos.lede}</p>
+    </header>
+    <div class="spread" data-photo-wall="featured">
+      <PhotoSlots count={3} />
+    </div>
+    <div class="photos-foot">
+      <PhotosLocked />
+      <p data-reveal><a class="link photos-more" href="/photos/" data-album-link>{photos.album} <Icon icon={ArrowRight} size={16} /></a></p>
+    </div>
+  </div>
+</section>

@@ -1,9 +1,10 @@
 ---
-import { buttonVariants } from './ui/button';
+import Icon from './Icon.astro';
+import { LockKeyhole } from 'lucide';
+import { photos } from '../content/copy';
 ---
-
-<div class="photos-locked" data-photos-locked data-reveal>
-  <p>照片只给我们俩看，解锁后才能翻看。</p>
-  <button class={buttonVariants({ variant: 'default' })} type="button" data-open-login data-needs-js>解锁照片</button>
-  <noscript><p>开启 JavaScript 并解锁后，才能看到照片。</p></noscript>
+<div class="lock-card photos-locked" data-photos-locked data-reveal>
+  <p><Icon icon={LockKeyhole} size={18} /> {photos.locked}</p>
+  <button class="btn btn-solid" type="button" data-open-login data-needs-js>{photos.unlock}</button>
+  <noscript><p>{photos.noscript}</p></noscript>
 </div>

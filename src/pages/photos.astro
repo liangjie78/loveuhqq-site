@@ -1,95 +1,90 @@
 ---
-import Page from '../layouts/Page.astro';
-import SiteHeader from '../components/SiteHeader.astro';
+import Base from '../layouts/Base.astro';
+import Header from '../components/Header.astro';
+import Footer from '../components/Footer.astro';
+import Icon from '../components/Icon.astro';
 import Lightbox from '../components/Lightbox.astro';
-import PhotoPlaceholders from '../components/PhotoPlaceholders.astro';
+import PhotoSlots from '../components/PhotoSlots.astro';
 import PhotosLocked from '../components/PhotosLocked.astro';
-import { buttonVariants } from '../components/ui/button';
-import { inputVariants } from '../components/ui/input';
-import { ArrowLeft, ArrowUpRight, Lock } from 'lucide-react';
-import '../styles/album-transition.css';
+import { ArrowUpRight, ImagePlus } from 'lucide';
+import '../styles/photos.css';
 ---
 
-<Page title="相册 · loveuhqq" description="loveuhqq 的相册。" path="/photos/" bodyClass="album-page">
-  <SiteHeader navLinks={[{ href: '/photos/', label: '相册' }]} />
-  <main class="album" id="main" tabindex="-1">
-    <header class="album-head" data-reveal>
-      <h1>相册</h1>
-      <p data-photos-summary>解锁后，才能翻开这本相册。</p>
-      <a class={buttonVariants({ variant: 'ghost' })} href="/memories/">翻开共同回忆册 <ArrowUpRight size={16} aria-hidden="true" /></a>
+<Base title="相册 · loveuhqq" description="loveuhqq 的相册。" path="/photos/" page="album">
+  <Header backHref="/#photos" />
+  <main id="main" tabindex="-1" class="wrap">
+    <header class="album-head">
+      <h1 class="album-title display" data-split>相册</h1>
+      <div class="album-aside">
+        <p class="album-summary" data-photos-summary data-reveal>解锁后，才能翻开这本相册。</p>
+        <p data-reveal><a class="link" href="/memories/">翻开共同回忆册 <Icon icon={ArrowUpRight} size={16} /></a></p>
+      </div>
     </header>
-    <PhotosLocked />
-    <div class="photos-status" data-needs-js>
-      <p data-photos-status role="status" hidden></p>
-      <button class={buttonVariants({ variant: 'ghost' })} type="button" data-photos-retry hidden>再试一次</button>
+    <div class="album-locked"><PhotosLocked /></div>
+    <div class="album-status" data-needs-js>
+      <p class="status-line" data-photos-status role="status" hidden></p>
+      <button class="btn btn-sm" type="button" data-photos-retry hidden>再试一次</button>
     </div>
-    <div class="album-wall" data-photo-wall="all" data-reveal>
-      <PhotoPlaceholders count={6} />
+    <div class="wall is-placeholder" data-photo-wall="all">
+      <PhotoSlots count={6} />
     </div>
   </main>
-  <footer class="site-footer site-footer-small">
-    <div class="footer-meta">
-      <a class={buttonVariants({ variant: 'ghost' })} href="/#photos"><ArrowLeft size={16} aria-hidden="true" /> 回到日记</a>
-      <button class={buttonVariants({ variant: 'ghost' })} type="button" data-lock-site><Lock size={15} aria-hidden="true" /> 上锁</button>
-    </div>
-  </footer>
+  <Footer backHref="/#photos" />
 
-  <dialog class="paste-dialog" data-paste-photo aria-labelledby="paste-photo-title">
-    <div class="paste-card paper-card">
-      <span class="tape" aria-hidden="true"></span>
+  <dialog class="sheet-dialog" data-paste-photo aria-labelledby="paste-photo-title">
+    <div class="sheet-dialog-body">
       <h2 id="paste-photo-title">贴一张照片</h2>
-      <form class="paste-form" data-paste-form novalidate>
+      <form class="stack" data-paste-form novalidate>
         <input type="file" accept="image/*" data-paste-file hidden />
         <button class="paste-pick" type="button" data-paste-pick>
-          <span class="paste-pick-empty" data-paste-empty>点这里选一张图</span>
-          <img class="paste-pick-preview" data-paste-preview alt="" hidden />
+          <span class="paste-pick-empty" data-paste-empty><Icon icon={ImagePlus} size={28} />点这里选一张图</span>
+          <img data-paste-preview alt="" hidden />
         </button>
-        <button class:list={[buttonVariants({ variant: 'ghost' }), 'paste-swap']} type="button" data-paste-swap hidden>换一张</button>
-        <label class="paste-field">
+        <button class="btn btn-sm paste-swap" type="button" data-paste-swap hidden>换一张</button>
+        <label class="field">
           <span>标题</span>
-          <input class={inputVariants({ variant: 'default' })} type="text" name="title" maxlength="80" placeholder="给这张写个名字" data-paste-title autocomplete="off" required />
+          <input class="input" type="text" name="title" maxlength="80" placeholder="给这张写个名字" data-paste-title autocomplete="off" required />
         </label>
-        <label class="paste-field">
+        <label class="field">
           <span>拍摄日期（可选）</span>
-          <input class={inputVariants({ variant: 'default' })} type="date" name="date" data-paste-date />
+          <input class="input" type="date" name="date" data-paste-date />
         </label>
-        <p class="paste-error" data-paste-error role="status" hidden></p>
-        <div class="paste-actions">
-          <button class={buttonVariants({ variant: 'ghost' })} type="button" data-paste-cancel>取消</button>
-          <button class={buttonVariants({ variant: 'default' })} type="submit" data-paste-submit>贴上</button>
+        <p class="form-error" data-paste-error role="status" hidden></p>
+        <div class="dialog-actions">
+          <button class="btn" type="button" data-paste-cancel>取消</button>
+          <button class="btn btn-solid" type="submit" data-paste-submit>贴上</button>
         </div>
       </form>
     </div>
   </dialog>
 
-  <dialog class="photo-manage-dialog" data-photo-manage aria-label="相册里的照片">
-    <div class="photo-manage-card paper-card">
-      <span class="tape" aria-hidden="true"></span>
-      <section data-photo-edit-panel hidden>
+  <dialog class="sheet-dialog" data-photo-manage aria-label="相册里的照片">
+    <div class="sheet-dialog-body">
+      <section class="stack" data-photo-edit-panel hidden>
         <h2 id="photo-manage-title">改标题</h2>
-        <form class="photo-manage-form" data-photo-title-form novalidate>
-          <label class="paste-field">
+        <form class="stack" data-photo-title-form novalidate>
+          <label class="field">
             <span>给这张换个名字</span>
-            <input class={inputVariants({ variant: 'default' })} type="text" maxlength="80" data-photo-title-input autocomplete="off" required />
+            <input class="input" type="text" maxlength="80" data-photo-title-input autocomplete="off" required />
           </label>
-          <p class="paste-error" data-photo-edit-error role="status" hidden></p>
-          <div class="paste-actions">
-            <button class={buttonVariants({ variant: 'ghost' })} type="button" data-photo-manage-cancel>先不改</button>
-            <button class={buttonVariants({ variant: 'default' })} type="submit" data-photo-title-submit>收好标题</button>
+          <p class="form-error" data-photo-edit-error role="status" hidden></p>
+          <div class="dialog-actions">
+            <button class="btn" type="button" data-photo-manage-cancel>先不改</button>
+            <button class="btn btn-solid" type="submit" data-photo-title-submit>收好标题</button>
           </div>
         </form>
       </section>
-      <section data-photo-delete-panel hidden>
+      <section class="stack" data-photo-delete-panel hidden>
         <h2>从相册取下</h2>
-        <p class="photo-delete-copy" data-photo-delete-copy></p>
-        <p class="paste-error" data-photo-delete-error role="status" hidden></p>
-        <div class="paste-actions">
-          <button class={buttonVariants({ variant: 'ghost' })} type="button" data-photo-manage-cancel>再留一会儿</button>
-          <button class={buttonVariants({ variant: 'ghost', tone: 'danger' })} type="button" data-photo-delete-confirm>确认取下</button>
+        <p data-photo-delete-copy></p>
+        <p class="form-error" data-photo-delete-error role="status" hidden></p>
+        <div class="dialog-actions">
+          <button class="btn" type="button" data-photo-manage-cancel>再留一会儿</button>
+          <button class="btn btn-danger" type="button" data-photo-delete-confirm>确认取下</button>
         </div>
       </section>
     </div>
   </dialog>
-
   <Lightbox />
-</Page>
+  <script src="../app/photos.ts"></script>
+</Base>

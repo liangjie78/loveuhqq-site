@@ -1,0 +1,150 @@
+/* 余温 · design tokens. Every colour, size and curve on the site comes from here. */
+
+@font-face {
+  font-family: "Noto Serif SC";
+  font-style: normal;
+  font-weight: 300 500;
+  font-display: swap;
+  src: url("../assets/fonts/noto-serif-sc-subset.woff2") format("woff2");
+}
+
+@font-face {
+  font-family: "Instrument Serif";
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url("../assets/fonts/instrument-serif-regular.woff2") format("woff2");
+}
+
+@font-face {
+  font-family: "Instrument Serif";
+  font-style: italic;
+  font-weight: 400;
+  font-display: swap;
+  src: url("../assets/fonts/instrument-serif-italic.woff2") format("woff2");
+}
+
+:root {
+  color-scheme: light;
+
+  /* Paper and ink — warm ivory by day. */
+  --paper: #f6f0e8;
+  --paper-raised: #fbf7f2;
+  --paper-sunk: #eee6db;
+  --ink: #1e1614;
+  --ink-2: #5e4f48;
+  --ink-3: #7a6a61;
+  --hairline: rgb(30 22 20 / .1);
+  --hairline-strong: rgb(30 22 20 / .2);
+  --veil: rgb(246 240 232 / .72);
+
+  /* The single accent: 胭脂 rouge. */
+  --rouge: #b23a48;
+  --rouge-ink: #9e3140;
+  --rouge-wash: rgb(178 58 72 / .1);
+  --on-rouge: #fbf7f2;
+
+  /* Warm light. Only ever used as light, never as a fill for text. */
+  --glow-1: #f7b79a;
+  --glow-2: #f0a0a8;
+  --glow-3: #ffe6c7;
+  --glow-strength: 1;
+
+  /* Day dots: four hand-mixed reds plus the unlit ring. */
+  --dot-1: #c4515e;
+  --dot-2: #b23a48;
+  --dot-3: #d47380;
+  --dot-4: #a8323f;
+  --dot-empty: rgb(30 22 20 / .14);
+
+  /* Night chapters inside the light page (photos, footer). */
+  --night: #1a1210;
+  --night-raised: #251a17;
+  --night-ink: #f4eae0;
+  --night-ink-2: #c9b7ab;
+  --night-ink-3: #9c8a7f;
+  --night-hairline: rgb(244 234 224 / .12);
+  --night-rouge: #e8939a;
+
+  --shadow-1: 0 1px 1px rgb(70 35 25 / .04), 0 6px 16px -8px rgb(70 35 25 / .14);
+  --shadow-2: 0 1px 2px rgb(70 35 25 / .05), 0 18px 40px -18px rgb(70 35 25 / .22), 0 50px 90px -50px rgb(70 35 25 / .28);
+  --grain-opacity: .05;
+  --grain-blend: multiply;
+
+  /* Type. */
+  --font-serif: "Noto Serif SC", "Songti SC", "STSong", "Source Han Serif SC", serif;
+  --font-latin: "Instrument Serif", "Noto Serif SC", "Times New Roman", serif;
+  --font-sans: -apple-system, BlinkMacSystemFont, "PingFang SC", "Hiragino Sans GB", "Segoe UI", "Microsoft YaHei", "Noto Sans SC", sans-serif;
+
+  --step--2: clamp(.75rem, .73rem + .08vw, .8rem);
+  --step--1: clamp(.8125rem, .79rem + .14vw, .9rem);
+  --step-0: clamp(1rem, .97rem + .16vw, 1.0625rem);
+  --step-1: clamp(1.15rem, 1.07rem + .4vw, 1.4rem);
+  --step-2: clamp(1.4rem, 1.22rem + .85vw, 1.95rem);
+  --step-3: clamp(1.75rem, 1.4rem + 1.7vw, 2.9rem);
+  --step-4: clamp(2.25rem, 1.65rem + 3vw, 4.5rem);
+  --step-5: clamp(2.8rem, 1.85rem + 4.8vw, 7.2rem);
+  --step-6: clamp(3.4rem, 1.9rem + 7.4vw, 10.5rem);
+  --step-7: clamp(4.1rem, 1.6rem + 11.6vw, 14.5rem);
+
+  /* Space. */
+  --margin: clamp(1rem, 5.6vw, 5.5rem);
+  --gutter: clamp(.75rem, 2.2vw, 2rem);
+  --maxw: 90rem;
+  --chapter-pad: clamp(7rem, 20vh, 15rem);
+  --header-h: 4.5rem;
+  --radius-s: .625rem;
+  --radius-m: 1.125rem;
+  --radius-l: 1.75rem;
+
+  /* Motion. */
+  --ease-out: cubic-bezier(.16, 1, .3, 1);
+  --ease-in-out: cubic-bezier(.65, 0, .35, 1);
+  --ease-soft: cubic-bezier(.33, 1, .68, 1);
+  --t-micro: 180ms;
+  --t-ui: 420ms;
+  --t-reveal: 900ms;
+  --t-cine: 1600ms;
+}
+
+/* 夜灯 — the same lamp after dark. */
+.dark {
+  color-scheme: dark;
+  --paper: #110d0c;
+  --paper-raised: #1a1412;
+  --paper-sunk: #0b0807;
+  --ink: #f4eae0;
+  --ink-2: #c7b6ab;
+  --ink-3: #9a887d;
+  --hairline: rgb(244 234 224 / .1);
+  --hairline-strong: rgb(244 234 224 / .2);
+  --veil: rgb(17 13 12 / .72);
+
+  --rouge: #e7838a;
+  --rouge-ink: #ee9aa0;
+  --rouge-wash: rgb(231 131 138 / .12);
+  --on-rouge: #1a1210;
+
+  --glow-1: #e9a25f;
+  --glow-2: #d8737e;
+  --glow-3: #f3c58f;
+  --glow-strength: .8;
+
+  --dot-1: #d8737e;
+  --dot-2: #e7838a;
+  --dot-3: #c25d69;
+  --dot-4: #f09ba1;
+  --dot-empty: rgb(244 234 224 / .14);
+
+  --night: #1c1411;
+  --night-raised: #271c18;
+
+  --shadow-1: 0 1px 1px rgb(0 0 0 / .3), 0 6px 16px -8px rgb(0 0 0 / .5);
+  --shadow-2: 0 1px 2px rgb(0 0 0 / .3), 0 18px 40px -18px rgb(0 0 0 / .6), 0 50px 90px -50px rgb(0 0 0 / .7);
+  --grain-opacity: .07;
+  --grain-blend: screen;
+}
+
+@media (max-width: 47.99rem) {
+  :root { --header-h: 4rem; }
+}

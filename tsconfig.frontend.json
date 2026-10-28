@@ -1,5 +1,5 @@
 {
   "extends": "./tsconfig.json",
   "compilerOptions": { "noEmit": true },
-  "include": ["src/scripts/**/*.ts", "src/lib/**/*.ts", "src/**/*.tsx"]
+  "include": ["src/app/**/*.ts", "src/motion/**/*.ts", "src/lib/**/*.ts", "src/content/**/*.ts", "src/data/**/*.ts", "src/stores/**/*.ts"]
 }

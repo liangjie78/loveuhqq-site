@@ -1,0 +1,31 @@
+---
+import type { IconNode } from 'lucide';
+
+interface Props {
+  icon: IconNode;
+  size?: number;
+  class?: string;
+  stroke?: number;
+}
+
+const { icon, size = 18, class: className, stroke = 1.5 } = Astro.props;
+const body = icon
+  .map(([tag, attrs]) => `<${tag} ${Object.entries(attrs).map(([key, value]) => `${key}="${value}"`).join(' ')} />`)
+  .join('');
+---
+
+<svg
+  class={className}
+  xmlns="http://www.w3.org/2000/svg"
+  width={size}
+  height={size}
+  viewBox="0 0 24 24"
+  fill="none"
+  stroke="currentColor"
+  stroke-width={stroke}
+  stroke-linecap="round"
+  stroke-linejoin="round"
+  aria-hidden="true"
+  focusable="false"
+  set:html={body}
+/>

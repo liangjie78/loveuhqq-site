@@ -1,212 +1,33 @@
 ---
-import Page from '../layouts/Page.astro';
-import SiteHeader from '../components/SiteHeader.astro';
-import Postmark from '../components/Postmark';
+import Base from '../layouts/Base.astro';
+import Header from '../components/Header.astro';
+import Footer from '../components/Footer.astro';
+import Cover from '../components/home/Cover.astro';
+import Days from '../components/home/Days.astro';
+import Photos from '../components/home/Photos.astro';
+import Note from '../components/home/Note.astro';
+import Future from '../components/home/Future.astro';
+import MemoryEntry from '../components/home/MemoryEntry.astro';
+import Letter from '../components/home/Letter.astro';
 import Lightbox from '../components/Lightbox.astro';
-import { dotted, getRelationshipYearMonths, hundredthDayDate, monthNames, relationshipStartDate } from '../lib/anniversary';
-import { momentTitles } from '../data/moments';
-import PhotoPlaceholders from '../components/PhotoPlaceholders.astro';
-import PhotosLocked from '../components/PhotosLocked.astro';
-import Notebook from '../components/Notebook.astro';
-import FutureList from '../components/FutureList.astro';
-import MemoryEntry from '../components/MemoryEntry.astro';
-import MomentArchive from '../components/MomentArchive.astro';
-import { buttonVariants } from '../components/ui/button';
-import { ArrowDown, ArrowLeft, ArrowUp, ArrowRight, ChevronRight, Lock, X } from 'lucide-react';
-import '../styles/notebook.css';
-import '../styles/memory-entry.css';
-import '../styles/album-transition.css';
-import '../styles/parallax.css';
-
-const startLabel = dotted(relationshipStartDate);
-const hundredthLabel = dotted(hundredthDayDate);
-const months = getRelationshipYearMonths(1);
-const lastDay = months.at(-1)!.days.at(-1)!;
-const titleLines = ['爱你，', '何青青。'];
-let inkIndex = 0;
+import { homeNav, site } from '../content/copy';
+import '../styles/home.css';
+import '../styles/journal.css';
+import '../styles/photos.css';
 ---
 
-<Page
-  title="爱你，何青青。 · loveuhqq"
-  description="一本写给何青青的纸上手账。"
-  path="/"
-  bodyClass="home"
->
-  <SiteHeader home />
+<Base title={site.title} description={site.description} path="/" page="home">
+  <Header links={homeNav} home="#top" identity dayChip />
   <main id="main" tabindex="-1">
-    <section class="hero" id="top" aria-labelledby="hero-title">
-      <div class="hero-inner">
-        <div class="hero-words">
-          <h1 class="hero-title" id="hero-title" aria-label="爱你，何青青。">
-            {titleLines.map((line, lineIndex) => (
-              <span class:list={['hero-line', lineIndex === 1 && 'hero-name']} aria-hidden="true">
-                {[...line].map((char) => <span class="ink" style={`--i:${inkIndex++}`}>{char}</span>)}
-              </span>
-            ))}
-          </h1>
-        </div>
-
-        <div class="hero-keepsake">
-          <div class="heart intro" style="--delay:.15s">
-            <button class="heart-body" type="button" data-heart aria-label="爱你，何青青。">
-              <span class="tape tape-pink" aria-hidden="true"></span>
-              <img src="/images/paper-heart.webp" alt="" width="900" height="900" decoding="async" fetchpriority="high" />
-            </button>
-          </div>
-          <Postmark id="hero-mark" className="hero-postmark intro" />
-        </div>
-
-        <div class="hero-count intro" style="--delay:.9s">
-          <p class="count-lead" data-needs-js>今天，是我们在一起的</p>
-          <p class="count-main" data-needs-js>第<strong data-count-up>0</strong>天</p>
-          <p class="count-since">始于 <time datetime={relationshipStartDate}>{startLabel}</time></p>
-        </div>
-      </div>
-      <a class="scroll-hint intro" href="#days" style="--delay:2.2s">往下翻<span aria-hidden="true"></span></a>
-    </section>
-
-    <section class="section days" id="days" aria-labelledby="days-title">
-      <div class="section-inner">
-        <div class="days-spread">
-          <header class="section-head days-head" data-reveal>
-            <h2 id="days-title"><span>一天，</span><span>记一格。</span></h2>
-            <p>从 {startLabel} 开始，走过的日子都涂上了颜色。</p>
-          </header>
-
-          <div class="days-calendar">
-            <div class="sheet year" data-reveal>
-              <span class="tape tape-corner" aria-hidden="true"></span>
-              <div class="year-ends" aria-hidden="true">
-                <span><b>第一天</b><time data-year-first>{startLabel}</time></span>
-                <span><b data-year-label>一周年</b><time data-year-last>{dotted(lastDay.date)}</time></span>
-              </div>
-              <div class="year-nav" data-year-nav data-needs-js hidden>
-                <button class:list={[buttonVariants({ variant: 'ghost' }), 'year-step']} type="button" data-year-prev><ArrowLeft size={15} aria-hidden="true" /> 上一年</button>
-                <button class:list={[buttonVariants({ variant: 'ghost' }), 'year-step']} type="button" data-year-next>下一年 <ChevronRight size={15} aria-hidden="true" /></button>
-              </div>
-              <p class="year-hint" id="year-hint" data-needs-js>点一格，翻到那一天的背面。手机上可以左右轻扫，也可以用方向键翻看。</p>
-              <div class="year-feedback">
-                <p class="year-readout" data-year-readout aria-live="polite">{startLabel} — {dotted(lastDay.date)}</p>
-                <button class:list={[buttonVariants({ variant: 'ghost' }), 'year-note-jump']} type="button" data-note-jump hidden>翻看这天 <ArrowDown size={15} aria-hidden="true" /></button>
-                <button class:list={[buttonVariants({ variant: 'ghost' }), 'year-today']} type="button" data-return-today data-needs-js disabled>回到今天</button>
-              </div>
-              <div class="year-grid" data-year-grid role="group" tabindex="0" aria-describedby="year-hint" aria-label={`第一年的日历，从 ${startLabel} 到 ${dotted(lastDay.date)}，可用方向键翻看`} style={`--months:${months.length}`}>
-                {months.map((month) => (
-                  <div class="year-row">
-                    <span class="year-month">{monthNames[month.month - 1]}</span>
-                    <span class="year-cells" style={`--start:${month.days[0].dayOfMonth}`}>
-                      {month.days.map((day) => (
-                        <span
-                          data-day={day.day}
-                          class:list={[
-                            day.day === 100 && 'is-hundred',
-                            day.day === lastDay.day && 'is-anniversary',
-                            momentTitles.has(day.date) && 'is-moment',
-                          ]}
-                        />
-                      ))}
-                    </span>
-                  </div>
-                ))}
-              </div>
-              <ul class="year-legend">
-                <li><i class="is-past" aria-hidden="true"></i>走过的日子</li>
-                <li><i aria-hidden="true"></i>还没到的日子</li>
-                <li><i class="is-mark" aria-hidden="true"></i>纪念日</li>
-                {momentTitles.size > 0 && <li><i class="is-moment" aria-hidden="true"></i>有故事的日子</li>}
-              </ul>
-            </div>
-
-            <Notebook />
-          </div>
-          <dl class="days-stats" data-reveal data-needs-js>
-            <div class="stat">
-              <dt>已经涂了</dt>
-              <dd><strong data-filled>—</strong>格</dd>
-              <dd class="stat-date">这一年共 <span data-year-total>{months.flatMap((month) => month.days).length}</span> 格</dd>
-            </div>
-            <div class="stat">
-              <dt>下一个纪念日 · <span data-next-title>第 100 天</span></dt>
-              <dd><span data-next-prefix>还有</span><strong data-next-days>—</strong><span data-next-suffix>天</span></dd>
-              <dd class="stat-date"><time data-next-date datetime={hundredthDayDate}>{hundredthLabel}</time></dd>
-            </div>
-          </dl>
-        </div>
-        <MomentArchive />
-      </div>
-    </section>
-
-    <section class="section photos" id="photos" aria-labelledby="photos-title">
-      <div class="section-inner">
-        <header class="section-head" data-reveal>
-          <h2 id="photos-title">照片墙</h2>
-          <p>纪念我们走过的每一天</p>
-        </header>
-        <div class="polaroids" data-photo-wall="featured" data-reveal>
-          <PhotoPlaceholders count={3} />
-        </div>
-        <PhotosLocked />
-        <p class="photos-more" data-reveal><a class="text-link" href="/photos/" data-album-link>翻开整本相册 <ArrowRight size={16} aria-hidden="true" /></a></p>
-      </div>
-    </section>
-
-    <section class="section note" id="note" aria-labelledby="note-title">
-      <div class="section-inner">
-        <h2 class="note-heading" id="note-title" data-reveal>心里话</h2>
-        <div class="note-stack" data-reveal>
-          <div class="note-paper">
-            <p class="note-line" style="--line:0">记录生活，</p>
-            <p class="note-line" style="--line:1">慢慢往前走。</p>
-            <p class="note-sign" style="--line:2"><span>平平淡淡，</span><span>踏实过好每一天。</span></p>
-          </div>
-          <span class="tape note-tape" aria-hidden="true"></span>
-        </div>
-      </div>
-    </section>
-
-    <FutureList />
+    <Cover />
+    <Days />
+    <Photos />
+    <Note />
+    <Future />
     <MemoryEntry />
-    <section class="section letter" id="letter" aria-labelledby="letter-title">
-      <div class="section-inner letter-inner">
-        <div class="envelope-wrap" data-reveal>
-          <button class="envelope" type="button" data-envelope aria-describedby="envelope-note" aria-haspopup="dialog" hidden>
-            <img src="/images/envelope-620.webp" alt="一个封着蜡的信封" width="800" height="620" loading="lazy" decoding="async" />
-            <span class="sr-only">拆开信封</span>
-          </button>
-          <noscript><div class="envelope"><img src="/images/envelope-620.webp" alt="一个封着蜡的信封" width="800" height="620" loading="lazy" decoding="async" /></div></noscript>
-          <p class="envelope-note" id="envelope-note" data-envelope-note role="status"></p>
-        </div>
-        <div class="letter-copy" data-reveal>
-          <span class="stamp" data-letter-stamp>待拆</span>
-          <h2 id="letter-title">写给第 <span class="letter-day">100</span> 天</h2>
-          <p><span data-letter-wait>等到 <time datetime={hundredthDayDate}>{hundredthLabel}</time> 那天，再拆开这封信。</span><span data-letter-ready hidden>这封信可以拆开了。</span><br /><span data-letter-guest-copy>解锁共同手账后，才能读到信里的文字。</span><span data-letter-open-copy hidden>拆开信封，读这封写给第 100 天的信。</span></p>
-          <p class="letter-count" data-letter-count hidden></p>
-        </div>
-      </div>
-    </section>
+    <Letter />
   </main>
-
-  <footer class="site-footer">
-    <p class="footer-words">往后。<br /><span>未完待续。</span></p>
-    <div class="footer-meta">
-      <span>loveuhqq · 始于 {startLabel}</span>
-      <button class={buttonVariants({ variant: 'ghost' })} type="button" data-lock-site><Lock size={15} aria-hidden="true" /> 上锁</button>
-      <a class={buttonVariants({ variant: 'ghost' })} href="#top">回到第一页 <ArrowUp size={15} aria-hidden="true" /></a>
-    </div>
-  </footer>
-
+  <Footer grand />
   <Lightbox />
-  <dialog class="letter-dialog" data-letter-dialog aria-labelledby="letter-dialog-title">
-    <div class="letter-dialog-header">
-      <h2 id="letter-dialog-title">写给第 100 天</h2>
-      <button class:list={[buttonVariants({ variant: 'ghost' }), 'letter-close']} type="button" data-letter-close autofocus>收好这封信 <X size={15} aria-hidden="true" /></button>
-    </div>
-    <div class="letter-dialog-body" data-letter-scroll>
-      <p class="letter-status" data-letter-status role="status" aria-live="polite"></p>
-      <button class:list={[buttonVariants({ variant: 'ghost' }), 'letter-retry']} type="button" data-letter-retry hidden>再试一次</button>
-      <article class="letter-reading" data-letter-reading hidden></article>
-    </div>
-  </dialog>
-  <script src="../scripts/journal.ts"></script>
-  <script src="../scripts/letter.ts"></script>
-</Page>
+  <script src="../app/home.ts"></script>
+</Base>

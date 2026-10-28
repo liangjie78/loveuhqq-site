@@ -1,0 +1,57 @@
+---
+import Icon from './Icon.astro';
+import { ArrowRight } from 'lucide';
+import { gate } from '../content/copy';
+---
+
+<div class="gate" data-gate role="dialog" aria-modal="true" aria-labelledby="gate-title" aria-describedby="gate-hint">
+  <canvas class="aura aura-gate" data-aura="gate" aria-hidden="true"></canvas>
+  <div class="gate-bloom" data-gate-bloom aria-hidden="true"></div>
+  <div class="gate-stage" data-gate-stage>
+    <p class="gate-mark" aria-hidden="true"><span class="latin">loveuhqq</span><span class="gate-mark-line"></span></p>
+    <h2 class="gate-title display" id="gate-title" data-gate-title>{gate.question.join('\n')}</h2>
+    <p class="gate-hint" id="gate-hint" data-gate-hint>{gate.hint}</p>
+    <form class="gate-form" data-gate-form novalidate>
+      <div class="gate-code" data-gate-code>
+        <label class="sr-only" for="gate-input">{gate.fieldLabel}</label>
+        <input
+          id="gate-input"
+          class="gate-input"
+          data-gate-input
+          type="text"
+          inputmode="numeric"
+          pattern="[0-9]*"
+          maxlength="4"
+          autocomplete="one-time-code"
+          spellcheck="false"
+          aria-label={gate.otpLabel}
+        />
+        <div class="gate-slots" aria-hidden="true">
+          <div class="gate-group">
+            <span class="gate-group-label">{gate.month}</span>
+            <span class="gate-slot numeral" data-slot="0"></span>
+            <span class="gate-slot numeral" data-slot="1"></span>
+          </div>
+          <span class="gate-divider" aria-hidden="true"></span>
+          <div class="gate-group">
+            <span class="gate-group-label">{gate.day}</span>
+            <span class="gate-slot numeral" data-slot="2"></span>
+            <span class="gate-slot numeral" data-slot="3"></span>
+          </div>
+        </div>
+      </div>
+      <div class="gate-password" data-gate-password-panel hidden>
+        <label class="field">
+          <span>{gate.passwordLabel}</span>
+          <input class="input" type="password" data-gate-password autocomplete="current-password" />
+        </label>
+        <button class="btn btn-solid" type="submit" data-gate-submit>{gate.unlock} <Icon icon={ArrowRight} size={16} class="icon-nudge" /></button>
+      </div>
+      <p class="gate-error" data-gate-error aria-live="polite"></p>
+    </form>
+    <div class="gate-foot">
+      <button class="btn btn-solid" type="button" data-gate-retry hidden>{gate.retryLogout}</button>
+      <button class="link gate-visit" type="button" data-gate-visit>{gate.visit}</button>
+    </div>
+  </div>
+</div>

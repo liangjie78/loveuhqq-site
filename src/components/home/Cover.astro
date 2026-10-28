@@ -1,0 +1,44 @@
+---
+import { hero } from '../../content/copy';
+import { dotted, relationshipStartDate } from '../../lib/anniversary';
+
+const start = dotted(relationshipStartDate);
+let index = 0;
+---
+
+<section class="cover" id="top" aria-labelledby="cover-title">
+  <canvas class="aura aura-cover" data-aura="cover" aria-hidden="true"></canvas>
+  <div class="wrap cover-inner">
+    <h1 class="cover-title display" id="cover-title" aria-label={hero.label}>
+      {hero.lines.map((line, row) => (
+        <span class:list={['cover-line', row === 1 && 'is-name']} aria-hidden="true">
+          {[...line].map(char => <span class="cover-ch" style={`--i:${index++}`}>{char}</span>)}
+        </span>
+      ))}
+    </h1>
+
+    <button class="cover-heart" type="button" data-heart aria-label={hero.label}>
+      <svg viewBox="0 0 120 108" aria-hidden="true" focusable="false">
+        <defs>
+          <radialGradient id="heart-light" cx="50%" cy="42%" r="60%">
+            <stop offset="0" stop-color="var(--glow-3)"></stop>
+            <stop offset=".55" stop-color="var(--glow-1)"></stop>
+            <stop offset="1" stop-color="var(--glow-2)"></stop>
+          </radialGradient>
+        </defs>
+        <path class="heart-fill" d="M60 102C24 76 6 56 6 34 6 17 19 6 34 6c11 0 20 6 26 16C66 12 75 6 86 6c15 0 28 11 28 28 0 22-18 42-54 68Z"></path>
+        <path class="heart-line" pathLength="1" d="M60 102C24 76 6 56 6 34 6 17 19 6 34 6c11 0 20 6 26 16C66 12 75 6 86 6c15 0 28 11 28 28 0 22-18 42-54 68Z"></path>
+      </svg>
+      <span class="cover-embers" data-embers aria-hidden="true"></span>
+    </button>
+
+    <div class="cover-count">
+      <p class="cover-count-lead" data-needs-js>{hero.countLead}</p>
+      <p class="cover-count-main" data-needs-js>
+        <span class="cover-count-unit">第</span><strong class="numeral" data-count-up>0</strong><span class="cover-count-unit">天</span>
+      </p>
+      <p class="cover-count-since">{hero.since} <time class="numeral" datetime={relationshipStartDate}>{start}</time></p>
+    </div>
+  </div>
+  <a class="cover-scroll" href="#days" aria-label={hero.scroll}><span>{hero.scroll}</span><i aria-hidden="true"></i></a>
+</section>
