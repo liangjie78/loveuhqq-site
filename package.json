@@ -5,11 +5,15 @@
   "type": "module",
   "scripts": {
     "dev": "astro dev",
-    "test": "node --experimental-strip-types --test tests/*.test.mjs",
-    "subset:font": "node scripts/subset-font.mjs",
     "build": "astro build",
+    "preview": "astro preview",
+    "test": "node --experimental-strip-types --no-warnings --test tests/unit/*.test.mjs tests/worker/*.test.mjs",
+    "test:build": "node --experimental-strip-types --no-warnings --test tests/build/*.test.mjs",
+    "test:e2e": "playwright test",
+    "check": "npm run check:worker && npm run check:frontend && npm test",
     "check:worker": "tsc -p tsconfig.worker.json",
     "check:frontend": "tsc -p tsconfig.frontend.json",
+    "subset:font": "node scripts/subset-font.mjs",
     "photos:prepare": "node scripts/prepare-photos.mjs",
     "photos:upload:preview": "node scripts/upload-photos.mjs --config wrangler.preview.jsonc",
     "photos:upload:production": "node scripts/check-production-config.mjs && node scripts/upload-photos.mjs --config wrangler.jsonc",
@@ -18,7 +22,6 @@
     "letter:upload:production": "node scripts/check-production-config.mjs && node scripts/upload-letter.mjs --config wrangler.jsonc",
     "password:preview": "node scripts/set-editor-password.mjs --config wrangler.preview.jsonc",
     "password:production": "node scripts/set-editor-password.mjs --config wrangler.jsonc",
-    "preview": "astro preview",
     "deploy:preview": "npm run build && wrangler deploy --config wrangler.preview.jsonc",
     "deploy": "node scripts/check-production-config.mjs && npm run build && wrangler deploy",
     "photos:upload:local": "node scripts/upload-photos.mjs --config wrangler.preview.jsonc --local"
@@ -31,6 +34,9 @@
     "zustand": "^5.0.15"
   },
   "devDependencies": {
+    "@playwright/test": "1.64.1",
+    "esbuild": "0.28.2",
+    "miniflare": "5.20261006.1-alpha",
     "sharp": "0.35.5",
     "subset-font": "^2.9.0",
     "terser": "^5.51.2",

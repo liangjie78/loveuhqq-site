@@ -68,7 +68,7 @@ const { links = [], home = '/', backHref, identity = false, dayChip = false, ses
       </div>
     )}
     {backHref && (
-      <a class="btn btn-sm back-link" href={backHref}><Icon icon={ArrowLeft} size={15} class="icon-back" /> {common.backToJournal}</a>
+      <a class="btn btn-sm back-link" href={backHref}><Icon icon={ArrowLeft} size={15} class="icon-back" /> <span class="back-label">{common.backToJournal}</span></a>
     )}
     {links.length > 0 && (
       <button class="icon-btn menu-toggle" type="button" data-menu-toggle aria-expanded="false" aria-controls="menu-sheet" aria-label={common.pageNav}>

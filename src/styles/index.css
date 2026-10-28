@@ -1,0 +1,46 @@
+/* 余温 · the memory book's table of contents. */
+
+.index-head { padding-bottom: 1rem; letter-spacing: .14em; }
+.index ol { border-top: 1px solid var(--hairline-strong); }
+.index-row {
+  position: relative;
+  isolation: isolate;
+  display: grid;
+  grid-template-columns: 3.25rem minmax(0, 1fr) auto 1.5rem;
+  align-items: baseline;
+  gap: 1rem;
+  padding: clamp(1.1rem, 2.4vw, 1.6rem) .5rem;
+  border-bottom: 1px solid var(--hairline-strong);
+}
+.index-row::before {
+  content: "";
+  position: absolute;
+  z-index: -1;
+  inset: 0;
+  background: linear-gradient(90deg, var(--rouge-wash), transparent 85%);
+  transform: scaleX(0);
+  transform-origin: left;
+  transition: transform 800ms var(--ease-out);
+}
+.index-no { font-size: var(--step-1); color: var(--rouge); transition: transform 800ms var(--ease-out); }
+.index-title {
+  font-size: var(--step-3);
+  font-weight: 300;
+  line-height: 1.2;
+  transition: font-weight 700ms var(--ease-out), transform 800ms var(--ease-out), letter-spacing 800ms var(--ease-out);
+}
+.index-note { color: var(--ink-2); font-size: var(--step--1); text-align: right; }
+.index-arrow { align-self: center; color: var(--ink-3); transition: transform 800ms var(--ease-out), color var(--t-ui); }
+@media (hover: hover) {
+  .index-row:hover::before { transform: scaleX(1); }
+  .index-row:hover .index-title { font-weight: 480; transform: translateX(.6rem); }
+  .index-row:hover .index-no { transform: translateY(-.15rem); }
+  .index-row:hover .index-arrow { transform: translate(.2rem, -.2rem) rotate(0deg); color: var(--rouge); }
+}
+.index-row:focus-visible::before { transform: scaleX(1); }
+@media (max-width: 39.99rem) {
+  .index-row { grid-template-columns: 2.5rem minmax(0, 1fr) 1.25rem; row-gap: .2rem; }
+  .index-note { grid-column: 2; grid-row: 2; text-align: left; }
+  .index-arrow { grid-column: 3; grid-row: 1 / span 2; }
+}
+

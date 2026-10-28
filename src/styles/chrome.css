@@ -272,13 +272,14 @@
 }
 @media (max-width: 47.99rem) {
   .wordmark { font-size: 1.3rem; }
-  .back-link { padding-inline: .8rem; }
   .masthead-tools { gap: .1rem; }
   .masthead .btn-sm { padding-inline: .7rem; }
   .identity-trigger { padding-inline: .65rem; }
 }
-@media (max-width: 23.5rem) {
-  .back-link .icon-back { display: none; }
+@media (max-width: 47.99rem) {
+  .session-note { display: none; }
+  .back-link { width: 2.75rem; min-height: 2.75rem; padding: 0; border-radius: 50%; }
+  .back-label { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
 }
 
 /* ---------- Colophon ---------- */
@@ -293,9 +294,10 @@
 .colophon-words { position: relative; }
 .colophon-words .display {
   display: grid;
-  font-size: var(--step-7);
+  font-size: min(var(--step-7), 15vw);
   line-height: 1.02;
 }
+.colophon-line { white-space: nowrap; }
 .colophon-line.is-soft { color: var(--ink-3); padding-left: .9em; }
 .colophon-meta {
   position: relative;
@@ -363,7 +365,7 @@
 .gate-mark .latin { font-style: italic; }
 .gate-mark-line { width: 3rem; height: 1px; background: var(--hairline-strong); }
 .gate-title {
-  font-size: var(--step-5);
+  font-size: min(var(--step-5), 10vw);
   white-space: pre-line;
   line-height: 1.12;
 }

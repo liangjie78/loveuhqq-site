@@ -11,14 +11,14 @@
 - 正式网址：[loveuhqq.x23.shop](https://loveuhqq.x23.shop)
 - 唯一正式源码：[liangjie78/loveuhqq-site](https://github.com/liangjie78/loveuhqq-site)（Private）
 - 页面结构：封面、日子、照片、心里话、往后、共同回忆册入口、信、页脚，自然连续滚动；另有相册页 `/photos/` 和 404 页（`dist/404.html` 由 `wrangler.jsonc` 的 `not_found_handling: "404-page"` 送出，缺这项时 Workers 只回空 404）。
-- 视觉与交互：暖色纸面、蜡封红、思源宋体竖排标题；纸心与邮戳、按月排列的“一天一格”日历、胶带拍立得、横线信纸和可点的信封。支持拍立得灯箱（键盘与滑动）、日历点选与方向键翻看读数、进入第二年后的往年回看（“← 上一年 / 下一年 →”）、门禁日期格和减少动态效果偏好。详见 [设计说明](docs/DESIGN.md)。
+- 视觉与交互：「余温」暖光极简——暖象牙底与单一胭脂红、可变字重宋体与 Instrument Serif 数字、WebGL 暖色光晕与胶片颗粒；光点年历（逐一点亮、鱼眼悬停、方向键与轻扫、往年回看）、逐字点亮的心里话、以光打开的门禁、蜡封拆信、相册灯箱放大、深色「夜灯」模式；全部动效在减少动态效果偏好下关闭。详见 [设计说明](docs/DESIGN.md)。
 - 纪念时间：从 2026-07-01 开始，当天算第 1 天，按北京时间自动更新；JavaScript 不可用时保留文案和起始日期。
 - 下一纪念日：第 100 天之后转向下一周年，纪念日当天显示“今天”，跨日和返回页面时自动刷新。
 - 内容状态：相册是登录后才能看到的真实照片（保存在 Workers KV，经 Worker 鉴权后送出）；值得标记的日子（`src/data/moments.ts`）已登记 3 个用户确认的日子。百日信须解锁共同手账且到达北京时间 2026-10-08 00:00 才能阅读；正式内容通过私密 KV 上传，不进入仓库，尚未上传时沿用已确认初稿。百日信保持只读，新的未来信件在 `/memories/` 内撰写与封存；照片可在解锁后的相册页「贴一张」，也可用本机 prepare/upload 脚本批量维护。
-- 技术边界：Astro + TypeScript + 普通 CSS，页面静态生成；Cloudflare Worker 提供登录、共享手账与回忆册接口，D1 保存记录和会话，KV 保存私密照片与短音频，SQLite Durable Object 协调实时桌面，不引入 UI 框架。
+- 技术边界：Astro + TypeScript + 普通 CSS，页面静态生成，交互为原生 TypeScript 控制器（`src/app/`），动效用 `motion` 与 `lenis`，不引入 UI 框架；Cloudflare Worker 提供登录、共享手账与回忆册接口，D1 保存记录和会话，KV 保存私密照片与短音频，SQLite Durable Object 协调实时桌面。
 - 共同手账：访客浏览展示内容，解锁后两个人可以查看、编辑同一份备注和清单。云端按单条记录保存并检测编辑冲突，页面可见时每 10 秒同步；登录后可在不同设备继续使用。
 
-界面截图：[桌面封面](docs/previews/journal-desktop.webp) · [桌面日历](docs/previews/journal-days-desktop.webp) · [手机封面](docs/previews/journal-mobile.webp) · [手机日历](docs/previews/journal-days-mobile.webp) · [门禁](docs/previews/journal-gate-mobile.webp)。截图用于展示源码界面，日期计数表示截图时的状态；实际页面按访问当天更新。顶部项目标识插画不作为当前页面截图。上述内容描述当前源码，不能据此判断正式网址已更新。
+界面截图：[桌面封面](docs/previews/yuwen-desktop-light-cover.webp) · [深色封面](docs/previews/yuwen-desktop-dark-cover.webp) · [光点年历](docs/previews/yuwen-desktop-light-days.webp) · [照片](docs/previews/yuwen-desktop-light-photos.webp) · [回忆册](docs/previews/yuwen-desktop-light-memories.webp) · [手机封面](docs/previews/yuwen-phone-light-cover.webp) · [门禁](docs/previews/yuwen-desktop-gate.webp)。截图使用本地示例数据，日期计数表示截图时的状态；顶部项目标识插画不作为当前页面截图。上述内容描述当前源码，不能据此判断正式网址已更新。
 
 共同回忆册入口为 `/memories/`（首页在“往后”与“信”之间有入口，目录项可直达各分区）：连接故事、双人版本、未来信件、愿望、声音、地点备忘、浏览器放映和实时桌面。地点目前只保留名称、年份与关联记录，坐标可留空，不加载地图。源码与隔离预览的实施状态、规则和验收记录见 [共同回忆册路线图](docs/product/ROADMAP-shared-memory-book.md)；正式站生效仍需单独合并、迁移及部署。
 
@@ -36,7 +36,7 @@ npm run preview
 
 新增可见文案后运行 `npm run subset:font` 重新生成宋体子集并连同字符清单一起提交，否则 `tests/font-subset.test.mjs` 会失败、页面会回退到系统字体。
 
-`npm test` 保留日期边界、会话与私密访问、保存冲突、相册并发及上传工具的行为测试，并用一条真实 Worker/D1 链路检查运行时兼容性。日期等边界在轻量测试中验证；界面布局和交互通过真实浏览器验收，不用源码关键词或历史截图检查代替。
+`npm test` 运行单元测试（日期、日记同步与合并、照片、桌面协议、门禁问题、导出、字体子集隐私、运维脚本）和真实 workerd（D1/KV/Durable Object）上的接口测试；`npm run test:build` 在构建后检查产物（文案、外部资源、分享预览不含门禁答案、私密信件不在静态文件中）；`npm run test:e2e` 用 Playwright 在隔离的本地 Worker 上跑桌面与手机两套端到端流程（本地使用系统 Chrome，CI 安装 Chromium）。CI 依次执行类型检查、`npm test`、构建、`test:build` 与端到端测试。
 
 构建输出在 `dist/`，不提交到 Git。当前页面入口是 [`src/pages/index.astro`](src/pages/index.astro)，样式入口是 [`src/styles/global.css`](src/styles/global.css)。
 
@@ -73,7 +73,7 @@ GitHub 自动部署尚未配置；没有绕过权限或创建额外凭据。GitH
 | [`docs/DEPLOYMENT.md`](docs/DEPLOYMENT.md) | 发布、核验和回滚边界 |
 | [`src/lib/anniversary.ts`](src/lib/anniversary.ts) | 起始日期、北京时间天数与跨日计算 |
 | [`scripts/subset-font.mjs`](scripts/subset-font.mjs) | 按站点用字生成思源宋体子集（`npm run subset:font`） |
-| [`docs/DESIGN.md`](docs/DESIGN.md) | 纸上手账的视觉、布局与交互约定 |
+| [`docs/DESIGN.md`](docs/DESIGN.md) | 「余温」的视觉、动效、布局与交互约定 |
 
 ## 生产状态说明
 

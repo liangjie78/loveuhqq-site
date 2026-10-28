@@ -13,3 +13,5 @@ dist/
 .private-letter/
 .claude/launch.json
 /axe-results-*.json
+test-results/
+playwright-report/
