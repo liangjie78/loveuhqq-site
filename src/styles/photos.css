@@ -65,6 +65,7 @@
   position: relative;
   font-size: var(--step--1);
   letter-spacing: .3em;
+  padding-left: .3em; /* balance the trailing letter-space so the label sits truly centred */
   color: var(--ink-3);
 }
 .frame-slot { gap: .4rem; text-align: center; }
@@ -81,6 +82,12 @@
 .spread > :nth-child(1) { grid-column: 1 / span 5; aspect-ratio: 4 / 5; }
 .spread > :nth-child(2) { grid-column: 6 / span 4; aspect-ratio: 3 / 4; margin-top: clamp(4rem, 12vw, 11rem); }
 .spread > :nth-child(3) { grid-column: 10 / span 3; aspect-ratio: 4 / 5; margin-top: clamp(1.5rem, 4vw, 4rem); }
+/* Fewer than three prints: keep the spread centred under the album link. */
+@media (min-width: 48rem) {
+  .spread > :only-child { grid-column: 5 / span 4; }
+  .spread > :first-child:nth-last-child(2) { grid-column: 2 / span 5; }
+  .spread > :nth-child(2):last-child { grid-column: 8 / span 4; }
+}
 @media (max-width: 47.99rem) {
   .spread { row-gap: var(--gutter); }
   .spread > :nth-child(1) { grid-column: 1 / -1; aspect-ratio: 4 / 4.4; }
@@ -94,13 +101,13 @@
   display: grid;
   grid-template-columns: repeat(12, minmax(0, 1fr));
   column-gap: var(--gutter);
-  align-items: end;
+  align-items: last baseline;
   row-gap: 1.5rem;
   padding-top: calc(var(--header-h) + clamp(4rem, 14vh, 9rem));
   padding-bottom: clamp(3rem, 8vh, 5rem);
 }
 .album-title { grid-column: 1 / span 7; font-size: var(--step-7); }
-.album-aside { grid-column: 9 / -1; display: grid; justify-items: end; gap: 1.25rem; text-align: right; padding-bottom: 1rem; }
+.album-aside { grid-column: 9 / -1; display: grid; justify-items: end; gap: 1.25rem; text-align: right; }
 .album-summary { font-family: var(--font-serif); font-size: var(--step-2); color: var(--ink-2); }
 @media (max-width: 47.99rem) {
   .album-title, .album-aside { grid-column: 1 / -1; justify-items: start; text-align: left; }

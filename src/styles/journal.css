@@ -114,7 +114,8 @@
     gap: 0;
     padding: 0;
   }
-  .calendar-row { grid-template-columns: none; grid-template-rows: 2.75rem auto; justify-items: center; }
+  /* align-items: start keeps short months on the same day rows as the long ones. */
+  .calendar-row { grid-template-columns: none; grid-template-rows: 2.75rem auto; align-items: start; justify-items: center; }
   .calendar-month { writing-mode: vertical-rl; align-self: end; padding-bottom: .4rem; font-size: .68rem; letter-spacing: .05em; }
   .calendar-cells { grid-template-columns: none; grid-template-rows: repeat(31, auto); width: 100%; }
   .calendar-cells > :first-child { grid-column-start: auto; grid-row-start: var(--start); }

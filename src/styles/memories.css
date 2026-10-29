@@ -50,12 +50,15 @@
 .book-body { display: grid; gap: 2rem; }
 
 .book-filter { display: flex; flex-wrap: wrap; align-items: end; gap: 1rem; }
+/* Small buttons beside a hairline field: centre them on the field's text, not its underline. */
+.book-filter > .btn-sm, .desk-controls > .btn-sm { margin-bottom: calc((2.875rem - 2.5rem) / 2); }
 .book-search { flex: 1 1 18rem; max-width: 28rem; }
 .book-year { max-width: 16rem; }
 
 /* Cards: stories, plans, letters, places. */
 .card-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 17rem), 1fr)); gap: var(--gutter); }
-.card-grid > p, .places > p { color: var(--ink-2); font-family: var(--font-serif); font-size: var(--step-1); }
+.card-grid > p, .places > p { grid-column: 1 / -1; max-width: 34rem; color: var(--ink-2); font-family: var(--font-serif); font-size: var(--step-1); }
+.card-grid > .link { justify-self: start; }
 .memory-card {
   position: relative;
   display: grid;
@@ -191,6 +194,7 @@ section[data-conflict-review] { display: grid; gap: .75rem; padding: 1rem 1.25re
 .screening-bar { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 1rem; }
 .screening-controls { display: flex; align-items: center; gap: .35rem; }
 .screening-controls .icon-btn { border-color: var(--hairline); }
+.screening-controls > .btn-quiet:last-child { margin-right: calc(-1rem - 1px); }
 
 /* ---------- Places ---------- */
 

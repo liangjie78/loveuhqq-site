@@ -263,6 +263,7 @@ html:not(.has-js) [data-needs-js] { display: none !important; }
   align-items: center;
   gap: .45rem;
   padding-block: .35rem;
+  padding-inline: 0;
   color: var(--ink);
   background: linear-gradient(currentColor, currentColor) 0 100% / 0 1px no-repeat,
     linear-gradient(var(--hairline-strong), var(--hairline-strong)) 0 100% / 100% 1px no-repeat;
