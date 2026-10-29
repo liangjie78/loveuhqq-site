@@ -1,6 +1,6 @@
 /* 余温 · the memory book's table of contents. */
 
-.index-head { padding-bottom: 1rem; letter-spacing: .14em; }
+.index-head { padding: 0 .5rem 1rem; letter-spacing: .14em; }
 .index ol { border-top: 1px solid var(--hairline-strong); }
 .index-row {
   position: relative;

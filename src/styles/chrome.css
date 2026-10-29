@@ -151,6 +151,8 @@
 .session { display: flex; align-items: center; gap: .1rem; }
 .session-note { padding: 0 .6rem; font-size: var(--step--1); color: var(--ink-2); }
 .masthead .btn-quiet { color: inherit; }
+/* Optical edge: a borderless last button lines its text up with the page margin. */
+.masthead-tools > .session:is(:last-child, :has(+ .menu-toggle:last-child)) { margin-right: calc(-1rem - 1px); }
 .back-link { --btn-line: var(--hairline); }
 
 /* Theme toggle: the sun is eaten by a moon. */
@@ -269,11 +271,14 @@
   .pillnav { display: none; }
   .menu-toggle { display: inline-grid; }
   .day-chip { display: none; }
+  .masthead-tools > .session:has(+ .menu-toggle:last-child) { margin-right: 0; }
+  .masthead-tools > .menu-toggle:last-child { margin-right: -.75rem; }
 }
 @media (max-width: 47.99rem) {
   .wordmark { font-size: 1.3rem; }
   .masthead-tools { gap: .1rem; }
   .masthead .btn-sm { padding-inline: .7rem; }
+  .masthead-tools > .session:last-child { margin-right: calc(-.7rem - 1px); }
   .identity-trigger { padding-inline: .65rem; }
 }
 @media (max-width: 47.99rem) {
@@ -298,7 +303,7 @@
   line-height: 1.02;
 }
 .colophon-line { white-space: nowrap; }
-.colophon-line.is-soft { color: var(--ink-3); padding-left: .9em; }
+.colophon-line.is-soft { color: var(--ink-3); padding-left: 1em; }
 .colophon-meta {
   position: relative;
   display: flex;
