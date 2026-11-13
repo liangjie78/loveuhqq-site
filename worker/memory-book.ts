@@ -1,5 +1,6 @@
 import { digest, randomToken, readSessionToken } from './auth.ts';
 import { isCalendarDate } from '../src/lib/notebook.ts';
+import { getShanghaiDate } from '../src/lib/anniversary.ts';
 import { audioMaxBytes, audioMaxSeconds } from '../src/lib/memory-book.ts';
 import type { MemoryBootstrap, MemoryLetter, MemoryMember, MemoryStory, MemberId, StoryPart } from '../src/lib/memory-book.ts';
 
@@ -14,7 +15,7 @@ const json = (value: unknown, status = 200, headers: Record<string, string> = {}
 const cookie = (token: string, age: number) => `${personalCookie}=${token}; HttpOnly; Secure; SameSite=Strict; Path=/; Max-Age=${age}`;
 const memberId = (id: unknown): id is MemberId => id === 'one' || id === 'two';
 const arr = (value: string): string[] => JSON.parse(value);
-const today = () => new Date(Date.now() + 8 * 3600_000).toISOString().slice(0, 10);
+const today = () => getShanghaiDate(new Date());
 function tokenFrom(request: Request): string | null {
   const tokens = (request.headers.get('Cookie') ?? '').split(';').map(x => x.trim()).filter(x => x.startsWith(`${personalCookie}=`));
   if (tokens.length !== 1) return null;
@@ -118,8 +119,14 @@ export async function memoryBootstrap(request: Request, db: D1Database): Promise
     db.prepare('SELECT * FROM memory_stories ORDER BY date DESC,id'), db.prepare('SELECT * FROM memory_parts'), db.prepare('SELECT * FROM memory_letters ORDER BY open_date,id'),
     db.prepare('SELECT * FROM memory_places ORDER BY year DESC,name'), db.prepare('SELECT * FROM memory_wish_plans'),
   ])).map(result => result.results);
+  const partsByStory = new Map<string, Row[]>();
+  for (const part of parts) {
+    const group = partsByStory.get(part.story_id);
+    if (group) group.push(part);
+    else partsByStory.set(part.story_id, [part]);
+  }
   return { member: { id: actor.id, name: actor.name }, members,
-    stories: stories.map(story => projectedStory(story, parts.filter(p => p.story_id === story.id), actor)),
+    stories: stories.map(story => projectedStory(story, partsByStory.get(story.id) ?? [], actor)),
     letters: letters.filter(letter => letter.sender_id === actor.id || letter.status === 'sealed' && letter.recipient_id === actor.id).map(letter => projectedLetter(letter, letters, actor)),
     places: places.map(place => ({ id: place.id, version: place.version, name: place.name, lat: place.lat, lng: place.lng, year: place.year, storyIds: arr(place.story_ids), wishIds: arr(place.wish_ids) })),
     wishPlans: plans.map(plan => ({ id: plan.id, version: plan.version, plannedDate: plan.planned_date, storyId: plan.story_id })) };
@@ -147,7 +154,7 @@ async function identity(request: Request, db: D1Database): Promise<Response> {
   headers.set('Cookie', (request.headers.get('Cookie') ?? '').split(';').map(x => x.trim()).filter(x => !x.startsWith(`${personalCookie}=`)).concat(`${personalCookie}=${token}`).join('; '));
   return json(await memoryBootstrap(new Request(request.url, { headers }), db), 200, { 'Set-Cookie': cookie(token, age) });
 }
-async function saveStory(request: Request, env: MemoryEnv, actor: MemoryActor, id: string) {
+async function saveStory(request: Request, env: MemoryEnv, id: string) {
   const value = await body(request, ['expectedVersion', 'title', 'date', 'text', 'photoIds', 'wishIds', 'layout', 'revealTogether']);
   const expected = version(value.expectedVersion); const title = text(value.title, 120); const content = text(value.text, 10000, true);
   if (!isCalendarDate(value.date) || !['journal', 'album', 'letter'].includes(value.layout) || typeof value.revealTogether !== 'boolean') fail(400, '故事日期或排版无效。');
@@ -289,7 +296,7 @@ export async function handleMemoryRequest(request: Request, env: MemoryEnv): Pro
       if (!row || row.sender_id !== actor!.id && (row.recipient_id !== actor!.id || row.status !== 'sealed')) fail(404, '信件不存在。');
       return json(projectedLetter(row!, all, actor!));
     }
-    if (request.method === 'PUT' && collection === 'stories' && !action) await saveStory(request, env, actor!, id);
+    if (request.method === 'PUT' && collection === 'stories' && !action) await saveStory(request, env, id);
     else if (request.method === 'PUT' && collection === 'stories' && action === 'part') await savePart(request, env.DB, actor!, id);
     else if (request.method === 'PUT' && collection === 'letters' && !action) await saveLetter(request, env.DB, actor!, id);
     else if (request.method === 'POST' && collection === 'letters' && (action === 'seal' || action === 'withdraw')) await letterAction(request, env.DB, actor!, id, action);

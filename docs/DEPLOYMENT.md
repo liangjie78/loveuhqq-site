@@ -4,7 +4,7 @@
 
 `GitHub liangjie78/loveuhqq-site 的 main → CI 通过 → GitHub Actions 同提交构建 → dist → Cloudflare Worker Static Assets loveuhqq-site → loveuhqq.x23.shop`
 
-当前由 GitHub Actions 自动部署：`main` 上 `CI` 工作流成功后触发 `.github/workflows/deploy-loveuhqq.yml`，用仓库 Secrets 中的 Cloudflare 凭据运行项目级 Wrangler 发布，因此合并 PR 即上线。该工作流也可在 Actions 页面手动运行。Cloudflare 没有配置 Git 自动构建来源，没有第二个源码仓库。
+`main` 的推送通过 `CI` 后，GitHub Actions 触发 `.github/workflows/deploy-loveuhqq.yml`，用仓库 Secrets 中的 Cloudflare 凭据运行项目级 Wrangler。发布前核对构建提交仍是 `main` 最新提交。经授权也可从 Actions 手动运行 `main` 的部署工作流。
 
 ## 目标
 
@@ -21,15 +21,15 @@
 
 1. 开发按仓库流程使用 feature/fix/chore 分支或 worktree；完成必要验证后，可自主 commit、push 和创建/更新 PR。默认分支保持 PR-first，不直接 push main；PR 合并、历史改写、tag、force push 与生产部署需明确授权。
 2. 取得本次生产部署授权，核验干净 main 与 origin/main 的提交一致。确认账号、目标 Worker、Custom Domain 无异常；已有其他资源占用目标时停止报告。
-3. 根据当前环境满足依赖的 Node.js 引擎要求，运行 `npm ci`、`npm run build`，检查 dist 中 HTML、CSS 和 favicon。
-4. 首次启用云端手账时，先按下节配置独立生产数据库和密码。运行项目级 `npm run deploy`（检查生产数据库绑定、重新 build 后 wrangler deploy），记录返回的版本 ID。只发布这个 Worker。
+3. 等待 `main` 的 `CI` 和 `Deploy loveuhqq` 完成，核对部署日志中的提交与 Worker 版本 ID。有待应用的 D1 迁移时，按对应章节先处理数据库。
+4. 需要手动重发时，从 Actions 选择 `main` 运行部署，或从干净的最新 `main` 执行 `npm ci` 和 `npm run deploy`。首次启用云端手账时先配置独立生产数据库和密码。
 5. 核验 Custom Domain 指向正确 Worker，查询 Cloudflare 权威 DNS，并访问 HTTPS：首页须为 200 且正文与本次发布的源码一致，实际 CSS/favicon 必须为 200；不可出现 work1 或 x23-personal-site 页面。
 
 ## 预览验收
 
 可见 UI 改动先用 `npm run deploy:preview` 从当前分支构建并手动更新 `loveuhqq-site-preview`，地址为 [临时预览站](https://loveuhqq-site-preview.1756127916.workers.dev/)。它使用 `wrangler.preview.jsonc`，仅绑定 `workers.dev`，与正式 Worker 和 Custom Domain 分离。每次交付需核验公网首页、受影响页面和实际资源，提供网址及截图；预览网址始终显示最后一次上传的内容，不能仅凭 PR 或构建成功声称网址已更新。预览站公开可访问，提交正式发布仍按上节的授权和 `main` 流程执行。
 
-共享手账预览使用独立 D1，首次执行 `npx wrangler d1 migrations apply DB --remote --config wrangler.preview.jsonc`，然后在交互式终端运行 `npm run password:preview` 设置密码。API 与私密正文禁止缓存；未知 `/api/*` 返回 JSON 404，不能落入静态页面。预览仅使用合成测试内容，至少验收两次独立登录、同步、同时修改冲突、访客拒绝、退出撤销和断网草稿保留。
+共享手账预览使用独立 D1，首次启用时经授权执行 `npx wrangler d1 migrations apply DB --remote --config wrangler.preview.jsonc`。验收沿用已配置的共同门禁密码，仅在用户明确要求时运行 `npm run password:preview`。API 与私密正文禁止缓存，`/api` 和未知 API 路径返回 JSON 404。预览使用合成测试内容，验收两次独立登录、同步、同时修改冲突、访客拒绝、退出撤销和断网草稿保留。
 
 ## 私密相册
 
@@ -85,7 +85,7 @@ npx wrangler deploy --config wrangler.memory-preview.jsonc
 
 声音使用既有 `PHOTOS` KV 的 `audio/` 独立前缀，D1 仅存所有者及父内容关系，每次读取均重新鉴权。音频总额度为 300 条/256 MiB，单条字节上限 4 MiB；60 秒录制与浏览器上传时长校验在客户端进行，Worker 额外检查声明时长与容器签名，不进行音频解码。不要将其宣称为服务端证明的实际时长限制。未启用 R2 或新增付费服务。
 
-正式站仍需当前任务明确授权合并、备份生产 D1、应用上述增量迁移及正式部署。部署时保持原生产 D1/KV 绑定，预览 ID 不得复制到生产；新 DO 类由 Wrangler 迁移创建。先执行生产配置检查、完整测试、构建和 dry run，再正式部署，并验证新页、旧入口、匿名 401、个人草稿隔离、未来信日期门槛及两端桌面同步。生产首次成员设置由双方亲自完成。数据库与 DO 存储均不随 Worker 版本回滚，不能用销毁资源恢复旧界面。
+该版本首次发布需要授权合并、备份生产 D1 并应用增量迁移。现有生产环境已应用这四项迁移，见下方上线记录。发布核验覆盖新页、旧入口、匿名 401、个人草稿隔离、未来信日期门槛及两端桌面同步。数据库与 DO 存储需单独回滚。
 
 ## 回忆册外壳修复正式上线（2026-10-19，Asia/Shanghai）
 

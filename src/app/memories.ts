@@ -1,5 +1,6 @@
 /** The shared memory book: stories, plans, letters, screening, places and the desk. */
 import { api, ApiError } from '../lib/cloud-notebook';
+import { getShanghaiDate } from '../lib/anniversary';
 import { getSession, onSessionChange, publishSession, refreshSession } from '../lib/session';
 import { parsePhotoManifest, photoUrl, type PrivatePhoto } from '../lib/photos';
 import type { CloudNotebook, Wish } from '../lib/notebook';
@@ -8,11 +9,11 @@ import { buildMemoryExport } from '../lib/memory-export';
 import { lucideSvg, type LucideIconNode } from '../lib/lucide-dom';
 import { selectMember, setCurrentMember } from '../lib/member';
 import { emitSharedDeskUpdate } from '../lib/shared-desk-events';
-import { askOtherDrafts as askDrafts, discardIdentityMessage } from '../lib/identity-channel';
+import { askOtherDrafts, broadcastMemberChange, discardIdentityMessage, openIdentityChannel } from '../lib/identity-channel';
 import { scrollToElement } from '../motion/pointer';
 import './desk';
 import { mountAura } from '../motion/aura';
-import { ArrowDown, ArrowRight, ArrowUp, Lock, Pencil, RotateCw, Trash2 } from 'lucide';
+import { ArrowDown, ArrowRight, ArrowUp, Lock, Pencil, RotateCw } from 'lucide';
 
 const $ = <T extends HTMLElement = HTMLElement>(selector: string, parent: ParentNode = document) => parent.querySelector<T>(selector)!;
 const all = <T extends HTMLElement = HTMLElement>(selector: string, parent: ParentNode = document) => [...parent.querySelectorAll<T>(selector)];
@@ -29,7 +30,7 @@ const formTriggers = new Map<HTMLFormElement, HTMLElement>();
 const field = (form: HTMLFormElement, name: string) => form.elements.namedItem(name) as HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement;
 const value = (form: HTMLFormElement, name: string) => field(form, name).value;
 const set = (form: HTMLFormElement, name: string, content: string) => { field(form, name).value = content; };
-const today = () => new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Shanghai', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date());
+const today = () => getShanghaiDate(new Date());
 const empty = (): MemoryBootstrap => ({ member: null, members: [], stories: [], letters: [], places: [], wishPlans: [] });
 let book = empty();
 let authenticated = false;
@@ -53,7 +54,7 @@ const cleanups = new Set<() => void>();
 const recordingCleanups = new WeakMap<HTMLElement, () => void>();
 let filter = new URLSearchParams(location.search);
 let selectedPlaceYear = '';
-let loading: Promise<void> | null = null;
+let loading: Promise<boolean> | null = null;
 let lastWriteConflict = false;
 let switching = false;
 let remotePending = false;
@@ -170,10 +171,11 @@ function discardShownContent() {
 function clearPrivate() {
   discardShownContent();
   $('[data-memory-locked]').hidden = false;
+  $('[data-memory-retry]').hidden = true;
   status.textContent = '';
 }
 async function load() {
-  if (!authenticated || switching) return;
+  if (!authenticated || switching || mutations.size) return false;
   if (loading) return loading;
   const token = generation;
   const controller = new AbortController(); request = controller;
@@ -183,19 +185,21 @@ async function load() {
   loading = (async () => {
     try {
       const next = await api<MemoryBootstrap>(`${memoryApiRoot}/bootstrap`, { signal: controller.signal });
-      if (token !== generation || !authenticated) return;
+      if (controller.signal.aborted || token !== generation || !authenticated) return false;
       if (book.member && book.member.id !== next.member?.id) {
         cancelExport();
         if (hasUnsavedChanges() && !window.confirm(discardIdentityMessage)) {
           await api<MemoryBootstrap>(`${memoryApiRoot}/identity`, { method: 'POST', signal: controller.signal, body: JSON.stringify({ id: book.member.id }) });
-          if (token !== generation || !authenticated) return;
+          if (controller.signal.aborted || token !== generation || !authenticated) return false;
           postMemberChanged();
           status.textContent = '';
-          return;
+          return false;
         }
-        if (token !== generation || !authenticated) return;
+        if (controller.signal.aborted || token !== generation || !authenticated) return false;
         resetMedia(); stopScreening(); screening = []; screeningIndex = 0; emitSharedDeskUpdate(null); setCurrentMember(null);
         all<HTMLFormElement>('form', privateRoot).forEach(form => { form.reset(); delete form.dataset.dirty; });
+        $('[data-memory-wishes]').replaceChildren();
+        renderedLists.delete($('[data-memory-wishes]'));
         clearSelectors();
         all<HTMLElement>('[data-story-detail], [data-letter-detail], [data-screening-stage], [data-screening-order]', privateRoot).forEach(node => node.replaceChildren());
         storyForm.hidden = letterForm.hidden = placeForm.hidden = true;
@@ -205,18 +209,23 @@ async function load() {
       setCurrentMember(next.member?.id ?? null);
       if (next.member) {
         const [manifest, notes] = await Promise.all([api('/api/photos', { signal: controller.signal }), api<CloudNotebook>('/api/notebook', { signal: controller.signal })]);
-        if (token !== generation || !authenticated) return;
+        if (controller.signal.aborted || token !== generation || !authenticated) return false;
         photos = parsePhotoManifest(manifest).photos; notebook = notes;
       } else { photos = []; notebook = null; }
       render(); status.textContent = ''; $('[data-memory-retry]').hidden = true;
       loadedOnce = true;
-    } catch (error) { if (token === generation && !controller.signal.aborted) report(error); }
-    finally { if (token === generation) { request = null; loading = null; } }
+      return true;
+    } catch (error) {
+      if (token === generation && !controller.signal.aborted) report(error);
+      return false;
+    }
+    finally { if (request === controller) { request = null; loading = null; } }
   })();
   return loading;
 }
 async function write(path: string, method: string, body?: unknown): Promise<boolean> {
   lastWriteConflict = false;
+  request?.abort(); request = null; loading = null;
   const token = generation;
   const controller = new AbortController(); mutations.add(controller);
   try {
@@ -249,7 +258,9 @@ function conflictReview(form: HTMLFormElement, latest: () => { text: string; acc
   const section = el('section'); section.dataset.conflictReview = '';
   section.append(el('p', '服务端已有更新，当前输入还在。先查看最新内容，再决定是否用当前输入替换。'));
   section.append(button('查看最新内容', () => { void (async () => {
-    await load(); if (!form.isConnected || !book.member) return;
+    const fresh = await load();
+    if (!section.isConnected || !book.member) return;
+    if (!fresh) { section.querySelector('p')!.textContent = '暂时没能读取最新内容，请再试一次。'; return; }
     const current = latest(); section.replaceChildren(el('p', '手账里的最新内容：'), el('p', current.text, 'memory-prose'), button('确认保留当前输入，准备重新保存', () => { current.accept(); section.remove(); status.textContent = '当前输入已保留，检查后再按保存。'; }));
   })(); })); form.append(section);
 }
@@ -269,11 +280,10 @@ async function selectIdentity(id: string) {
   let failed = false;
   const controller = new AbortController();
   try {
-    const elsewhere = await askOtherDrafts();
+    const elsewhere = await askOtherDrafts(identityChanges);
     if (!authenticated || book.member?.id === id) return;
     if ((hasUnsavedChanges() || elsewhere) && !window.confirm(discardIdentityMessage)) return;
     discardShownContent();
-    privateRoot.hidden = false;
     $('[data-memory-locked]').hidden = true;
     status.textContent = '正在选择…';
     const token = generation;
@@ -428,10 +438,17 @@ function renderStory() {
   for (const wish of wishes) {
     const plan = book.wishPlans.find(item => item.id === wish.id);
     const card = el('section', '', 'memory-wish-plan');
-    card.append(el('h4', `从往后走到后来：${wish.text}`), el('p', `${wish.done ? '已经一起做过' : '还想一起做'} · ${plan?.plannedDate ?? '还没定日期'}`, 'memory-meta'));
+    const summary = el('p', wishPlanSummary(wish, plan?.plannedDate), 'memory-meta');
+    card.append(el('h4', `从往后走到后来：${wish.text}`), summary);
     const edit = button('安排这件事', () => {
       edit.hidden = true;
-      const form = wishPlan(wish, story);
+      const form = wishPlan(wish, story, () => {
+        const current = notebook?.wishes.find(item => item.id === wish.id) ?? wish;
+        const currentPlan = book.wishPlans.find(item => item.id === wish.id);
+        summary.textContent = wishPlanSummary(current, currentPlan?.plannedDate);
+        edit.hidden = false;
+        edit.focus({ preventScroll: true });
+      });
       form.append(button('先不改', () => { form.remove(); edit.hidden = false; edit.focus(); })); card.append(form);
     });
     card.append(edit); detail.append(card);
@@ -464,22 +481,45 @@ storyForm.addEventListener('submit', event => { event.preventDefault(); void sub
 
 function renderWishes() {
   const list = $('[data-memory-wishes]');
-  // Preserve an open scheduling draft while the surrounding book refreshes.
-  if (list.querySelector('form[data-dirty="yes"]')) return;
-  list.replaceChildren();
-  if (!notebook?.wishes.length) { const back = el('a', '回到往后的小清单', 'link'); back.href = '/#future'; back.append(lucideSvg(ArrowRight, 16)); list.append(el('p', '往后的清单还空着。'), back); return; }
-  for (const wish of notebook.wishes) {
+  const key = JSON.stringify([notebook?.wishes, book.wishPlans, book.stories.map(({ id, title, wishIds }) => [id, title, wishIds])]);
+  if (renderedLists.get(list) === key) return;
+  renderedLists.set(list, key);
+  const cards = new Map(all<HTMLElement>('[data-memory-wish-id]', list).map(card => [card.dataset.memoryWishId!, card]));
+  const entries = notebook?.wishes ?? [];
+  if (!entries.length && !list.querySelector('form')) { const back = el('a', '回到往后的小清单', 'link'); back.href = '/#future'; back.append(lucideSvg(ArrowRight, 16)); list.replaceChildren(el('p', '往后的清单还空着。'), back); return; }
+  for (const child of [...list.children]) if (!(child as HTMLElement).dataset.memoryWishId) child.remove();
+  for (const wish of entries) {
+    const previous = cards.get(wish.id);
+    cards.delete(wish.id);
+    if (previous?.querySelector('form')) continue;
     const plan = book.wishPlans.find(item => item.id === wish.id);
     const story = book.stories.find(item => item.id === plan?.storyId) ?? book.stories.find(item => item.wishIds.includes(wish.id));
-    const card = el('article', '', 'memory-card'); card.append(el('h3', wish.text), el('p', `${wish.done ? '已经做过' : '还想一起做'}${plan?.plannedDate ? ` · 商定在 ${plan.plannedDate}` : ' · 还没定日期'}`, 'memory-meta'));
+    const card = el('article', '', 'memory-card');
+    card.dataset.memoryWishId = wish.id;
+    card.append(el('h3', wish.text), el('p', `${wish.done ? '已经做过' : '还想一起做'}${plan?.plannedDate ? ` · 商定在 ${plan.plannedDate}` : ' · 还没定日期'}`, 'memory-meta'));
     if (story) card.append(button(`翻开后来：${story.title}`, () => openStory(story.id)));
-    const edit = button('安排这件事', () => { edit.hidden = true; const form = wishPlan(wish); const close = button('先不改', () => { form.remove(); edit.hidden = false; edit.focus(); }); form.append(close); card.append(form); });
-    card.append(edit, button('为这件事写故事', trigger => { filter.set('wish', wish.id); openStoryForm(undefined, trigger); })); list.append(card);
+    const edit = button('安排这件事', () => {
+      edit.hidden = true;
+      const form = wishPlan(wish);
+      form.append(button('先不改', () => {
+        form.remove();
+        renderedLists.delete(list);
+        renderWishes();
+        list.querySelector<HTMLElement>(`[data-memory-wish-id="${CSS.escape(wish.id)}"] [data-wish-plan-open]`)?.focus({ preventScroll: true });
+      }));
+      card.append(form);
+    });
+    edit.dataset.wishPlanOpen = '';
+    card.append(edit, button('为这件事写故事', trigger => { filter.set('wish', wish.id); openStoryForm(undefined, trigger); }));
+    if (previous) previous.replaceWith(card); else list.append(card);
   }
+  for (const card of cards.values()) if (!card.querySelector('form')) card.remove();
 }
-function wishPlan(wish: Wish, story?: MemoryStory) {
+const wishPlanSummary = (wish: Wish, date?: string | null) => `${wish.done ? '已经一起做过' : '还想一起做'} · ${date ?? '还没定日期'}`;
+function wishPlan(wish: Wish, story?: MemoryStory, onSave?: () => void) {
   const plan = book.wishPlans.find(item => item.id === wish.id);
   let planVersion = plan?.version ?? 0;
+  let savedDone = wish.done;
   const form = el('form', '', 'memory-form memory-wish-plan');
   form.append(el('h4', `从往后走到后来：${wish.text}`));
   const dateLabel = el('label', '商定的日期（可以留空）'); const date = el('input'); date.className = 'input'; date.type = 'date'; date.value = plan?.plannedDate ?? ''; dateLabel.append(date);
@@ -490,10 +530,28 @@ function wishPlan(wish: Wish, story?: MemoryStory) {
   const save = el('button', '收好安排与关联', 'btn btn-sm btn-solid'); save.type = 'submit'; form.append(save);
   form.addEventListener('submit', event => { event.preventDefault(); void submit(form, async () => {
     const token = generation;
-    if (done.checked !== wish.done) {
-      try { const updated = await api<CloudNotebook>(`/api/wishes/${encodeURIComponent(wish.id)}`, { method: 'PUT', body: JSON.stringify({ expectedVersion: notebook?.revisions.wishes[wish.id] ?? 0, text: notebook?.wishes.find(item => item.id === wish.id)?.text ?? wish.text, done: done.checked }) }); if (token !== generation) return; notebook = updated; } catch (error) { if (token === generation) report(error); return; }
+    if (done.checked !== savedDone) {
+      const current = notebook?.wishes.find(item => item.id === wish.id);
+      if (!current) { report(new ApiError(409, '清单里的这件事已被移除。')); return; }
+      if (current.done !== done.checked) {
+        try {
+          const updated = await api<CloudNotebook>(`/api/wishes/${encodeURIComponent(wish.id)}`, { method: 'PUT', body: JSON.stringify({ expectedVersion: notebook!.revisions.wishes[wish.id], text: current.text, done: done.checked }) });
+          if (token !== generation) return;
+          notebook = updated;
+        } catch (error) {
+          if (token === generation) { report(error); if (error instanceof ApiError && error.status === 409) void load(); }
+          return;
+        }
+      }
+      savedDone = done.checked;
     }
-    if (await write(`/wishPlans/${wish.id}`, 'PUT', { expectedVersion: planVersion, plannedDate: date.value || null, storyId: select.value || null })) { delete form.dataset.dirty; renderWishes(); renderStory(); }
+    if (await write(`/wishPlans/${wish.id}`, 'PUT', { expectedVersion: planVersion, plannedDate: date.value || null, storyId: select.value || null })) {
+      form.remove();
+      if (story) renderedStory = '';
+      renderedLists.delete($('[data-memory-wishes]'));
+      renderWishes(); renderStory();
+      onSave?.();
+    }
     else conflictReview(form, () => { const latest = book.wishPlans.find(item => item.id === wish.id); return { text: `日期：${latest?.plannedDate ?? '未定'}；故事：${book.stories.find(item => item.id === latest?.storyId)?.title ?? '未关联'}`, accept() { planVersion = latest?.version ?? 0; } }; });
   }); }); return form;
 }
@@ -516,7 +574,8 @@ function letterInput(letter: MemoryLetter, audioIds = letter.audioIds ?? []): Le
 function renderLetter() {
   const detail = $('[data-letter-detail]'); const letter = book.letters.find(item => item.id === selectedLetter); detail.hidden = !letter;
   if (!letter) { renderedLetter = ''; detail.replaceChildren(); return; }
-  const snapshot = JSON.stringify([letter, book.members]);
+  const canWithdraw = letter.status === 'sealed' && letter.openDate > today();
+  const snapshot = JSON.stringify([letter, book.members, canWithdraw]);
   if (detail.dataset.letterId === letter.id && (renderedLetter === snapshot || [...detail.querySelectorAll('audio')].some(audio => !audio.paused))) return;
   if (detail.dataset.letterId === letter.id && detail.querySelector('[data-recording-pending="yes"]')) return;
   detail.dataset.letterId = letter.id;
@@ -529,7 +588,7 @@ function renderLetter() {
     if (letter.status === 'draft') {
       detail.append(button('接着写', trigger => openLetter(letter, trigger)), button('确认封好这封信', () => sealLetter(letter), 'btn btn-sm btn-solid', Lock));
       detail.append(recorder({ letterId: letter.id }, async id => { if (!await write(`/letters/${letter.id}`, 'PUT', letterInput(letter, [...(letter.audioIds ?? []), id]))) throw new Error('Audio attachment failed'); }));
-    } else detail.append(button('撤回为草稿', () => withdrawLetter(letter)));
+    } else if (canWithdraw) detail.append(button('撤回为草稿', () => withdrawLetter(letter)));
   }
 }
 // These two actions sit at the bottom of the page, far from the hero's status line,
@@ -676,7 +735,7 @@ function openPlace(place?: MemoryPlace, trigger = $('[data-place-new]')) {
 }
 placeForm.addEventListener('submit', event => { event.preventDefault(); void submit(placeForm, async () => { const storyId = value(placeForm, 'storyId'); const wishId = value(placeForm, 'wishId'); const id = value(placeForm, 'id'); const latitude = value(placeForm, 'latitude').trim(); const longitude = value(placeForm, 'longitude').trim(); if (await write(`/places/${id}`, 'PUT', { expectedVersion: placeEditVersion, name: value(placeForm, 'name'), lat: latitude === '' ? null : Number(latitude), lng: longitude === '' ? null : Number(longitude), year: Number(value(placeForm, 'year')), storyIds: storyId ? [storyId] : [], wishIds: wishId ? [wishId] : [] })) { delete placeForm.dataset.dirty; placeForm.hidden = true; } else conflictReview(placeForm, () => { const latest = book.places.find(item => item.id === id); return { text: latest ? `${latest.name} · ${latest.year}${latest.lat == null ? ' · 未填坐标' : ` · ${latest.lat}, ${latest.lng}`}` : '地点暂时不存在。', accept() { placeEditVersion = latest?.version ?? 0; } }; }); }); });
 
-const identityChanges = typeof BroadcastChannel !== 'undefined' ? new BroadcastChannel('loveuhqq_member') : null;
+const identityChanges = openIdentityChannel();
 window.addEventListener('memory:shared-desk-request', updateSharedDesk);
 document.addEventListener('memory:open-story', event => {
   const id = (event as CustomEvent<{ id?: unknown }>).detail?.id;
@@ -685,11 +744,7 @@ document.addEventListener('memory:open-story', event => {
 let remoteTimer: ReturnType<typeof setTimeout> | null = null;
 let remoteAsk = true;
 
-function postMemberChanged() {
-  identityChanges?.postMessage('changed');
-  try { localStorage.setItem('loveuhqq_member_changed', String(Date.now())); } catch { /* Optional cross-tab fallback. */ }
-}
-const askOtherDrafts = () => askDrafts(identityChanges);
+const postMemberChanged = () => broadcastMemberChange(identityChanges);
 function applyRemoteIdentity() {
   if (!authenticated) { clearPrivate(); return; }
   discardShownContent();
@@ -736,8 +791,6 @@ $('[data-story-filter-clear]').addEventListener('click', () => { filter = new UR
 $<HTMLSelectElement>('[data-place-year]').addEventListener('change', event => { selectedPlaceYear = (event.target as HTMLSelectElement).value; renderPlaces(); });
 onSessionChange(state => { authenticated = state.authenticated; if (!authenticated) clearPrivate(); else if (!exportRequest) void load(); });
 document.addEventListener('click', event => { if ((event.target as Element).closest('[data-session-logout], [data-lock-site]')) { authenticated = false; clearPrivate(); } }, { capture: true });
-window.addEventListener('pagehide', clearPrivate);
-window.addEventListener('pageshow', event => { if (event.persisted) { clearPrivate(); void refreshSession().then(state => { authenticated = state.authenticated; if (authenticated) void load(); }).catch(report); } });
 document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden') stopScreening(); else if (authenticated && !switching) void load(); });
 window.setInterval(() => { if (authenticated && !switching && document.visibilityState === 'visible' && !mutations.size) void load(); }, 10_000);
 for (const form of [storyForm, letterForm, placeForm]) form.addEventListener('input', () => { form.dataset.dirty = 'yes'; });

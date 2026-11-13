@@ -30,7 +30,7 @@ const { grand = false, backHref, lockLabel = footer.lock } = Astro.props;
     <span class="colophon-sign"><span class="latin">{site.name}</span> · 始于 <time class="numeral" datetime={relationshipStartDate}>{dotted(relationshipStartDate)}</time></span>
     <div class="colophon-actions">
       {backHref && <a class="btn btn-sm" href={backHref}><Icon icon={ArrowLeft} size={15} class="icon-back" /> {common.backToJournal}</a>}
-      <button class="btn btn-sm" type="button" data-lock-site><Icon icon={Lock} size={15} /> {lockLabel}</button>
+      <button class="btn btn-sm" type="button" data-lock-site data-needs-js><Icon icon={Lock} size={15} /> {lockLabel}</button>
       {grand && <a class="btn btn-sm" href="#top" data-to-top>{footer.top} <Icon icon={ArrowUp} size={15} class="icon-lift" /></a>}
     </div>
   </div>

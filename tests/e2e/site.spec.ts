@@ -93,6 +93,10 @@ test.describe('journal', () => {
     await row.locator('input.tick').check();
     await expect(page.locator('[data-wish-status]')).toHaveText('这一件，做到了。');
     await expect(row).toHaveClass(/is-done/);
+    await expect(row.locator('input.tick')).toBeEnabled({ timeout: 1500 });
+    await row.locator('input.tick').uncheck();
+    await expect(page.locator('[data-wish-status]')).toHaveText('放回待做的清单。');
+    await expect(row).not.toHaveClass(/is-done/);
   });
 
   test('the hundred-day letter opens after its day and closes back to the envelope', async ({ page }) => {
@@ -204,6 +208,16 @@ test.describe('every page, signed in', () => {
 });
 
 test.describe('every page, as a visitor', () => {
+  test('chapter navigation works without scripts', async ({ page }) => {
+    await page.route('**/_assets/*.js', route => route.abort());
+    await page.goto('/');
+    const days = page.locator('[data-nav-link][href="#days"]');
+    await expect(page.locator('html')).not.toHaveClass(/is-locked/);
+    await expect(days).toBeVisible();
+    await days.click();
+    await expect(page).toHaveURL(/#days$/);
+  });
+
   test('reduced motion shows the cover at once', async ({ browser }) => {
     const context = await browser.newContext({ reducedMotion: 'reduce' });
     const page = await context.newPage();

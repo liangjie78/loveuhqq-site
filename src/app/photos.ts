@@ -96,16 +96,16 @@ const syncDialogClass = () => root.classList.toggle('has-dialog', dialog.open ||
 
 /* ---------- Prints ---------- */
 
-const reveal = new IntersectionObserver(entries => {
+const reveal = 'IntersectionObserver' in window ? new IntersectionObserver((entries, observer) => {
   for (const entry of entries) {
     if (!entry.isIntersecting) continue;
     const element = entry.target as HTMLElement;
     const img = element.querySelector('img');
     const show = () => element.classList.add('is-shown');
     if (!img || img.complete) show(); else { img.addEventListener('load', show, { once: true }); img.addEventListener('error', show, { once: true }); }
-    reveal.unobserve(element);
+    observer.unobserve(element);
   }
-}, { rootMargin: '0px 0px -6% 0px' });
+}, { rootMargin: '0px 0px -6% 0px' }) : null;
 
 function print_(photo: PrivatePhoto, list: PrivatePhoto[], position: number, kind: 'all' | 'featured'): HTMLAnchorElement {
   const link = document.createElement('a');
@@ -139,7 +139,7 @@ function print_(photo: PrivatePhoto, list: PrivatePhoto[], position: number, kin
     event.preventDefault();
     open(list, position, link, kind);
   });
-  if (calm.matches) link.classList.add('is-shown'); else reveal.observe(link);
+  if (calm.matches || !reveal) link.classList.add('is-shown'); else reveal.observe(link);
   return link;
 }
 
@@ -239,6 +239,7 @@ function render(photos: PrivatePhoto[], featured: PrivatePhoto[]) {
 }
 
 function applyManifest(manifest: PhotoManifest, focusId?: string) {
+  if (loaded && manifest.revision < revision) return;
   revision = manifest.revision;
   featuredIds = new Set(manifest.featured);
   loaded = true;
@@ -293,24 +294,24 @@ function clearPhotos() {
   setStatus('');
 }
 
-async function loadPhotos() {
-  if (!authenticated || loaded || request) return;
-  const currentGeneration = ++generation;
+async function loadPhotos(force = false) {
+  if (!authenticated || (loaded && !force) || request) return false;
+  const currentGeneration = generation;
   const controller = new AbortController();
   request = controller;
-  const timeout = window.setTimeout(() => controller.abort(), 20_000);
   setStatus('正在翻开相册…');
   try {
     const manifest = parsePhotoManifest(await api('/api/photos', { signal: controller.signal }));
-    if (!authenticated || generation !== currentGeneration) return;
+    if (!authenticated || generation !== currentGeneration) return false;
     applyManifest(manifest);
+    return true;
   } catch (error) {
-    if (!authenticated || generation !== currentGeneration) return;
-    if (error instanceof ApiError && error.status === 401) { clearPhotos(); publishSession({ authenticated: false, configured: true }); return; }
+    if (!authenticated || generation !== currentGeneration) return false;
+    if (error instanceof ApiError && error.status === 401) { clearPhotos(); publishSession({ authenticated: false, configured: true }); return false; }
     setStatus('相册暂时打不开，请稍后再试。', true);
+    return false;
   } finally {
-    window.clearTimeout(timeout);
-    if (generation === currentGeneration) request = null;
+    if (request === controller) request = null;
   }
 }
 
@@ -444,7 +445,11 @@ async function mutatePhoto(path: string, method: 'PUT' | 'DELETE', payload: Reco
   } catch (error) {
     if (!authenticated || generation !== requestGeneration) return null;
     if (error instanceof ApiError && error.status === 401) { clearPhotos(); publishSession({ authenticated: false, configured: true }); return null; }
-    if (error instanceof ApiError && error.status === 409) { loaded = false; await loadPhotos(); }
+    if (error instanceof ApiError && error.status === 409) {
+      const refreshed = await loadPhotos(true);
+      if (!authenticated || generation !== requestGeneration) return null;
+      if (!refreshed) throw new Error('Album refresh failed');
+    }
     throw error;
   } finally {
     if (photoMutation === controller) { photoMutation = null; photoBusy = false; }
@@ -544,16 +549,21 @@ async function applySelectedFile(file: File) {
   if (pasteEmpty) pasteEmpty.hidden = true;
   if (pasteSwap) pasteSwap.hidden = false;
   if (pasteTitle && !titleDirty) pasteTitle.value = titleFromFileName(file.name);
-  try { if (pasteDate) pasteDate.value = exifDateFromBytes(await file.arrayBuffer()) ?? ''; }
-  catch { if (pasteDate) pasteDate.value = ''; }
   setError(pasteError, '');
   if (pasteTitle && !pasteTitle.value.trim()) pasteTitle.focus();
+  if (!pasteDate) return;
+  pasteDate.value = '';
+  try {
+    const date = exifDateFromBytes(await file.slice(0, 128 * 1024).arrayBuffer());
+    if (pasteSource === file && !pasteDate.value && date) pasteDate.value = date;
+  } catch { /* The date can still be entered by hand. */ }
 }
 
 pasteForm?.addEventListener('submit', async event => {
   event.preventDefault();
   if (!pasteDialog || uploading || !authenticated) return;
-  if (!pasteSource) { setError(pasteError, '先选一张图再贴。'); pastePick?.focus(); return; }
+  const file = pasteSource;
+  if (!file) { setError(pasteError, '先选一张图再贴。'); pastePick?.focus(); return; }
   const name = pasteTitle?.value.trim() ?? '';
   if (!name) { setError(pasteError, '给这张写个名字再贴。'); pasteTitle?.focus(); return; }
   const date = pasteDate?.value || '';
@@ -563,20 +573,21 @@ pasteForm?.addEventListener('submit', async event => {
   setPasteControls(true);
   const controller = new AbortController();
   uploadRequest = controller;
-  const uploadGeneration = generation;
+  const active = () => authenticated && uploadRequest === controller;
+  let timeout: number | undefined;
   try {
-    const original = await pasteSource.arrayBuffer();
-    if (!authenticated || generation !== uploadGeneration) return;
+    const original = await file.arrayBuffer();
+    if (!active()) return;
     const id = await sha16(original);
     let bitmap: ImageBitmap;
-    try { bitmap = await createImageBitmap(pasteSource); } catch { throw new ApiError(400, '换一张照片试试。'); }
+    try { bitmap = await createImageBitmap(file); } catch { throw new ApiError(400, '换一张照片试试。'); }
     let thumb: Awaited<ReturnType<typeof encodeWebp>>;
     let large: Awaited<ReturnType<typeof encodeWebp>>;
     try {
       thumb = await encodeWebp(bitmap, 800, 1000, .8);
       large = await encodeWebp(bitmap, 1800, 1800, .82);
     } finally { bitmap.close(); }
-    if (!authenticated || generation !== uploadGeneration) return;
+    if (!active()) return;
     const body = new FormData();
     body.set('title', name);
     body.set('date', date);
@@ -586,24 +597,26 @@ pasteForm?.addEventListener('submit', async event => {
     body.set('height', String(large.height));
     body.set('thumb', thumb.blob, 'thumb.webp');
     body.set('large', large.blob, 'large.webp');
+    timeout = window.setTimeout(() => controller.abort(), 20_000);
     const response = await fetch('/api/photos', { method: 'POST', credentials: 'same-origin', cache: 'no-store', signal: controller.signal, body });
     const result = await response.json().catch(() => ({ error: '这张暂时贴不上，再试一次。' }));
-    if (!authenticated || generation !== uploadGeneration) return;
+    if (!active()) return;
     if (!response.ok) {
       if (response.status === 401) { clearPhotos(); publishSession({ authenticated: false, configured: true }); return; }
-      if (response.status === 409) { loaded = false; await loadPhotos(); throw new ApiError(409, result.error ?? '相册刚在其他设备更新，请刷新后再贴。'); }
+      if (response.status === 409 && !await loadPhotos(true)) throw new Error('Album refresh failed');
       throw new ApiError(response.status, result.error ?? '这张暂时贴不上，再试一次。');
     }
     const manifest = parsePhotoManifest(result);
     closePaste(false);
     applyManifest(manifest, id);
   } catch (error) {
-    if (!authenticated || generation !== uploadGeneration || (error as Error).name === 'AbortError') return;
+    if (!active()) return;
     setError(pasteError, error instanceof ApiError ? error.message : '这张暂时贴不上，再试一次。');
     if (pasteSubmit) { pasteSubmit.disabled = false; pasteSubmit.textContent = '再试一次'; }
     setPasteControls(false);
   } finally {
-    if (generation === uploadGeneration) { uploadRequest = null; uploading = false; }
+    window.clearTimeout(timeout);
+    if (uploadRequest === controller) { uploadRequest = null; uploading = false; }
   }
 });
 
@@ -688,7 +701,7 @@ document.addEventListener('gate:open', () => {
   pendingAlbum = false;
 });
 
-retry?.addEventListener('click', () => void loadPhotos());
+retry?.addEventListener('click', () => void loadPhotos(true));
 onSessionChange(state => {
   authenticated = state.authenticated;
   if (authenticated) { albumLinks.forEach(link => link.removeAttribute('data-open-login')); void loadPhotos(); }
@@ -697,8 +710,5 @@ onSessionChange(state => {
 document.addEventListener('click', event => {
   if ((event.target as Element).closest('[data-session-logout], [data-lock-site]')) { pendingAlbum = false; clearPhotos(); }
 }, { capture: true });
-// A page restored from the back/forward cache must not show photos without a session.
-addEventListener('pagehide', clearPhotos);
-addEventListener('pageshow', event => { if (event.persisted) void loadPhotos(); });
 void getSession().catch(() => { /* The gate handles unavailable sessions. */ });
 

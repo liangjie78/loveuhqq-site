@@ -203,7 +203,7 @@
 - 独立任务分支：`codex/shared-memory-book`，默认分支未直接修改。
 - 隔离预览：[共同回忆册预览](https://loveuhqq-memory-book-preview.1756127916.workers.dev/memories/)。专用配置 `wrangler.memory-preview.jsonc`，专用 D1 `loveuhqq-memory-book-preview`、KV `loveuhqq-memory-media-preview` 与独立 DO 命名空间，仅放合成验收记录；不复用生产或旧预览数据。
 - 已验证前后端类型检查、77 项单元与运行时测试、Astro 构建；运行时覆盖两个独立会话、揭晓、信件和音频权限、桌面双连接并发与注销后拒绝广播。地点简化增加旧数据保留、无坐标往返及并发保存测试。
-- 真实隔离 Chrome 验收 11 项通过、页面脚本错误为零：故事创建及修改、个人段落、麦克风拒绝反馈、合成 WAV 上传与实际播放、愿望安排及双向故事入口、信件草稿封存、地点保存与互跳、放映排序与播放暂停、两成员桌面同步、390px 无横向溢出、减少动态效果、退出清理。截图：[桌面](../previews/shared-memory-desktop.png) · [手机视口](../previews/shared-memory-mobile.png) · [故事](../previews/shared-memory-story.png) · [地图](../previews/shared-memory-map.png)。
+- 真实隔离 Chrome 验收 11 项通过、页面脚本错误为零：故事创建及修改、个人段落、麦克风拒绝反馈、合成 WAV 上传与实际播放、愿望安排及双向故事入口、信件草稿封存、地点保存与互跳、放映排序与播放暂停、两成员桌面同步、390px 无横向溢出、减少动态效果、退出清理。原截图保存在 `b60e812` 的 `docs/previews/`，当前界面截图见 [桌面](../previews/yuwen-desktop-light-memories.webp) · [手机](../previews/yuwen-phone-light-memories.webp)。
 - 正式发布前仍需用户明确授权 PR 合并、生产 D1 增量迁移及生产 Wrangler 部署。生产迁移前按部署文档备份；代码回滚不会撤销数据库或桌面存储迁移。
 - 手机窄视口浏览器检查不能代替真机麦克风及系统浏览器格式验证，目标手机录音与播放仍需实测。
 

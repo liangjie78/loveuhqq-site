@@ -197,10 +197,6 @@ async function logout(showGate: boolean) {
 }
 
 onSessionChange(state => {
-  if (logoutUnconfirmed && state.authenticated) {
-    publishSession({ authenticated: false, configured: state.configured }, true);
-    return;
-  }
   updateHeader(state);
   if (state.authenticated && root.classList.contains('is-locked') && !checking && !logoutUnconfirmed) void browse();
 });
@@ -271,6 +267,15 @@ window.addEventListener('storage', event => {
   if (!logoutUnconfirmed && event.key === 'loveuhqq_session_changed') void refreshSession().catch(() => {});
 });
 document.addEventListener('visibilitychange', () => {
+  if (!logoutUnconfirmed && document.visibilityState === 'visible') void refreshSession().catch(() => {});
+});
+window.addEventListener('pagehide', event => {
+  if (event.persisted) publishSession({ authenticated: false, configured: false });
+});
+window.addEventListener('pageshow', event => {
+  if (event.persisted && !logoutUnconfirmed) void refreshSession().catch(() => {});
+});
+window.addEventListener('online', () => {
   if (!logoutUnconfirmed && document.visibilityState === 'visible') void refreshSession().catch(() => {});
 });
 root.classList.add('gate-ready');

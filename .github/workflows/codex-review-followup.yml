@@ -85,7 +85,6 @@ jobs:
             const items = [...new Map(actionable.map(c=>[c.path+':'+c.line+':'+c.body,[c.id,c]])).values()]
               .map(([id,c]) => {
                 const priority = c.body.match(/(?:^|[^A-Za-z0-9])(P[01])(?:[^A-Za-z0-9]|$)/i)?.[1]?.toUpperCase();
-                const summary = c.body.replace(/\s+/g,' ').slice(0,240);
                 return `- ${priority} finding: [original review comment](${c.html_url}) (file: ${c.path}, line: ${c.line}). Verify the issue against current code before fixing.`;
               });
             if (!items.length) return;

@@ -2,7 +2,7 @@
 export const discardIdentityMessage = '还没保存。换身份后，这份内容不会留下。要继续吗？';
 
 export function openIdentityChannel(): BroadcastChannel | null {
-  return typeof BroadcastChannel === 'undefined' ? null : new BroadcastChannel('loveuhqq_member');
+  try { return new BroadcastChannel('loveuhqq_member'); } catch { return null; }
 }
 
 /** Asks other tabs whether they hold unsaved private drafts; resolves false after 200 ms. */

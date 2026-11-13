@@ -67,7 +67,7 @@ if (heart && embers) {
 /* Scroll-linked depth: the cover title drifts, the three prints move at their own pace. */
 if (!calm.matches) {
   const title = document.querySelector<HTMLElement>('.cover-title');
-  const prints = [...document.querySelectorAll<HTMLElement>('.spread > *')];
+  const spread = document.querySelector<HTMLElement>('.spread');
   const speeds = [-.06, .08, -.03];
   let ticking = false;
   const update = () => {
@@ -77,12 +77,13 @@ if (!calm.matches) {
       title.style.transform = `translate3d(0, ${y * .18}px, 0)`;
       title.style.opacity = String(Math.max(0, 1 - y / (innerHeight * .9)));
     }
-    const spread = prints[0]?.parentElement;
     if (spread) {
       const box = spread.getBoundingClientRect();
       if (box.bottom > 0 && box.top < innerHeight) {
         const progress = (box.top + box.height / 2 - innerHeight / 2);
-        prints.forEach((print, i) => { print.style.transform = `translate3d(0, ${(progress * speeds[i]).toFixed(1)}px, 0)`; });
+        spread.querySelectorAll<HTMLElement>(':scope > .frame').forEach((print, i) => {
+          print.style.transform = `translate3d(0, ${(progress * speeds[i]).toFixed(1)}px, 0)`;
+        });
       }
     }
   };

@@ -55,6 +55,7 @@ let noteEditOriginal = '';
 let wishEditing: WishEdit | null = null;
 let wishEditSession = 0;
 let wishAdding = false;
+let wishDrawTimer: number | undefined;
 let noteUndo: NoteUndo | null = null;
 let wishUndo: WishUndo | null = null;
 const busy = new Set<string>();
@@ -225,6 +226,8 @@ function renderWishes() {
 function render() {
   setVisibility();
   if (!authenticated) {
+    window.clearTimeout(wishDrawTimer);
+    $('[data-wish-result]').classList.remove('is-shuffling');
     $('[data-note-text]').textContent = '';
     $('[data-notes-count]').textContent = '0';
     $('[data-notes-list]').replaceChildren();
@@ -342,12 +345,20 @@ function updateWishConflict() {
 function applyCloud(value: unknown, explicitRefresh?: 'note' | 'wish') {
   const received = validateCloud(value);
   const wasReady = ready;
-  book = wasReady ? mergeCloud(book, received) : received;
+  const sameRevisions = (before: Record<string, number>, after: Record<string, number>) => {
+    const entries = Object.entries(after);
+    return Object.keys(before).length === entries.length && entries.every(([key, version]) => before[key] === version);
+  };
+  const changed = !wasReady || !sameRevisions(book.revisions.notes, received.revisions.notes)
+    || !sameRevisions(book.revisions.wishes, received.revisions.wishes);
+  if (changed) book = wasReady ? mergeCloud(book, received) : received;
   ready = true;
   if (!wasReady && authenticated) wishInput.value = getDrafts().wishText;
-  render();
-  if (noteEditing && revisionOf(book.revisions.notes, date) !== noteEditVersion) showNoteConflict();
-  if (wishEditing) updateWishConflict();
+  if (changed) {
+    render();
+    if (wishEditing) updateWishConflict();
+    dispatchNotebookChanged();
+  }
   if (explicitRefresh === 'note' && noteEditing) setNoteLatest();
   if (explicitRefresh === 'wish' && wishEditing) {
     const latest = book.wishes.find(({ id }) => id === wishEditing!.id);
@@ -357,7 +368,6 @@ function applyCloud(value: unknown, explicitRefresh?: 'note' | 'wish') {
     renderWishConflict(`${note} 草稿仍保留，确认后保存会替换手账里的这一版。`);
     showStatus('wish', '最新内容已显示，草稿仍保留。');
   }
-  dispatchNotebookChanged();
 }
 
 function reportError(area: 'note' | 'wish', error: unknown) {
@@ -410,19 +420,19 @@ async function refreshCloud(explicitRefresh?: 'note' | 'wish') {
 }
 
 function setSession(state: SessionState) {
+  if (!state.authenticated && state.configured) draftsCache = null;
   if (authenticated === state.authenticated) { if (authenticated) void refreshCloud(); return; }
-  const wasAuthenticated = authenticated;
   generation++; noteEditSession++; wishEditSession++;
   authenticated = state.authenticated;
   ready = false;
   book = emptyCloudNotebook();
   noteEditing = false; wishEditing = null;
+  noteEditOriginal = '';
   setControls(noteForm, false);
   noteUndo = null; wishUndo = null;
   noteUndoButton.hidden = true; wishUndoButton.hidden = true;
   noteStatus.textContent = ''; wishStatus.textContent = '';
   noteRetry.hidden = true; wishRetry.hidden = true;
-  if (wasAuthenticated && !authenticated) draftsCache = null;
   if (!authenticated) {
     noteInput.value = ''; wishInput.value = '';
     $('[data-note-conflict]').hidden = true;
@@ -434,22 +444,27 @@ function setSession(state: SessionState) {
   if (authenticated) void refreshCloud();
 }
 
-function mutateKey(area: 'note' | 'wish', key: string, path: string, method: 'PUT' | 'DELETE', body?: unknown): Promise<CloudNotebook | null> {
+async function mutateKey(area: 'note' | 'wish', key: string, path: string, method: 'PUT' | 'DELETE', body?: unknown): Promise<CloudNotebook | null> {
   const lockKey = `${area}:${key}`;
-  if (!authenticated || !ready || busy.has(lockKey)) return Promise.resolve(null);
+  if (!authenticated || !ready || busy.has(lockKey)) return null;
   busy.add(lockKey);
   const requestGeneration = generation;
-  return api<CloudNotebook>(path, { method, ...(body === undefined ? {} : { body: JSON.stringify(body) }) }).then(response => {
+  try {
+    const response = await api<CloudNotebook>(path, { method, ...(body === undefined ? {} : { body: JSON.stringify(body) }) });
     if (!authenticated || requestGeneration !== generation) return null;
     const saved = validateCloud(response);
     book = mergeCloud(book, saved);
-    render();
-    dispatchNotebookChanged();
     return saved;
-  }).catch((error: unknown) => {
+  } catch (error) {
     if (requestGeneration === generation) reportError(area, error);
     return null;
-  }).finally(() => { busy.delete(lockKey); });
+  } finally {
+    busy.delete(lockKey);
+    if (authenticated && requestGeneration === generation) {
+      render();
+      dispatchNotebookChanged();
+    }
+  }
 }
 
 const noteBody = (expectedVersion: number, text: string) => ({ expectedVersion, text });
@@ -529,8 +544,10 @@ async function toggleWish(id: string, checkbox: HTMLInputElement, displayedDone:
     checkbox.checked = wish.done;
     showStatus('wish', '清单已有更新，请刷新查看后再修改。'); wishRefresh.hidden = false; return;
   }
+  checkbox.disabled = true;
   checkbox.closest('.wish')?.classList.toggle('is-done', requested);
   const saved = await mutateKey('wish', id, wishPath(id), 'PUT', { expectedVersion: revisionOf(book.revisions.wishes, id), text: wish.text, done: requested });
+  checkbox.disabled = false;
   if (!saved) {
     const latest = book.wishes.find(item => item.id === id);
     checkbox.checked = latest?.done ?? wish.done;
@@ -581,8 +598,8 @@ wishForm.addEventListener('submit', async event => {
       wishInput.value = '';
     }
     showStatus('wish', '记上了。');
-    wishInput.focus();
   } finally { wishAdding = false; wishInput.disabled = false; submit.disabled = false; }
+  wishInput.focus();
 });
 wishInput.addEventListener('input', () => {
   wishInput.setCustomValidity('');
@@ -593,6 +610,8 @@ wishInput.addEventListener('input', () => {
 /* Drawing one: the candidates flicker past before one settles. */
 $('[data-wish-draw]').addEventListener('click', () => {
   const result = $('[data-wish-result]');
+  window.clearTimeout(wishDrawTimer);
+  result.classList.remove('is-shuffling');
   const candidates = book.wishes.filter(({ done }) => !done);
   if (!candidates.length) { result.textContent = book.wishes.length ? '都做完了。再添一件？' : '先在清单里写一件，再来抽。'; return; }
   const chosen = candidates[Math.floor(Math.random() * candidates.length)];
@@ -603,7 +622,7 @@ $('[data-wish-draw]').addEventListener('click', () => {
   const flick = () => {
     if (step++ < 9) {
       result.textContent = candidates[step % candidates.length].text;
-      window.setTimeout(flick, 45 + step * 14);
+      wishDrawTimer = window.setTimeout(flick, 45 + step * 14);
     } else {
       result.classList.remove('is-shuffling');
       result.textContent = final;

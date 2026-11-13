@@ -6,6 +6,7 @@
 export function split(element: HTMLElement): void {
   if (element.dataset.splitDone) return;
   element.dataset.splitDone = 'yes';
+  element.classList.add('split');
   const text = element.textContent?.replace(/\s+/g, ' ').trim() ?? '';
   let index = 0;
   const walk = (node: Node) => {

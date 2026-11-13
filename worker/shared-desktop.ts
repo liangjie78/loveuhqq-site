@@ -4,6 +4,7 @@ import type { MemoryActor } from './memory-book';
 import type { DesktopItem, DesktopSnapshot } from '../src/lib/shared-desktop';
 
 type DeskEnv = { DB: D1Database; EDITOR_PASSWORD_HASH?: string };
+type DeskActor = Omit<MemoryActor, 'name'>;
 const empty = (): DesktopSnapshot => ({ revision: 0, items: [], current: null });
 
 /** One private table for this couple. SQLite transactions make object updates durable before acknowledgement. */
@@ -19,7 +20,7 @@ export class SharedDesktop extends DurableObject<DeskEnv> {
   private save(state: DesktopSnapshot) {
     this.ctx.storage.sql.exec('INSERT INTO desk(id,snapshot) VALUES(1,?) ON CONFLICT(id) DO UPDATE SET snapshot=excluded.snapshot', JSON.stringify(state));
   }
-  private async authorized(actor: MemoryActor): Promise<boolean> {
+  private async authorized(actor: DeskActor): Promise<boolean> {
     if (!actor || actor.expiresAt <= Date.now() || !this.env.EDITOR_PASSWORD_HASH) return false;
     const tag = await digest(this.env.EDITOR_PASSWORD_HASH);
     const row = await this.env.DB.prepare(`SELECT m.token_hash FROM memory_sessions m JOIN sessions s ON s.token_hash=m.parent_hash
@@ -28,7 +29,7 @@ export class SharedDesktop extends DurableObject<DeskEnv> {
     return !!row;
   }
   async fetch(request: Request): Promise<Response> {
-    let actor: MemoryActor;
+    let actor: DeskActor;
     try { actor = JSON.parse(request.headers.get('X-Memory-Actor') ?? 'null'); }
     catch { return new Response('Unauthorized', { status: 401 }); }
     if (!await this.authorized(actor)) return new Response('Unauthorized', { status: 401 });
@@ -56,7 +57,7 @@ export class SharedDesktop extends DurableObject<DeskEnv> {
   }
   async webSocketMessage(ws: WebSocket, raw: string | ArrayBuffer) {
     try {
-      const actor = ws.deserializeAttachment() as MemoryActor;
+      const actor = ws.deserializeAttachment() as DeskActor;
       if (!await this.authorized(actor)) { ws.close(4401, '身份已失效'); return; }
       if (typeof raw !== 'string' || raw.length > 6000) { ws.send(JSON.stringify({ type: 'error', error: '桌面消息过长。' })); return; }
       const msg = JSON.parse(raw) as Record<string, unknown>;
@@ -89,6 +90,5 @@ export class SharedDesktop extends DurableObject<DeskEnv> {
       try { ws.send(JSON.stringify({ type: 'error', error: '这次操作没有保存，请重新连接后再试。' })); } catch { /* Closed socket. */ }
     }
   }
-  async webSocketClose(ws: WebSocket, code: number) { ws.close(code, ''); }
   async webSocketError(ws: WebSocket) { ws.close(1011, '连接暂时不可用'); }
 }

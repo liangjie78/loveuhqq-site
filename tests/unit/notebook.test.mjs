@@ -20,6 +20,7 @@ describe('validation', () => {
     assert.equal(notebook.isCalendarDate('2028-02-29'), true);
     assert.equal(notebook.isCalendarDate('2026-02-29'), false);
     assert.equal(notebook.isCalendarDate('2026-7-1'), false);
+    assert.equal(notebook.isCalendarDate(['2028-02-29']), false);
   });
 });
 

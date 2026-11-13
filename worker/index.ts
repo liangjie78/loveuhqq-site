@@ -4,7 +4,7 @@ import { getAnniversaryDay } from '../src/lib/anniversary.ts';
 import { digest, isPasswordHash, randomToken, readSessionToken, sessionCookie, verifyPassword } from './auth.ts';
 import { hundredDayLetter, hundredDayLetterKey, parseLetter } from './letter.ts';
 import {
-  emptyPhotoManifest, isPhotoDate, maxPhotoEdge, maxPhotos, maxPhotoLargeBytes, maxPhotoThumbBytes,
+  emptyPhotoManifest, maxPhotoEdge, maxPhotos, maxPhotoLargeBytes, maxPhotoThumbBytes,
   featuredPhotoCount, maxPhotoTitleLength, maxPhotoUploadBytes, parsePhotoManifest, photoIdPattern, photoManifestKey,
   photoObjectKey, photoSizes, sortPhotos,
 } from '../src/lib/photos.ts';
@@ -240,7 +240,9 @@ async function deletePhoto(request: Request, db: D1Database, store: KVNamespace,
     photos: current.photos.filter(photo => photo.id !== id),
   });
   try {
-    await Promise.all(keys.map(key => store.delete(key)));
+    const deletions = await Promise.allSettled(keys.map(key => store.delete(key)));
+    const failure = deletions.find(result => result.status === 'rejected');
+    if (failure) throw failure.reason;
     return await commitPhotoManifest(db, expectedRevision, next);
   } catch (error) {
     // If another deletion already won, do not recreate its objects. Otherwise restore
@@ -305,7 +307,7 @@ async function uploadPhoto(request: Request, db: D1Database, store: KVNamespace)
   const dateRaw = form.get('date');
   let date: string | null = null;
   if (dateRaw !== null && dateRaw !== '') {
-    if (typeof dateRaw !== 'string' || !isPhotoDate(dateRaw)) throw new HttpError(400, '拍摄日期无效。');
+    if (!isCalendarDate(dateRaw)) throw new HttpError(400, '拍摄日期无效。');
     date = dateRaw;
   }
 
@@ -402,7 +404,9 @@ export default {
         if (!actor) return json({ error: '请先验证自己的个人身份。' }, 403);
         if (!env.SHARED_DESKTOP) return json({ error: '共同桌面尚未配置，请稍后再来。' }, 503);
         const headers = new Headers(request.headers);
-        headers.set('X-Memory-Actor', JSON.stringify(actor));
+        headers.set('X-Memory-Actor', JSON.stringify({
+          id: actor.id, sessionHash: actor.sessionHash, parentHash: actor.parentHash, expiresAt: actor.expiresAt,
+        }));
         return env.SHARED_DESKTOP.getByName('shared-memory-book').fetch(new Request(request, { headers }));
       }
       if (memoryPath) return handleMemoryRequest(request, env);

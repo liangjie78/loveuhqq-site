@@ -1,5 +1,4 @@
 export const PASSPHRASE_SALT = 'loveuhqq:';
-export const PASSPHRASE_STORAGE_KEY = 'loveuhqq_auth';
 
 // SHA-256 hashes of salted allowed passphrases:
 // '0701', '20260701', '2026-07-01', '07.01', '2026.07.01'
@@ -24,42 +23,4 @@ export async function verifyPassphrase(input: string): Promise<boolean> {
   if (!input || !input.trim()) return false;
   const hash = await hashPassphrase(input);
   return (VALID_PASSPHRASE_HASHES as readonly string[]).includes(hash);
-}
-
-export function isPassphraseUnlocked(storage?: { getItem: (key: string) => string | null }): boolean {
-  try {
-    if (storage) {
-      return storage.getItem(PASSPHRASE_STORAGE_KEY) === 'unlocked';
-    }
-    if (typeof window === 'undefined') return false;
-    return (
-      window.localStorage.getItem(PASSPHRASE_STORAGE_KEY) === 'unlocked' ||
-      window.sessionStorage.getItem(PASSPHRASE_STORAGE_KEY) === 'unlocked'
-    );
-  } catch {
-    return false;
-  }
-}
-
-export function savePassphraseUnlock(rememberDevice: boolean): void {
-  try {
-    if (typeof window === 'undefined') return;
-    if (rememberDevice) {
-      window.localStorage.setItem(PASSPHRASE_STORAGE_KEY, 'unlocked');
-    } else {
-      window.sessionStorage.setItem(PASSPHRASE_STORAGE_KEY, 'unlocked');
-    }
-  } catch {
-    // Ignore storage quota or access exceptions in restricted iframes/browsers
-  }
-}
-
-export function clearPassphraseUnlock(): void {
-  try {
-    if (typeof window === 'undefined') return;
-    window.localStorage.removeItem(PASSPHRASE_STORAGE_KEY);
-    window.sessionStorage.removeItem(PASSPHRASE_STORAGE_KEY);
-  } catch {
-    // Ignore storage exceptions
-  }
 }

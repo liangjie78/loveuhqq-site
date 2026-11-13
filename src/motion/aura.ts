@@ -20,8 +20,8 @@ void main(){
   float m=fbm(p*1.15+q*1.5+T*.7);
   float d=length(p*vec2(1.,1.18)+(q-.5)*.42);
   float b=.92+.08*sin(t*.62);
-  float core=smoothstep(.72*b,0.,d);
-  float halo=smoothstep(1.35,.05,d);
+  float core=1.-smoothstep(0.,.72*b,d);
+  float halo=1.-smoothstep(.05,1.35,d);
   float a=clamp((core*.8+halo*.38)*(.6+.6*m),0.,1.)*k;
   vec3 col=mix(g1,g2,smoothstep(.25,.85,m));
   col=mix(col,g3,core*.65);
@@ -46,18 +46,16 @@ const hex = (value: string): [number, number, number] => {
   return [(number >> 16 & 255) / 255, (number >> 8 & 255) / 255, (number & 255) / 255];
 };
 
-export function mountAura(canvas: HTMLCanvasElement, options: AuraOptions): { setIntensity: (value: number) => void; setAnchor: (x: number, y: number) => void } {
+export function mountAura(canvas: HTMLCanvasElement, options: AuraOptions): void {
   const calm = matchMedia('(prefers-reduced-motion: reduce)');
-  const controls = {
-    setIntensity: (value: number) => { intensity = value; },
-    setAnchor: (x: number, y: number) => { anchor = [x, y]; canvas.style.setProperty('--ax', `${x * 100}%`); canvas.style.setProperty('--ay', `${y * 100}%`); },
-  };
-  let anchor = options.anchor;
-  let intensity = options.intensity ?? 1;
-  controls.setAnchor(anchor[0], anchor[1]);
+  const anchor = options.anchor;
+  const intensity = options.intensity ?? 1;
+  canvas.style.setProperty('--ax', `${anchor[0] * 100}%`);
+  canvas.style.setProperty('--ay', `${anchor[1] * 100}%`);
 
   const gl = canvas.getContext('webgl', { premultipliedAlpha: true, alpha: true, antialias: false, powerPreference: 'low-power' });
-  if (!gl) { canvas.classList.add('is-static'); return controls; }
+  if (!gl) { canvas.classList.add('is-static'); return; }
+  canvas.addEventListener('webglcontextlost', () => canvas.classList.add('is-static'));
 
   const compile = (type: number, source: string) => {
     const shader = gl.createShader(type)!;
@@ -69,7 +67,7 @@ export function mountAura(canvas: HTMLCanvasElement, options: AuraOptions): { se
   gl.attachShader(program, compile(gl.VERTEX_SHADER, vertex));
   gl.attachShader(program, compile(gl.FRAGMENT_SHADER, fragment));
   gl.linkProgram(program);
-  if (!gl.getProgramParameter(program, gl.LINK_STATUS)) { canvas.classList.add('is-static'); return controls; }
+  if (!gl.getProgramParameter(program, gl.LINK_STATUS)) { canvas.classList.add('is-static'); return; }
   gl.useProgram(program);
   const buffer = gl.createBuffer();
   gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
@@ -102,17 +100,19 @@ export function mountAura(canvas: HTMLCanvasElement, options: AuraOptions): { se
       gl.viewport(0, 0, width, height);
     }
     gl.uniform2f(u.r, width, height);
+    wake();
   };
-  resize();
-  new ResizeObserver(resize).observe(canvas);
 
   // The light leans toward the pointer, lerped so it never snaps.
   const follow = options.follow ?? 0;
   let target: [number, number] = [anchor[0], anchor[1]];
   let current: [number, number] = [anchor[0], anchor[1]];
   if (follow > 0) {
+    const fine = matchMedia('(hover: hover) and (pointer: fine)');
     addEventListener('pointermove', event => {
+      if (!visible || calm.matches || !fine.matches) return;
       const bounds = canvas.getBoundingClientRect();
+      if (!bounds.width || !bounds.height) return;
       const x = (event.clientX - bounds.left) / bounds.width;
       const y = (event.clientY - bounds.top) / bounds.height;
       target = [anchor[0] + (x - anchor[0]) * follow, anchor[1] + (y - anchor[1]) * follow];
@@ -124,22 +124,24 @@ export function mountAura(canvas: HTMLCanvasElement, options: AuraOptions): { se
   const start = performance.now() - Math.random() * 20_000;
   const draw = (now: number) => {
     frame = 0;
-    if (follow <= 0) target = [anchor[0], anchor[1]];
-    current = [current[0] + (target[0] - current[0]) * .045, current[1] + (target[1] - current[1]) * .045];
+    if (!visible || document.visibilityState !== 'visible' || gl.isContextLost()) return;
+    if (calm.matches) current = anchor;
+    else current = [current[0] + (target[0] - current[0]) * .045, current[1] + (target[1] - current[1]) * .045];
     gl.uniform2f(u.c, current[0], 1 - current[1]);
     gl.uniform1f(u.t, calm.matches ? 8 : (now - start) / 1000);
     gl.uniform1f(u.k, intensity * strength);
     gl.drawArrays(gl.TRIANGLES, 0, 3);
-    if (visible && !calm.matches && document.visibilityState === 'visible') frame = requestAnimationFrame(draw);
+    if (!calm.matches) frame = requestAnimationFrame(draw);
   };
-  const wake = () => { if (!frame) frame = requestAnimationFrame(draw); };
+  const wake = () => { if (visible && !frame) frame = requestAnimationFrame(draw); };
+  resize();
+  new ResizeObserver(resize).observe(canvas);
 
   new IntersectionObserver(([entry]) => {
     visible = entry.isIntersecting;
     if (visible) { canvas.classList.add('is-on'); wake(); }
   }, { rootMargin: '10% 0px' }).observe(canvas);
   document.addEventListener('visibilitychange', wake);
-  new MutationObserver(() => { readColours(); wake(); }).observe(document.documentElement, { attributes: true, attributeFilter: ['class'] });
+  new MutationObserver(() => { readColours(); wake(); }).observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
   calm.addEventListener('change', wake);
-  return controls;
 }
