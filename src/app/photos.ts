@@ -1,6 +1,6 @@
-import { dotted } from '../lib/anniversary';
+import { dotted, getShanghaiDate } from '../lib/anniversary';
 import { api, ApiError } from '../lib/cloud-notebook';
-import { featuredPhotoCount, featuredPhotos, parsePhotoManifest, photoSummary, photoUrl, type PhotoManifest, type PrivatePhoto } from '../lib/photos';
+import { featuredPhotoCount, featuredPhotos, parsePhotoManifest, photoIdPattern, photoSummary, photoUrl, type PhotoManifest, type PrivatePhoto, type RemovedPhoto } from '../lib/photos';
 import { getSession, onSessionChange, publishSession } from '../lib/session';
 import { balanceColumns, encodeWebp, exifDateFromBytes, looksLikeImage, sha16, titleFromFileName } from '../lib/photo-upload';
 import { lucideSvg } from '../lib/lucide-dom';
@@ -20,6 +20,9 @@ const summary = document.querySelector<HTMLElement>('[data-photos-summary]');
 const albumLinks = document.querySelectorAll<HTMLAnchorElement>('[data-album-link]');
 const lockedSummary = summary?.textContent ?? '';
 const albumPage = walls.some(wall => wall.dataset.photoWall === 'all');
+const removedPanel = document.querySelector<HTMLDetailsElement>('[data-photos-removed]');
+const removedList = removedPanel?.querySelector<HTMLUListElement>('[data-photos-removed-list]');
+const restoreStatus = removedPanel?.querySelector<HTMLElement>('[data-photos-restore-status]');
 
 const print = dialog.querySelector<HTMLElement>('.lightbox-print')!;
 const frame = dialog.querySelector<HTMLElement>('.lightbox-frame')!;
@@ -238,8 +241,32 @@ function render(photos: PrivatePhoto[], featured: PrivatePhoto[]) {
   if (summary) summary.textContent = photoSummary(photos.length);
 }
 
-function applyManifest(manifest: PhotoManifest, focusId?: string) {
+function renderRemoved(removed: RemovedPhoto[]) {
+  if (!removedPanel || !removedList) return;
+  removedList.replaceChildren(...removed.map(photo => {
+    const row = document.createElement('li');
+    const label = document.createElement('span');
+    const deadline = document.createElement('small');
+    const restore = document.createElement('button');
+    label.textContent = photo.title;
+    deadline.textContent = `恢复期限 ${dotted(getShanghaiDate(new Date(photo.restoreUntil)))}`;
+    restore.className = 'btn btn-sm';
+    restore.type = 'button';
+    restore.textContent = '恢复';
+    restore.setAttribute('aria-label', `恢复「${photo.title}」`);
+    restore.addEventListener('click', () => void restorePhoto(photo.id, restore));
+    row.append(label, deadline, restore);
+    return row;
+  }));
+  removedPanel.hidden = removed.length === 0;
+}
+function applyManifest(raw: PhotoManifest & { removed?: RemovedPhoto[] }, focusId?: string) {
+  const manifest = parsePhotoManifest(raw);
   if (loaded && manifest.revision < revision) return;
+  const removed = raw.removed ?? [];
+  if (!Array.isArray(removed) || removed.some(photo => !photo || !photoIdPattern.test(photo.id) || typeof photo.title !== 'string'
+    || !Number.isFinite(photo.restoreUntil) || Number.isNaN(new Date(photo.restoreUntil).getTime()))) throw new Error('Invalid removed photo list');
+  renderRemoved(removed);
   revision = manifest.revision;
   featuredIds = new Set(manifest.featured);
   loaded = true;
@@ -285,6 +312,9 @@ function clearPhotos() {
   lightboxManagement.hidden = true;
   title.textContent = meta.textContent = '';
   current = []; allPhotos = []; currentKind = 'all'; featuredIds = new Set();
+  renderRemoved([]);
+  if (removedPanel) removedPanel.open = false;
+  if (restoreStatus) restoreStatus.textContent = '';
   for (const wall of walls) {
     wall.replaceChildren(...placeholders.get(wall)!.map(node => node.cloneNode(true)));
     if (wall.dataset.photoWall === 'all') { wall.classList.add('is-placeholder'); wall.style.removeProperty('--cols'); }
@@ -301,7 +331,7 @@ async function loadPhotos(force = false) {
   request = controller;
   setStatus('正在翻开相册…');
   try {
-    const manifest = parsePhotoManifest(await api('/api/photos', { signal: controller.signal }));
+    const manifest = await api<PhotoManifest & { removed?: RemovedPhoto[] }>(albumPage ? '/api/photos?removed' : '/api/photos', { signal: controller.signal });
     if (!authenticated || generation !== currentGeneration) return false;
     applyManifest(manifest);
     return true;
@@ -411,7 +441,7 @@ function openPhotoDelete(photo: PrivatePhoto, from: HTMLElement) {
   if (!manageDialog || !editPanel || !deletePanel || !deleteCopy || !authenticated || !loaded) return;
   managePhoto = photo; manageTrigger = from; manageMode = 'delete';
   editPanel.hidden = true; deletePanel.hidden = false;
-  deleteCopy.textContent = `要把「${photo.title}」从这本相册里取下来吗？首页精选也会一并撤下。`;
+  deleteCopy.textContent = `要取下「${photo.title}」吗？首页精选也会撤下，30 天内可以在相册底部恢复。`;
   if (deleteConfirm) { deleteConfirm.disabled = false; deleteConfirm.textContent = '确认取下'; }
   setError(titleError, ''); setError(deleteError, '');
   manageDialog.showModal(); syncDialogClass();
@@ -438,7 +468,7 @@ async function mutatePhoto(path: string, method: 'PUT' | 'DELETE', payload: Reco
   const controller = new AbortController();
   photoMutation = controller;
   try {
-    const manifest = parsePhotoManifest(await api<PhotoManifest>(path, { method, signal: controller.signal, body: JSON.stringify(payload) }));
+    const manifest = await api<PhotoManifest & { removed?: RemovedPhoto[] }>(path, { method, signal: controller.signal, body: JSON.stringify(payload) });
     if (!authenticated || generation !== requestGeneration) return null;
     applyManifest(manifest, focusId);
     return manifest;
@@ -453,6 +483,29 @@ async function mutatePhoto(path: string, method: 'PUT' | 'DELETE', payload: Reco
     throw error;
   } finally {
     if (photoMutation === controller) { photoMutation = null; photoBusy = false; }
+  }
+}
+async function restorePhoto(id: string, button: HTMLButtonElement) {
+  if (!restoreStatus || photoBusy) return;
+  button.disabled = true;
+  restoreStatus.textContent = '正在摆回相册…';
+  try {
+    if (!await mutatePhoto(`/api/photos/${id}/restore`, 'PUT', { expectedRevision: revision }, id)) return;
+    restoreStatus.textContent = '';
+    setStatus('照片已摆回相册。');
+  } catch (error) {
+    if (authenticated) {
+      const message = error instanceof ApiError ? error.message : '照片暂时没能恢复，请再试一次。';
+      if (!removedPanel?.hidden) restoreStatus.textContent = message;
+      else setStatus(message);
+      if (!button.isConnected) {
+        const target = document.querySelector<HTMLElement>(`[data-photo-wall="all"] a[data-photo-id="${id}"]`) ??
+          removedList?.querySelector('button') ?? document.querySelector<HTMLElement>('[data-photo-wall="all"] .frame-add');
+        target?.focus({ preventScroll: true });
+      }
+    }
+  } finally {
+    button.disabled = false;
   }
 }
 
@@ -492,7 +545,7 @@ deleteConfirm?.addEventListener('click', async () => {
     const removed = await mutatePhoto(`/api/photos/${photo.id}`, 'DELETE', { expectedRevision: revision });
     if (!removed) return;
     closePhotoManage(false);
-    setStatus('这张照片已从相册收好。');
+    setStatus('这张照片已取下，30 天内可恢复。');
     if (dialog.open) (lightboxFeature.disabled || next.hidden ? lightboxClose : lightboxFeature).focus({ preventScroll: true });
     else (document.querySelector<HTMLElement>('[data-photo-wall="all"] a[data-photo-id]') ?? document.querySelector<HTMLElement>('[data-photo-wall="all"] .frame-add'))?.focus({ preventScroll: true });
   } catch (error) {
@@ -606,9 +659,8 @@ pasteForm?.addEventListener('submit', async event => {
       if (response.status === 409 && !await loadPhotos(true)) throw new Error('Album refresh failed');
       throw new ApiError(response.status, result.error ?? '这张暂时贴不上，再试一次。');
     }
-    const manifest = parsePhotoManifest(result);
     closePaste(false);
-    applyManifest(manifest, id);
+    applyManifest(result, id);
   } catch (error) {
     if (!active()) return;
     setError(pasteError, error instanceof ApiError ? error.message : '这张暂时贴不上，再试一次。');

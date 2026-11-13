@@ -4,12 +4,14 @@ import { getAnniversaryDay } from '../src/lib/anniversary.ts';
 import { digest, isPasswordHash, randomToken, readSessionToken, sessionCookie, verifyPassword } from './auth.ts';
 import { hundredDayLetter, hundredDayLetterKey, parseLetter } from './letter.ts';
 import {
-  emptyPhotoManifest, maxPhotoEdge, maxPhotos, maxPhotoLargeBytes, maxPhotoThumbBytes,
-  featuredPhotoCount, maxPhotoTitleLength, maxPhotoUploadBytes, parsePhotoManifest, photoIdPattern, photoManifestKey,
-  photoObjectKey, photoSizes, sortPhotos,
+  maxPhotoEdge, maxPhotos, maxPhotoLargeBytes, maxPhotoThumbBytes, photoRestoreMs,
+  featuredPhotoCount, maxPhotoTitleLength, maxPhotoUploadBytes, photoIdPattern,
+  photoObjectKey, photoSizes,
 } from '../src/lib/photos.ts';
-import type { PhotoManifest, PhotoSize, PrivatePhoto } from '../src/lib/photos.ts';
-import { handleMemoryRequest, memoryActor } from './memory-book.ts';
+import type { PhotoSize } from '../src/lib/photos.ts';
+import { activePhotoObject, ensureAlbum, readAlbum, sweepAlbum } from './album.ts';
+import { albumClock, uploadGraceMs } from './album-sql.ts';
+import { handleMemoryRequest, memoryActor, sweepOrphanAudio } from './memory-book.ts';
 
 type Env = Omit<Cloudflare.Env, "PHOTOS" | "SHARED_DESKTOP"> & { EDITOR_PASSWORD_HASH?: string; PHOTOS?: KVNamespace; SHARED_DESKTOP?: DurableObjectNamespace };
 type Entry = { kind: 'note' | 'wish'; entry_key: string; text: string; done: number; version: number; deleted: number };
@@ -144,25 +146,6 @@ async function mutate(request: Request, db: D1Database, kind: 'note' | 'wish', k
   return json(await notebook(db));
 }
 
-async function readPhotoManifest(db: D1Database, store: KVNamespace) {
-  const select = () => db.prepare('SELECT manifest, revision FROM photo_manifest WHERE id = 1')
-    .first<{ manifest: string; revision: number }>();
-  let row = await select();
-  if (!row) {
-    const raw = await store.get(photoManifestKey, 'json');
-    const parsed = raw === null ? emptyPhotoManifest() : parsePhotoManifest(raw);
-    await db.prepare('INSERT INTO photo_manifest (id, manifest, revision) VALUES (1, ?, ?) ON CONFLICT(id) DO NOTHING')
-      .bind(JSON.stringify(parsed), parsed.revision).run();
-    row = await select();
-  }
-  if (!row) throw new Error('Photo manifest initialization failed');
-  return parsePhotoManifest({ ...JSON.parse(row.manifest), revision: row.revision });
-}
-
-async function photoManifest(db: D1Database, store: KVNamespace): Promise<Response> {
-  return json(await readPhotoManifest(db, store));
-}
-
 function expectedPhotoRevision(value: unknown): number {
   if (!Number.isSafeInteger(value) || Number(value) < 0 || Number(value) >= Number.MAX_SAFE_INTEGER) {
     throw new HttpError(400, '相册版本号无效。');
@@ -170,99 +153,60 @@ function expectedPhotoRevision(value: unknown): number {
   return Number(value);
 }
 
-function currentPhoto(manifest: PhotoManifest, id: string): PrivatePhoto {
+function albumConflict(): never {
+  throw new HttpError(409, '相册刚在其他设备更新，请刷新后再改。');
+}
+
+async function changePhoto(request: Request, db: D1Database, store: KVNamespace, id: string, action: string | undefined): Promise<Response> {
   if (!photoIdPattern.test(id)) throw new HttpError(404, '照片不存在。');
-  const found = manifest.photos.find(photo => photo.id === id);
-  if (!found) throw new HttpError(404, '照片不存在。');
-  return found;
-}
-
-async function commitPhotoManifest(db: D1Database, expectedRevision: number, next: PhotoManifest): Promise<Response> {
-  const result = await db.prepare('UPDATE photo_manifest SET manifest = ?, revision = revision + 1 WHERE id = 1 AND revision = ?')
-    .bind(JSON.stringify(next), expectedRevision).run();
-  if (result.meta.changes !== 1) throw new HttpError(409, '相册刚在其他设备更新，请刷新后再改。');
-  return json(next);
-}
-
-async function updatePhotoTitle(request: Request, db: D1Database, store: KVNamespace, id: string): Promise<Response> {
-  const value = await body(request, ['expectedRevision', 'title'], 4096);
-  const expectedRevision = expectedPhotoRevision(value.expectedRevision);
-  if (typeof value.title !== 'string') throw new HttpError(400, '标题要有内容，最多 80 个字。');
-  const title = value.title.trim();
-  if (!title || title.length > maxPhotoTitleLength) throw new HttpError(400, '标题要有内容，最多 80 个字。');
-  const current = await readPhotoManifest(db, store);
-  if (current.revision !== expectedRevision) throw new HttpError(409, '相册刚在其他设备更新，请刷新后再改。');
-  currentPhoto(current, id);
-  const photos = sortPhotos(current.photos.map(photo => photo.id === id ? { ...photo, title } : photo));
-  return commitPhotoManifest(db, expectedRevision, parsePhotoManifest({ ...current, revision: expectedRevision + 1, photos }));
-}
-
-async function setPhotoFeatured(request: Request, db: D1Database, store: KVNamespace, id: string): Promise<Response> {
-  const value = await body(request, ['expectedRevision', 'featured'], 2048);
-  const expectedRevision = expectedPhotoRevision(value.expectedRevision);
-  if (typeof value.featured !== 'boolean') throw new HttpError(400, '请选好这张照片要不要留在首页。');
-  const current = await readPhotoManifest(db, store);
-  if (current.revision !== expectedRevision) throw new HttpError(409, '相册刚在其他设备更新，请刷新后再改。');
-  currentPhoto(current, id);
-  const alreadyFeatured = current.featured.includes(id);
-  if (alreadyFeatured === value.featured) return json(current);
-  if (value.featured && current.featured.length >= featuredPhotoCount) {
-    throw new HttpError(422, '首页已经留了三张，先收下一张再选吧。');
+  const remove = request.method === 'DELETE';
+  const value = await body(request, action === 'featured' ? ['expectedRevision', 'featured']
+    : action === 'restore' || remove ? ['expectedRevision'] : ['expectedRevision', 'title'], 4096);
+  const expected = expectedPhotoRevision(value.expectedRevision);
+  await ensureAlbum(db, store);
+  let mutation: D1PreparedStatement;
+  const guard = 'id = ? AND (SELECT revision FROM album_state WHERE id = 1) = ?';
+  if (action === 'restore') {
+    mutation = db.prepare(`UPDATE album_photos SET removed_at = NULL
+      WHERE ${guard} AND removed_at > ${albumClock} - ?
+        AND (SELECT COUNT(*) FROM album_photos WHERE removed_at IS NULL) < ? RETURNING id`)
+      .bind(id, expected, photoRestoreMs, maxPhotos);
+  } else if (remove) {
+    mutation = db.prepare(`UPDATE album_photos SET removed_at = ${albumClock}, featured_rank = NULL
+      WHERE ${guard} AND removed_at IS NULL RETURNING id`).bind(id, expected);
+  } else if (action === 'featured') {
+    if (typeof value.featured !== 'boolean') throw new HttpError(400, '请选好这张照片要不要留在首页。');
+    mutation = db.prepare(`UPDATE album_photos SET featured_rank = CASE WHEN ? = 0 THEN NULL
+      WHEN featured_rank IS NOT NULL THEN featured_rank ELSE (SELECT COALESCE(MAX(featured_rank), 0) + 1 FROM album_photos) END
+      WHERE ${guard} AND removed_at IS NULL
+        AND (? = 0 OR featured_rank IS NOT NULL OR (SELECT COUNT(*) FROM album_photos WHERE featured_rank IS NOT NULL) < ?) RETURNING id`)
+      .bind(Number(value.featured), id, expected, Number(value.featured), featuredPhotoCount);
+  } else {
+    const title = typeof value.title === 'string' ? value.title.trim() : '';
+    if (!title || title.length > maxPhotoTitleLength) throw new HttpError(400, '标题要有内容，最多 80 个字。');
+    mutation = db.prepare(`UPDATE album_photos SET title = ? WHERE ${guard} AND removed_at IS NULL RETURNING id`)
+      .bind(title, id, expected);
   }
-  const featured = value.featured ? [...current.featured, id] : current.featured.filter(item => item !== id);
-  return commitPhotoManifest(db, expectedRevision, parsePhotoManifest({
-    ...current, revision: expectedRevision + 1, featured,
-  }));
-}
-
-async function restorePhotoObjects(store: KVNamespace, keys: string[], snapshots: Array<Uint8Array | null>) {
-  await Promise.allSettled(keys.map((key, index) => {
-    const bytes = snapshots[index];
-    return bytes ? store.put(key, bytes) : Promise.resolve();
-  }));
-}
-
-async function deletePhoto(request: Request, db: D1Database, store: KVNamespace, id: string): Promise<Response> {
-  const value = await body(request, ['expectedRevision'], 2048);
-  const expectedRevision = expectedPhotoRevision(value.expectedRevision);
-  const current = await readPhotoManifest(db, store);
-  if (current.revision !== expectedRevision) throw new HttpError(409, '相册刚在其他设备更新，请刷新后再取下。');
-  currentPhoto(current, id);
-  const keys = [photoObjectKey(id, 'thumb'), photoObjectKey(id, 'large')];
-  const snapshots = await Promise.all(keys.map(async key => {
-    const bytes = await store.get(key, 'arrayBuffer');
-    return bytes ? new Uint8Array(bytes) : null;
-  }));
-  const next = parsePhotoManifest({
-    ...current,
-    revision: expectedRevision + 1,
-    featured: current.featured.filter(item => item !== id),
-    photos: current.photos.filter(photo => photo.id !== id),
-  });
-  try {
-    const deletions = await Promise.allSettled(keys.map(key => store.delete(key)));
-    const failure = deletions.find(result => result.status === 'rejected');
-    if (failure) throw failure.reason;
-    return await commitPhotoManifest(db, expectedRevision, next);
-  } catch (error) {
-    // If another deletion already won, do not recreate its objects. Otherwise restore
-    // the snapshots before returning the storage/CAS error.
-    try {
-      const fresh = await readPhotoManifest(db, store);
-      if (fresh.photos.some(photo => photo.id === id)) await restorePhotoObjects(store, keys, snapshots);
-    } catch { /* Best effort when D1 is unavailable. */ }
-    throw error;
+  if (!await mutation.first()) {
+    const state = await db.prepare('SELECT revision FROM album_state WHERE id = 1').first<{ revision: number }>();
+    if (state?.revision !== expected) albumConflict();
+    const row = await db.prepare('SELECT removed_at FROM album_photos WHERE id = ?').bind(id).first<{ removed_at: number | null }>();
+    if (action === 'restore' && row?.removed_at != null && row.removed_at + photoRestoreMs > Date.now()) {
+      throw new HttpError(422, '相册已满，取下一张后再恢复。');
+    }
+    if (action === 'featured' && row?.removed_at === null) throw new HttpError(422, '首页已经留了三张，先收下一张再选吧。');
+    throw new HttpError(404, action === 'restore' ? '这张照片已超过恢复期限。' : '照片不存在。');
   }
+  return json(await readAlbum(db, store, true));
 }
 
 async function photo(db: D1Database, store: KVNamespace, id: string, size: string): Promise<Response> {
   if (!photoIdPattern.test(id) || !photoSizes.includes(size as PhotoSize)) return json({ error: '照片不存在。' }, 404);
-  const manifest = await readPhotoManifest(db, store);
-  if (!manifest.photos.some(item => item.id === id)) return json({ error: '照片不存在。' }, 404);
-  const bytes = await store.get(photoObjectKey(id, size as PhotoSize), 'arrayBuffer');
-  if (!bytes) return json({ error: '照片不存在。' }, 404);
-  // Private and never stored: after logout the browser must ask the Worker again.
-  return new Response(bytes, { headers: { 'Content-Type': 'image/webp', 'Content-Length': String(bytes.byteLength),
+  const objectId = await activePhotoObject(db, store, id);
+  if (!objectId) return json({ error: '照片不存在。' }, 404);
+  const stream = await store.get(photoObjectKey(objectId, size as PhotoSize), 'stream');
+  if (!stream) return json({ error: '照片暂时还没同步，请稍后再试。' }, 404);
+  return new Response(stream, { headers: { 'Content-Type': 'image/webp',
     'Cache-Control': 'private, no-store', 'X-Content-Type-Options': 'nosniff', 'Cross-Origin-Resource-Policy': 'same-origin' } });
 }
 
@@ -328,43 +272,42 @@ async function uploadPhoto(request: Request, db: D1Database, store: KVNamespace)
     throw new HttpError(413, '这张图有点大，压缩后再贴。');
   }
 
-  const current = await readPhotoManifest(db, store);
-  if (current.photos.some(photo => photo.id === id)) return json(current);
-  if (current.revision !== expectedRevision) {
-    throw new HttpError(409, '相册刚在其他设备更新，请刷新后再贴。');
-  }
-  if (current.photos.length >= maxPhotos) {
-    throw new HttpError(422, '相册已经贴满了，这本装不下更多了。');
-  }
+  await ensureAlbum(db, store);
+  const existing = await db.prepare('SELECT removed_at FROM album_photos WHERE id = ?').bind(id).first<{ removed_at: number | null }>();
+  if (existing?.removed_at === null) return json(await readAlbum(db, store, true));
+  if (existing && existing.removed_at! + photoRestoreMs > Date.now()) throw new HttpError(409, '这张照片可在最近取下中恢复。');
 
-  const photos: PrivatePhoto[] = sortPhotos([...current.photos, { id, title, date, width, height }]);
-  const next = parsePhotoManifest({
-    version: 1,
-    revision: current.revision + 1,
-    featured: current.featured,
-    photos,
-  });
-  const keys = [photoObjectKey(id, 'thumb'), photoObjectKey(id, 'large')];
-  try {
-    await store.put(keys[0], thumb);
-    await store.put(keys[1], large);
-    const result = await db.prepare('UPDATE photo_manifest SET manifest = ?, revision = revision + 1 WHERE id = 1 AND revision = ?')
-      .bind(JSON.stringify(next), expectedRevision).run();
-    if (result.meta.changes !== 1) throw new HttpError(409, '相册刚在其他设备更新，请刷新后再贴。');
-  } catch (error) {
-    // A same-id concurrent commit owns these keys. Cleanup must never mask the original error.
-    try {
-      const fresh = await readPhotoManifest(db, store);
-      if (!fresh.photos.some(photo => photo.id === id)) {
-        await Promise.allSettled(keys.map(key => store.delete(key)));
-      }
-    } catch { /* Best effort if the database or KV is unavailable. */ }
-    throw error;
-  }
-  return json(next);
+  const objectId = crypto.randomUUID();
+  await db.prepare(`INSERT INTO album_uploads (object_id, expires_at) VALUES (?, ${albumClock} + ?)`)
+    .bind(objectId, uploadGraceMs).run();
+  const writes = await Promise.allSettled([
+    store.put(photoObjectKey(objectId, 'thumb'), thumb),
+    store.put(photoObjectKey(objectId, 'large'), large),
+  ]);
+  if (writes.some(result => result.status === 'rejected')) throw new Error('Photo upload incomplete');
+
+  const [added] = await db.batch([
+    db.prepare(`INSERT INTO album_photos (id, object_id, title, date, width, height)
+      SELECT ?, ?, ?, ?, ?, ?
+      WHERE (SELECT revision FROM album_state WHERE id = 1) = ?
+        AND EXISTS (SELECT 1 FROM album_uploads WHERE object_id = ? AND expires_at > ${albumClock})
+        AND (SELECT COUNT(*) FROM album_photos WHERE removed_at IS NULL) < ?
+      ON CONFLICT(id) DO NOTHING RETURNING id`).bind(id, objectId, title, date, width, height, expectedRevision, objectId, maxPhotos),
+    db.prepare('DELETE FROM album_uploads WHERE object_id = ? AND EXISTS (SELECT 1 FROM album_photos WHERE object_id = ?)').bind(objectId, objectId),
+  ]);
+  const current = await readAlbum(db, store, true);
+  if (added.results.length || current.photos.some(photo => photo.id === id)) return json(current);
+  if (current.revision !== expectedRevision) albumConflict();
+  if (current.photos.length >= maxPhotos) throw new HttpError(422, '相册已经贴满了，这本装不下更多了。');
+  throw new HttpError(409, '这张照片正在等待清理，请稍后再贴。');
 }
 
 export default {
+  async scheduled(_event: ScheduledController, env: Env): Promise<void> {
+    if (!env.PHOTOS) return;
+    const results = await Promise.allSettled([sweepAlbum(env.DB, env.PHOTOS), sweepOrphanAudio(env.DB, env.PHOTOS)]);
+    if (results.some(result => result.status === 'rejected')) throw new Error('Media cleanup will retry on the next run');
+  },
   async fetch(request: Request, env: Env): Promise<Response> {
     const path = new URL(request.url).pathname;
     if (path !== '/api' && !path.startsWith('/api/')) return env.ASSETS.fetch(request);
@@ -378,7 +321,7 @@ export default {
         const [, , , photoId, action] = path.split('/');
         const allowed = path === '/api/photos' ? ['GET', 'POST']
           : !action && photoId ? ['PUT', 'DELETE']
-            : action === 'featured' ? ['PUT']
+            : action === 'featured' || action === 'restore' ? ['PUT']
               : ['GET'];
         if (!allowed.includes(request.method)) return json({ error: '方法不支持。' }, 405, { Allow: allowed.join(', ') });
       }
@@ -419,12 +362,9 @@ export default {
       if (photoPath) {
         if (!env.PHOTOS) return json({ error: '相册暂时打不开，请稍后再来。' }, 503);
         if (path === '/api/photos' && request.method === 'POST') return await uploadPhoto(request, env.DB, env.PHOTOS);
-        if (path === '/api/photos') return await photoManifest(env.DB, env.PHOTOS);
+        if (path === '/api/photos') return json(await readAlbum(env.DB, env.PHOTOS, new URL(request.url).searchParams.has('removed')));
         const [, , , id, action] = path.split('/');
-        if (!action) return request.method === 'PUT'
-          ? await updatePhotoTitle(request, env.DB, env.PHOTOS, id)
-          : await deletePhoto(request, env.DB, env.PHOTOS, id);
-        if (action === 'featured') return await setPhotoFeatured(request, env.DB, env.PHOTOS, id);
+        if (!action || action === 'featured' || action === 'restore') return await changePhoto(request, env.DB, env.PHOTOS, id, action);
         return await photo(env.DB, env.PHOTOS, id, action);
       }
       if (path === '/api/notebook') {

@@ -4,7 +4,7 @@
 
 `GitHub liangjie78/loveuhqq-site 的 main → CI 通过 → GitHub Actions 同提交构建 → dist → Cloudflare Worker Static Assets loveuhqq-site → loveuhqq.x23.shop`
 
-`main` 的推送通过 `CI` 后，GitHub Actions 触发 `.github/workflows/deploy-loveuhqq.yml`，用仓库 Secrets 中的 Cloudflare 凭据运行项目级 Wrangler。发布前核对构建提交仍是 `main` 最新提交。经授权也可从 Actions 手动运行 `main` 的部署工作流。
+`main` 的推送通过 `CI` 后，GitHub Actions 触发 `.github/workflows/deploy-loveuhqq.yml`，用仓库 Secrets 中的 Cloudflare 凭据运行项目级 Wrangler。发布前以只读查询核验 D1 表结构，再核对构建提交仍是 `main` 最新提交。部署凭据需要生产 D1 读取权限。经授权也可从 Actions 手动运行 `main` 的部署工作流。
 
 ## 目标
 
@@ -21,7 +21,7 @@
 
 1. 开发按仓库流程使用 feature/fix/chore 分支或 worktree；完成必要验证后，可自主 commit、push 和创建/更新 PR。默认分支保持 PR-first，不直接 push main；PR 合并、历史改写、tag、force push 与生产部署需明确授权。
 2. 取得本次生产部署授权，核验干净 main 与 origin/main 的提交一致。确认账号、目标 Worker、Custom Domain 无异常；已有其他资源占用目标时停止报告。
-3. 等待 `main` 的 `CI` 和 `Deploy loveuhqq` 完成，核对部署日志中的提交与 Worker 版本 ID。有待应用的 D1 迁移时，按对应章节先处理数据库。
+3. 有待应用的 D1 迁移时，在合并前按对应章节处理数据库。合并触发生产发布。等待 `main` 的 `CI` 和 `Deploy loveuhqq` 完成，核对部署日志中的提交与 Worker 版本 ID。
 4. 需要手动重发时，从 Actions 选择 `main` 运行部署，或从干净的最新 `main` 执行 `npm ci` 和 `npm run deploy`。首次启用云端手账时先配置独立生产数据库和密码。
 5. 核验 Custom Domain 指向正确 Worker，查询 Cloudflare 权威 DNS，并访问 HTTPS：首页须为 200 且正文与本次发布的源码一致，实际 CSS/favicon 必须为 200；不可出现 work1 或 x23-personal-site 页面。
 
@@ -37,9 +37,9 @@
 
 1. 本机处理（批量/纠错）：`npm run photos:prepare -- <照片文件夹> --featured "标题,标题,标题"`。文件名（去扩展名）是标题，EXIF 日期用于排序和显示；输出 800×1000 以内的缩略图与 1800px 以内的大图，全部去除 EXIF/GPS，写入 `.private-photos/`（已忽略）。照片 id 取原图哈希，换图即换地址。
 2. 命名空间已于 2026-10-05 经用户授权创建（`npx wrangler kv namespace create <名称>`）；重建时须同步更新两个 Wrangler 配置和 `check-production-config` 中的 id。
-3. 发布新版 Worker 前，必须先在获得对应环境授权后应用 `0002_photo_manifest.sql`：预览运行 `npx wrangler d1 migrations apply loveuhqq-notebook-preview --remote --config wrangler.preview.jsonc`，生产运行 `npx wrangler d1 migrations apply loveuhqq-notebook --remote --config wrangler.jsonc`。D1 的 `photo_manifest` 表是相册清单的唯一来源，revision 列用于条件更新（CAS）。部署后的首次 GET 会从已有 KV `manifest.json` 初始化 D1，保留照片、精选和版本；该 KV 键此后不再读取或写入，已有照片不会丢失。
-4. CLI 上传：`npm run photos:upload:preview` 或 `npm run photos:upload:production`。先批量写入 KV 图片，再写入 D1 清单；CLI 将清单分块暂存后一次性更新，以保持每条 SQL 低于 D1 的 100 KB 语句限制，不再写 KV `manifest.json`；覆盖清单时递增 D1 revision，使旧浏览器提交返回 409。脚本不删除已有图片键，勿用过期的 `.private-photos/` 覆盖站内增量。KV 图片为最终一致，各地生效可能需要约一分钟。生产上传仍须授权并先通过 `check-production-config`。本地测试可运行 `npm run photos:upload:local`，或添加 `--local --persist-to <目录> --source <照片目录>`；`--persist-to` 仅可与 `--local` 一起使用，本地数据库也须先应用两项迁移。
-5. 站内上传：解锁后在 `/photos/` 点「贴一张」，客户端压成 thumb/large WebP 后 `POST /api/photos`；成功后墙与张数刷新，首页精选不变。预览只用测试图验收。
+3. 获得对应环境授权后，在发布前应用截至 `0005_album_and_media_lifecycle.sql` 的所有迁移。预览运行 `npx wrangler d1 migrations apply DB --remote --config wrangler.preview.jsonc`，生产使用 `--config wrangler.jsonc`。新版 Worker 首次读取相册时优先导入旧 D1 `photo_manifest`，没有 D1 记录时读旧 KV `manifest.json`。导入保留照片编号、标题、日期、尺寸、精选顺序和版本，沿用已有图片键。之后清单从 `album_photos` 读取，单张图片只按编号查一行。
+4. CLI 上传使用 `npm run photos:upload:preview` 或 `npm run photos:upload:production`。每批最多处理四张图片，先登记本批暂存键，再上传 KV 并追加 D1 行。已存在或等待恢复的照片会跳过，站内标题和精选会保留，新照片仅占用空出的精选位。重试会继续追加缺少的照片。KV 图片跨地区生效可能需要约一分钟。生产上传仍须授权并先通过 `check-production-config`。本地可用 `npm run photos:upload:local`，也可传 `--local --persist-to <目录> --source <照片目录>`，本地 D1 同样须先应用全部迁移。
+5. 解锁后可在 `/photos/` 贴新照片，或从灯箱取下已有照片。取下立即撤出相册和精选，30 天内可从相册底部恢复。恢复会重新显示原照片及其故事关联，首页精选可重新选择。超过期限后，整点任务分批清理图片和暂存超过 24 小时的失败上传。
 6. 核验：未登录访问清单、图片与上传返回 401；登录后首页三张、相册全部可见且可贴一张；构建产物中不出现私密照片标题。
 
 ## 私密百日信
@@ -71,7 +71,7 @@
 
 ## 共同回忆册发布
 
-回忆册通过 `worker/runtime.ts` 导出 HTTP handler 与 `SharedDesktop` Durable Object。`wrangler.jsonc`、原预览配置和本任务隔离预览配置均声明相同的 SQLite 类迁移 `shared-memory-v1`，实际 DO 命名空间按 Worker 隔离。D1 增量迁移为 `0003_shared_memory_book.sql` 和 `0004_optional_place_coordinates.sql`：前者新增独立表，后者完整复制地点记录后移除坐标的非空要求；旧坐标、版本与关联均保留，不改动原日记、愿望、相册和百日信。
+回忆册通过 `worker/runtime.ts` 导出 HTTP handler 与 `SharedDesktop` Durable Object。三个 Wrangler 配置均声明 SQLite 类迁移 `shared-memory-v1`，实际 DO 命名空间按 Worker 隔离。D1 的 `0003_shared_memory_book.sql` 创建回忆册表，`0004_optional_place_coordinates.sql` 允许地点坐标留空，`0005_album_and_media_lifecycle.sql` 新增相册表、同步版本和录音回收字段。地点可编辑多个故事与愿望关联，已有历史关联可保留。愿望完成状态与安排在同一个事务保存；回忆册按版本查询更新，未变化时返回版本和北京时间日期。
 
 本任务验收使用 `wrangler.memory-preview.jsonc`、Worker `loveuhqq-memory-book-preview`、全新 D1/KV，只保存合成内容。部署使用项目 Wrangler：
 
@@ -83,9 +83,11 @@ npx wrangler deploy --config wrangler.memory-preview.jsonc
 
 共同门禁通过后，在首页上方选择男生或女生，无需注册或个人口令。沿用现有成员编号与记录；旧密码验证列仅为数据库兼容保留，不参与验证。共同密码继续使用现有安全配置流程，不重置预览门禁。
 
-声音使用既有 `PHOTOS` KV 的 `audio/` 独立前缀，D1 仅存所有者及父内容关系，每次读取均重新鉴权。音频总额度为 300 条/256 MiB，单条字节上限 4 MiB；60 秒录制与浏览器上传时长校验在客户端进行，Worker 额外检查声明时长与容器签名，不进行音频解码。不要将其宣称为服务端证明的实际时长限制。未启用 R2 或新增付费服务。
+录音字节使用 `PHOTOS` KV 的 `audio/` 前缀，D1 保存署名、所属内容和回收时间，每次读取重新鉴权。录音署名者可丢弃未关联到正文的录音，满 7 天的未关联录音由整点任务分批清理，已有未关联录音从迁移时开始计时。录音总额度为 300 条及 256 MiB，单条上限 4 MiB。浏览器检查 60 秒时长，Worker 检查声明时长与容器签名。
 
-该版本首次发布需要授权合并、备份生产 D1 并应用增量迁移。现有生产环境已应用这四项迁移，见下方上线记录。发布核验覆盖新页、旧入口、匿名 401、个人草稿隔离、未来信日期门槛及两端桌面同步。数据库与 DO 存储需单独回滚。
+双方署名均可取下桌面物件，每个署名最近取下的一件可在 30 秒内撤销。恢复时需有空位。
+
+生产发布前先获授权并备份 D1，应用 `0005` 后再合并 PR。等新版 Worker 上线后再使用新版上传脚本。切换后相册写入仅更新新表，回滚到旧 Worker 前需要协调相册元数据和图片键，单独回滚代码会读到旧清单。
 
 ## 回忆册外壳修复正式上线（2026-10-19，Asia/Shanghai）
 

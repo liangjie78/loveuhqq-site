@@ -2,27 +2,44 @@
 import { describe, test } from 'node:test';
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
-import { copyFileSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { copyFileSync, existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { DatabaseSync } from 'node:sqlite';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { manifestUpsertSql, parseArgs } from '../../scripts/upload-photos.mjs';
+import { appendPhotoSql, parseArgs } from '../../scripts/upload-photos.mjs';
 import { exifDate, photoId } from '../../scripts/prepare-photos.mjs';
 import { parseLetter } from '../../worker/letter.ts';
+import { albumClock, albumInitialization } from '../../worker/album-sql.ts';
 
 describe('photo upload script', () => {
-  test('the manifest SQL survives quotes, emoji and large albums when replayed into SQLite', () => {
+  test('bulk append preserves legacy metadata, existing objects, and recently removed photos', () => {
     const photos = Array.from({ length: 900 }, (_, index) => ({ id: index.toString(16).padStart(16, '0'), title: `它's 第${index}张 🌊`, date: '2026-08-15', width: 800, height: 600 }));
     const manifest = { version: 1, revision: 7, featured: [photos[0].id], photos };
-    const sql = manifestUpsertSql(manifest);
-    assert.ok(sql.split('\n').every(line => Buffer.byteLength(line) < 100_000), 'every statement fits D1');
     const db = new DatabaseSync(':memory:');
-    db.exec('CREATE TABLE photo_manifest (id INTEGER PRIMARY KEY CHECK (id = 1), manifest TEXT NOT NULL, revision INTEGER NOT NULL);');
-    db.exec(sql);
-    const row = db.prepare('SELECT manifest, revision FROM photo_manifest').get();
-    assert.deepEqual(JSON.parse(row.manifest).photos.at(-1).title, `它's 第899张 🌊`);
-    db.exec(sql);
-    assert.equal(db.prepare('SELECT revision FROM photo_manifest').get().revision, 8, 'a re-upload bumps the revision');
+    const migrations = new URL('../../migrations/', import.meta.url);
+    for (const name of readdirSync(migrations).sort()) db.exec(readFileSync(new URL(name, migrations), 'utf8'));
+    for (const { sql, args } of albumInitialization(manifest)) {
+      assert.ok(Buffer.byteLength(sql) + Buffer.byteLength(String(args[0])) < 100_000);
+      db.prepare(sql).run(...args);
+    }
+    const photo = id => db.prepare('SELECT title, object_id, featured_rank, removed_at FROM album_photos WHERE id = ?').get(id);
+    assert.equal(photo(photos.at(-1).id).title, "它's 第899张 🌊");
+    assert.equal(photo(photos[0].id).object_id, photos[0].id);
+    assert.equal(db.prepare('SELECT revision FROM album_state').get().revision, 7);
+    db.prepare('UPDATE album_photos SET removed_at = 123 WHERE id = ?').run(photos[1].id);
+    const append = entry => {
+      db.prepare(`INSERT INTO album_uploads VALUES (?, ${albumClock} + 50000)`).run(entry.objectId);
+      db.exec(appendPhotoSql(entry));
+    };
+    append({ ...photos[0], objectId: 'duplicate', title: '过时的标题', featured: true });
+    append({ ...photos[1], objectId: 'removed', featured: false });
+    const entry = { id: 'ffffffffffffffff', objectId: 'new-object', title: "新's 🌊", date: null, width: 800, height: 600, featured: true };
+    append(entry);
+    assert.equal(photo(photos[0].id).title, photos[0].title);
+    assert.equal(photo(photos[1].id).removed_at, 123);
+    assert.deepEqual({ ...photo(entry.id) }, { title: entry.title, object_id: entry.objectId, featured_rank: 2, removed_at: null });
+    assert.equal(db.prepare('SELECT revision FROM album_state').get().revision, 9);
+    db.close();
   });
 
   test('arguments are strict, and --persist-to only makes sense locally', () => {

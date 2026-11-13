@@ -1,6 +1,5 @@
 /**
- * The private album. Photos, titles and dates live in Workers KV behind the Worker's session
- * check; nothing here is private, only the shape both sides agree on.
+ * The private album. Photo bytes live in KV and D1 holds metadata, both behind the session check.
  */
 export interface PrivatePhoto {
   /** First 16 hex chars of the source file's SHA-256, so a changed photo gets a new URL. */
@@ -25,6 +24,8 @@ export interface PhotoManifest {
   photos: PrivatePhoto[];
 }
 
+export interface RemovedPhoto { id: string; title: string; restoreUntil: number }
+
 export const photoSizes = ['thumb', 'large'] as const;
 export type PhotoSize = (typeof photoSizes)[number];
 export const photoIdPattern = /^[a-f0-9]{16}$/;
@@ -37,6 +38,7 @@ export const maxPhotoLargeBytes = Math.floor(2.5 * 1024 * 1024);
 export const maxPhotoUploadBytes = Math.floor(3.5 * 1024 * 1024);
 export const maxPhotoTitleLength = 80;
 export const maxPhotoEdge = 1800;
+export const photoRestoreMs = 30 * 24 * 60 * 60 * 1000;
 
 export const photoObjectKey = (id: string, size: PhotoSize) => `photos/${id}/${size}.webp`;
 export const photoUrl = (id: string, size: PhotoSize) => `/api/photos/${id}/${size}`;

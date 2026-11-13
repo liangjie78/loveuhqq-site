@@ -1,8 +1,10 @@
 import { digest, randomToken, readSessionToken } from './auth.ts';
 import { isCalendarDate } from '../src/lib/notebook.ts';
 import { getShanghaiDate } from '../src/lib/anniversary.ts';
+import { ensureAlbum, readAlbum } from './album.ts';
+import { albumClock, albumRevisionSql } from './album-sql.ts';
 import { audioMaxBytes, audioMaxSeconds } from '../src/lib/memory-book.ts';
-import type { MemoryBootstrap, MemoryLetter, MemoryMember, MemoryStory, MemberId, StoryPart } from '../src/lib/memory-book.ts';
+import type { MemoryBootstrap, MemoryLetter, MemoryMember, MemoryStory, MemorySync, MemberId, StoryPart } from '../src/lib/memory-book.ts';
 
 interface MemoryEnv { DB: D1Database; PHOTOS?: KVNamespace }
 export interface MemoryActor extends MemoryMember { sessionHash: string; parentHash: string; expiresAt: number }
@@ -16,6 +18,8 @@ const cookie = (token: string, age: number) => `${personalCookie}=${token}; Http
 const memberId = (id: unknown): id is MemberId => id === 'one' || id === 'two';
 const arr = (value: string): string[] => JSON.parse(value);
 const today = () => getShanghaiDate(new Date());
+const audioGraceMs = 7 * 24 * 60 * 60 * 1000;
+const audioAvailable = 'NOT EXISTS (SELECT value FROM json_each(?) WHERE value NOT IN (SELECT id FROM memory_audio WHERE reclaiming = 0))';
 function tokenFrom(request: Request): string | null {
   const tokens = (request.headers.get('Cookie') ?? '').split(';').map(x => x.trim()).filter(x => x.startsWith(`${personalCookie}=`));
   if (tokens.length !== 1) return null;
@@ -79,19 +83,23 @@ async function checkStories(db: D1Database, values: string[]) { for (const id of
 async function checkWishes(db: D1Database, values: string[]) { for (const id of values) if (!await one(db, "SELECT entry_key FROM notebook_entries WHERE kind = 'wish' AND entry_key = ? AND deleted = 0", id)) fail(400, '愿望不存在或已取下。'); }
 async function checkPhotos(db: D1Database, store: KVNamespace | undefined, values: string[]) {
   if (!values.length) return;
-  const row = await one(db, 'SELECT manifest FROM photo_manifest WHERE id = 1');
-  const manifest = row ? JSON.parse(row.manifest) : store ? await store.get('manifest.json', 'json') as Row | null : null;
-  const existing = new Set((manifest?.photos ?? []).map((x: Row) => x.id));
-  if (values.some(id => !existing.has(id))) fail(400, '关联照片不存在。');
+  await ensureAlbum(db, store);
+  const result = await one(db, `SELECT COUNT(*) AS count FROM album_photos
+    WHERE removed_at IS NULL AND id IN (SELECT value FROM json_each(?))`, JSON.stringify(values));
+  if (result?.count !== values.length) fail(400, '关联照片不存在。');
 }
 async function checkAudio(db: D1Database, values: string[], actor: MemoryActor, kind: 'story' | 'letter', id: string) {
-  for (const audioId of values) if (!await one(db, `SELECT id FROM memory_audio WHERE id = ? AND owner_id = ? AND ${kind}_id = ?`, audioId, actor.id, id)) fail(400, '语音与当前内容不匹配。');
+  if (!values.length) return;
+  const result = await one(db, `SELECT COUNT(*) AS count FROM memory_audio WHERE owner_id = ? AND ${kind}_id = ? AND reclaiming = 0
+    AND id IN (SELECT value FROM json_each(?))`, actor.id, id, JSON.stringify(values));
+  if (result?.count !== values.length) fail(400, '语音与当前内容不匹配或已清理。');
 }
-async function cas(db: D1Database, table: string, id: string, expected: number, fields: Record<string, unknown>, extraWhere = '', extraArgs: unknown[] = []) {
+async function cas(db: D1Database, table: string, id: string, expected: number, fields: Record<string, unknown>, extraWhere = '', extraArgs: unknown[] = [], insertCondition?: { sql: string; args: unknown[] }) {
   // Table/column names come only from hard-coded internal call sites.
   const keys = Object.keys(fields);
   const result = expected === 0
-    ? await db.prepare(`INSERT INTO ${table} (id,version,${keys.join(',')}) VALUES (?,1,${keys.map(() => '?').join(',')}) ON CONFLICT(id) DO NOTHING RETURNING version`).bind(id, ...Object.values(fields)).first()
+    ? await db.prepare(`INSERT INTO ${table} (id,version,${keys.join(',')}) SELECT ?,1,${keys.map(() => '?').join(',')}
+      WHERE ${insertCondition?.sql ?? '1'} ON CONFLICT(id) DO NOTHING RETURNING version`).bind(id, ...Object.values(fields), ...(insertCondition?.args ?? [])).first()
     : await db.prepare(`UPDATE ${table} SET ${keys.map(k => `${k} = ?`).join(',')}, version = version + 1 WHERE id = ? AND version = ? ${extraWhere} RETURNING version`).bind(...Object.values(fields), id, expected, ...extraArgs).first();
   if (!result) fail(409, '内容已在其他设备更新，请刷新后重试。');
 }
@@ -101,23 +109,26 @@ function projectedStory(row: Row, parts: Row[], actor: MemoryActor): MemoryStory
     revealTogether: !!row.reveal_together, openedAt: row.opened_at, parts: parts.map((part): StoryPart => ({ memberId: part.member_id, version: part.version, submitted: !!part.submitted,
       ...(opened || part.member_id === actor.id ? { text: part.text, reply: part.reply, audioIds: arr(part.audio_ids) } : {}) })) };
 }
-function letterReady(row: Row, all: Row[]): boolean {
-  if (row.status !== 'sealed' || row.open_date > today()) return false;
+function letterReady(row: Row, all: Row[], day = today()): boolean {
+  if (row.status !== 'sealed' || row.open_date > day) return false;
   if (!row.pair_key) return true;
   return all.some(other => other.id !== row.id && other.pair_key === row.pair_key && other.sender_id === row.recipient_id && other.recipient_id === row.sender_id && other.status === 'sealed' && other.open_date === row.open_date);
 }
-function projectedLetter(row: Row, all: Row[], actor: MemoryActor): MemoryLetter {
-  const readable = row.sender_id === actor.id || row.recipient_id === actor.id && letterReady(row, all);
+function projectedLetter(row: Row, all: Row[], actor: MemoryActor, day = today()): MemoryLetter {
+  const readable = row.sender_id === actor.id || row.recipient_id === actor.id && letterReady(row, all, day);
   return { id: row.id, version: row.version, senderId: row.sender_id, recipientId: row.recipient_id, title: row.title, openDate: row.open_date, pairKey: row.pair_key, status: row.status,
     sealedAt: row.sealed_at, readable, ...(readable ? { text: row.text, audioIds: arr(row.audio_ids) } : {}) };
 }
-export async function memoryBootstrap(request: Request, db: D1Database): Promise<MemoryBootstrap> {
-  const actor = await memoryActor(request, db);
+async function memoryBootstrap(request: Request, db: D1Database, actor: MemoryActor | null = null): Promise<MemoryBootstrap> {
+  actor ??= await memoryActor(request, db);
   const members = await rows(db, "SELECT id, CASE id WHEN 'one' THEN '男生' ELSE '女生' END AS name FROM memory_members ORDER BY id") as MemoryMember[];
   if (!actor) return { member: null, members, stories: [], letters: [], places: [], wishPlans: [] };
-  const [stories, parts, letters, places, plans] = (await db.batch<Row>([
+  const day = today();
+  const [stories, parts, letters, places, plans, wishes, revisions] = (await db.batch<Row>([
     db.prepare('SELECT * FROM memory_stories ORDER BY date DESC,id'), db.prepare('SELECT * FROM memory_parts'), db.prepare('SELECT * FROM memory_letters ORDER BY open_date,id'),
     db.prepare('SELECT * FROM memory_places ORDER BY year DESC,name'), db.prepare('SELECT * FROM memory_wish_plans'),
+    db.prepare("SELECT entry_key, text, done, version FROM notebook_entries WHERE kind = 'wish' AND deleted = 0 ORDER BY rowid"),
+    db.prepare('SELECT revision FROM memory_change WHERE id = 1'),
   ])).map(result => result.results);
   const partsByStory = new Map<string, Row[]>();
   for (const part of parts) {
@@ -125,11 +136,34 @@ export async function memoryBootstrap(request: Request, db: D1Database): Promise
     if (group) group.push(part);
     else partsByStory.set(part.story_id, [part]);
   }
-  return { member: { id: actor.id, name: actor.name }, members,
+  return { member: { id: actor.id, name: actor.name }, members, revision: revisions[0].revision, day,
+    wishes: wishes.map(wish => ({ id: wish.entry_key, text: wish.text, done: !!wish.done })),
+    wishRevisions: Object.fromEntries(wishes.map(wish => [wish.entry_key, wish.version])),
     stories: stories.map(story => projectedStory(story, partsByStory.get(story.id) ?? [], actor)),
-    letters: letters.filter(letter => letter.sender_id === actor.id || letter.status === 'sealed' && letter.recipient_id === actor.id).map(letter => projectedLetter(letter, letters, actor)),
+    letters: letters.filter(letter => letter.sender_id === actor.id || letter.status === 'sealed' && letter.recipient_id === actor.id).map(letter => projectedLetter(letter, letters, actor, day)),
     places: places.map(place => ({ id: place.id, version: place.version, name: place.name, lat: place.lat, lng: place.lng, year: place.year, storyIds: arr(place.story_ids), wishIds: arr(place.wish_ids) })),
     wishPlans: plans.map(plan => ({ id: plan.id, version: plan.version, plannedDate: plan.planned_date, storyId: plan.story_id })) };
+}
+
+async function syncMemory(request: Request, env: MemoryEnv): Promise<Response> {
+  const { DB: db, PHOTOS: store } = env;
+  const actor = await memoryActor(request, db);
+  const query = new URL(request.url).searchParams;
+  const day = today();
+  if (!actor) {
+    const book = query.get('member') === '' ? undefined : await memoryBootstrap(request, db);
+    return json({ memberId: null, revision: 0, day, photoRevision: null, book } satisfies MemorySync);
+  }
+  const [state, photos] = await db.batch<{ revision: number }>([
+    db.prepare('SELECT revision FROM memory_change WHERE id = 1'), db.prepare(albumRevisionSql),
+  ]);
+  const revision = state.results[0].revision;
+  const photoRevision = photos.results[0]?.revision ?? null;
+  const sameMember = query.get('member') === actor.id;
+  const book = sameMember && query.get('revision') === String(revision) && query.get('day') === day
+    ? undefined : await memoryBootstrap(request, db, actor);
+  const album = store && (photoRevision === null || !sameMember || query.get('photos') !== String(photoRevision)) ? await readAlbum(db, store) : undefined;
+  return json({ memberId: actor.id, revision: book?.revision ?? revision, day: book?.day ?? day, photoRevision: album?.revision ?? photoRevision, book, album } satisfies MemorySync);
 }
 async function identity(request: Request, db: D1Database): Promise<Response> {
   if (request.method === 'GET') return json(await memoryBootstrap(request, db));
@@ -159,8 +193,12 @@ async function saveStory(request: Request, env: MemoryEnv, id: string) {
   const expected = version(value.expectedVersion); const title = text(value.title, 120); const content = text(value.text, 10000, true);
   if (!isCalendarDate(value.date) || !['journal', 'album', 'letter'].includes(value.layout) || typeof value.revealTogether !== 'boolean') fail(400, '故事日期或排版无效。');
   const photos = ids(value.photoIds); const wishes = ids(value.wishIds);
-  await checkPhotos(env.DB, env.PHOTOS, photos); await checkWishes(env.DB, wishes);
   const current = await one(env.DB, 'SELECT * FROM memory_stories WHERE id = ?', id);
+  if ((current?.version ?? 0) !== expected) fail(409, '内容已在其他设备更新，请刷新后重试。');
+  const oldPhotos = new Set(current ? arr(current.photo_ids) : []);
+  const oldWishes = new Set(current ? arr(current.wish_ids) : []);
+  await checkPhotos(env.DB, env.PHOTOS, photos.filter(photo => !oldPhotos.has(photo)));
+  await checkWishes(env.DB, wishes.filter(wish => !oldWishes.has(wish)));
   // Revelation mode cannot change once anyone has written, preventing a metadata edit from exposing a private draft.
   if (current && !!current.reveal_together !== value.revealTogether && await one(env.DB, 'SELECT story_id FROM memory_parts WHERE story_id = ? LIMIT 1', id)) fail(409, '已有双人段落后不能更改揭晓模式。');
   await cas(env.DB, 'memory_stories', id, expected, { title, date: value.date, text: content, photo_ids: JSON.stringify(photos), wish_ids: JSON.stringify(wishes), layout: value.layout, reveal_together: value.revealTogether ? 1 : 0 },
@@ -172,11 +210,13 @@ async function savePart(request: Request, db: D1Database, actor: MemoryActor, id
   const expected = version(value.expectedVersion); const content = text(value.text, 10000, true); const reply = text(value.reply, 3000, true); const audio = ids(value.audioIds, 10);
   if (typeof value.submitted !== 'boolean' || value.submitted && !content.trim() && !audio.length) fail(400, '请先写下内容或保存语音再提交。');
   await checkAudio(db, audio, actor, 'story', id);
+  const audioIds = JSON.stringify(audio);
   const statements = [db.prepare(`INSERT INTO memory_parts(story_id,member_id,version,text,reply,submitted,audio_ids)
     SELECT ?,?,1,?,?,?,? WHERE COALESCE((SELECT version FROM memory_parts WHERE story_id = ? AND member_id = ?),0) = ?
+    AND ${audioAvailable}
     ON CONFLICT(story_id,member_id) DO UPDATE SET version=version+1,text=excluded.text,reply=excluded.reply,submitted=excluded.submitted,audio_ids=excluded.audio_ids WHERE version = ? RETURNING version`)
-    .bind(id, actor.id, content, reply, value.submitted ? 1 : 0, JSON.stringify(audio), id, actor.id, expected, expected),
-    db.prepare(`UPDATE memory_stories SET opened_at = ? WHERE id = ? AND reveal_together = 1 AND opened_at IS NULL
+    .bind(id, actor.id, content, reply, value.submitted ? 1 : 0, audioIds, id, actor.id, expected, audioIds, expected),
+    db.prepare(`UPDATE memory_stories SET opened_at = ? WHERE id = ? AND reveal_together = 1 AND opened_at IS NULL AND changes() = 1
       AND (SELECT COUNT(*) FROM memory_parts WHERE story_id = ? AND submitted = 1) = 2`).bind(Date.now(), id, id)];
   const result = await db.batch(statements);
   if (!result[0].results.length) fail(409, '你的段落已更新，请刷新后重试。');
@@ -189,7 +229,9 @@ async function saveLetter(request: Request, db: D1Database, actor: MemoryActor, 
   const current = await one(db, 'SELECT sender_id,status FROM memory_letters WHERE id = ?', id);
   if (current && current.sender_id !== actor.id) fail(403, '只能修改自己写的信。');
   if (current?.status === 'sealed') fail(409, '封存后的信不能修改，请先撤回。');
-  await cas(db, 'memory_letters', id, expected, { sender_id: actor.id, recipient_id: value.recipientId, title, text: content, open_date: value.openDate, pair_key: pair, audio_ids: JSON.stringify(audio), status: 'draft' }, 'AND sender_id = ? AND status = ?', [actor.id, 'draft']);
+  const audioIds = JSON.stringify(audio);
+  await cas(db, 'memory_letters', id, expected, { sender_id: actor.id, recipient_id: value.recipientId, title, text: content, open_date: value.openDate, pair_key: pair, audio_ids: audioIds, status: 'draft' },
+    `AND sender_id = ? AND status = 'draft' AND ${audioAvailable}`, [actor.id, audioIds], { sql: audioAvailable, args: [audioIds] });
 }
 async function letterAction(request: Request, db: D1Database, actor: MemoryActor, id: string, action: string) {
   const value = await body(request, ['expectedVersion']); const expected = version(value.expectedVersion);
@@ -211,15 +253,34 @@ async function savePlace(request: Request, db: D1Database, id: string) {
     typeof value.lat === 'number' && Number.isFinite(value.lat) && Math.abs(value.lat) <= 90 &&
     typeof value.lng === 'number' && Number.isFinite(value.lng) && Math.abs(value.lng) <= 180;
   if (!coordinatesValid || !Number.isInteger(value.year) || value.year < 1900 || value.year > 9999) fail(400, '地点坐标或年份无效。');
-  const stories = ids(value.storyIds); const wishes = ids(value.wishIds); await checkStories(db, stories); await checkWishes(db, wishes);
+  const stories = ids(value.storyIds); const wishes = ids(value.wishIds);
+  const current = expected > 0 ? await one(db, 'SELECT story_ids, wish_ids FROM memory_places WHERE id = ? AND version = ?', id, expected) : null;
+  if (expected > 0 && !current) fail(409, '内容已在其他设备更新，请刷新后重试。');
+  const oldStories = new Set(current ? arr(current.story_ids) : []);
+  const oldWishes = new Set(current ? arr(current.wish_ids) : []);
+  await checkStories(db, stories.filter(story => !oldStories.has(story)));
+  await checkWishes(db, wishes.filter(wish => !oldWishes.has(wish)));
   await cas(db, 'memory_places', id, expected, { name, lat: value.lat, lng: value.lng, year: value.year, story_ids: JSON.stringify(stories), wish_ids: JSON.stringify(wishes) });
 }
 async function saveWishPlan(request: Request, db: D1Database, id: string) {
-  const value = await body(request, ['expectedVersion', 'plannedDate', 'storyId']);
-  const expected = version(value.expectedVersion); await checkWishes(db, [id]);
+  const value = await body(request, ['expectedVersion', 'plannedDate', 'storyId'], ['expectedWishVersion', 'done']);
+  const expected = version(value.expectedVersion);
   if (value.plannedDate !== null && !isCalendarDate(value.plannedDate) || value.storyId !== null && (typeof value.storyId !== 'string' || !validId.test(value.storyId))) fail(400, '计划日期或故事编号无效。');
   if (value.storyId) await ensureStory(db, value.storyId);
-  await cas(db, 'memory_wish_plans', id, expected, { planned_date: value.plannedDate, story_id: value.storyId });
+  const withCompletion = Object.hasOwn(value, 'expectedWishVersion') || Object.hasOwn(value, 'done');
+  if (withCompletion && typeof value.done !== 'boolean') fail(400, '请选择愿望的完成状态。');
+  const expectedWish = withCompletion ? version(value.expectedWishVersion) : null;
+  // The second statement uses changes() from the guarded first write in this same D1 transaction.
+  const plan = db.prepare(`INSERT INTO memory_wish_plans (id, version, planned_date, story_id)
+    SELECT ?, 1, ?, ? WHERE COALESCE((SELECT version FROM memory_wish_plans WHERE id = ?), 0) = ?
+      AND EXISTS (SELECT 1 FROM notebook_entries WHERE kind = 'wish' AND entry_key = ? AND deleted = 0 AND (? IS NULL OR version = ?))
+    ON CONFLICT(id) DO UPDATE SET version = memory_wish_plans.version + 1, planned_date = excluded.planned_date, story_id = excluded.story_id`)
+    .bind(id, value.plannedDate, value.storyId, id, expected, id, expectedWish, expectedWish);
+  const writes = [plan];
+  if (withCompletion) writes.push(db.prepare(`UPDATE notebook_entries SET done = ?, version = version + 1
+    WHERE kind = 'wish' AND entry_key = ? AND done <> ? AND changes() = 1`).bind(Number(value.done), id, Number(value.done)));
+  const [saved] = await db.batch(writes);
+  if (!saved.meta.changes) fail(409, '愿望或安排已更新，请刷新后重试。');
 }
 async function canHear(db: D1Database, audio: Row, actor: MemoryActor): Promise<boolean> {
   if (audio.owner_id === actor.id) return true;
@@ -240,15 +301,43 @@ function audioSignature(data: Uint8Array, mime: string): boolean {
   if (mime === 'audio/mpeg') return ascii(0, 3) === 'ID3' || data[0] === 0xff && (data[1] & 0xe0) === 0xe0;
   return false;
 }
+const audioUnattached = `NOT EXISTS (
+  SELECT 1 FROM memory_parts p, json_each(p.audio_ids) link
+  WHERE p.story_id = memory_audio.story_id AND p.member_id = memory_audio.owner_id AND link.value = memory_audio.id
+) AND NOT EXISTS (
+  SELECT 1 FROM memory_letters l, json_each(l.audio_ids) link
+  WHERE l.id = memory_audio.letter_id AND l.sender_id = memory_audio.owner_id AND link.value = memory_audio.id
+)`;
+async function deleteAudioBytes(db: D1Database, store: KVNamespace, id: string) {
+  await store.delete(`audio/${id}`);
+  await db.prepare('DELETE FROM memory_audio WHERE id = ?').bind(id).run();
+}
+export async function sweepOrphanAudio(db: D1Database, store: KVNamespace) {
+  const { results } = await db.prepare(`UPDATE memory_audio SET reclaiming = 1 WHERE id IN (
+    SELECT id FROM memory_audio WHERE reclaiming = 1 OR (created_at <= ${albumClock} - ? AND ${audioUnattached})
+    ORDER BY reclaiming DESC, created_at LIMIT 8
+  ) RETURNING id`).bind(audioGraceMs).all<{ id: string }>();
+  const deleted = await Promise.allSettled(results.map(({ id }) => deleteAudioBytes(db, store, id)));
+  if (deleted.some(result => result.status === 'rejected')) throw new Error('Some audio objects could not be reclaimed');
+}
 async function audioRequest(request: Request, env: MemoryEnv, actor: MemoryActor, id?: string): Promise<Response> {
   const { DB: db, PHOTOS: store } = env;
-  if (!store) fail(503, '语音存储暂时不可用。');
+  if (!store) return fail(503, '语音存储暂时不可用。');
   if (request.method === 'GET' && id) {
-    const audio = await one(db, 'SELECT * FROM memory_audio WHERE id = ?', id) ?? fail(404, '语音不存在。');
+    const audio = await one(db, 'SELECT * FROM memory_audio WHERE id = ? AND reclaiming = 0', id) ?? fail(404, '语音不存在。');
     if (!await canHear(db, audio, actor)) fail(404, '语音不存在或尚未开放。');
-    const output = await store!.get(`audio/${id}`, 'arrayBuffer');
+    const output = await store.get(`audio/${id}`, 'arrayBuffer');
     if (!output || output.byteLength !== audio.bytes) fail(503, '语音仍在同步，请稍后重试。');
     return new Response(output, { headers: { 'Content-Type': audio.mime, 'Content-Length': String(output!.byteLength), 'Cache-Control': 'no-store', 'X-Content-Type-Options': 'nosniff' } });
+  }
+  if (request.method === 'DELETE' && id) {
+    const claimed = await one(db, `UPDATE memory_audio SET reclaiming = 1 WHERE id = ? AND owner_id = ? AND ${audioUnattached} RETURNING id`, id, actor.id);
+    if (!claimed) {
+      if (await one(db, 'SELECT id FROM memory_audio WHERE id = ? AND owner_id = ?', id, actor.id)) fail(409, '已经收进正文的录音不能从草稿丢弃。');
+      fail(404, '录音不存在。');
+    }
+    await deleteAudioBytes(db, store, id);
+    return json({ deleted: true });
   }
   if (request.method !== 'POST' || id) return fail(405, '方法不支持。');
   const url = new URL(request.url); const story = url.searchParams.get('storyId'); const letterId = url.searchParams.get('letterId');
@@ -263,17 +352,19 @@ async function audioRequest(request: Request, env: MemoryEnv, actor: MemoryActor
   if (!Number.isFinite(duration) || duration <= 0 || duration > audioMaxSeconds) fail(400, '语音时长应在 60 秒内。');
   const data = await bytes(request, audioMaxBytes);
   if (data.length < 12 || !audioSignature(data, mime)) fail(415, '请上传 WebM、Ogg、M4A、MP3 或 WAV 录音。');
-  const count = await one(db, 'SELECT COUNT(*) AS count,COALESCE(SUM(bytes),0) AS total FROM memory_audio');
-  if (count && (count.count >= 300 || count.total + data.length > 256 * 1024 * 1024)) fail(422, '语音空间已达到当前上限。');
   const audioId = crypto.randomUUID();
-  await store!.put(`audio/${audioId}`, data);
+  const inserted = await db.prepare(`INSERT INTO memory_audio(id,owner_id,story_id,letter_id,mime,bytes,duration,created_at)
+    SELECT ?,?,?,?,?,?,?,? WHERE (SELECT COUNT(*) FROM memory_audio) < 300 AND
+    (SELECT COALESCE(SUM(bytes),0) FROM memory_audio) + ? <= ? RETURNING id`)
+    .bind(audioId, actor.id, story, letterId, mime, data.length, duration, Date.now(), data.length, 256 * 1024 * 1024).first();
+  if (!inserted) fail(422, '语音空间已达到当前上限。');
   try {
-    const inserted = await db.prepare(`INSERT INTO memory_audio(id,owner_id,story_id,letter_id,mime,bytes,duration)
-      SELECT ?,?,?,?,?,?,? WHERE (SELECT COUNT(*) FROM memory_audio) < 300 AND
-      (SELECT COALESCE(SUM(bytes),0) FROM memory_audio) + ? <= ? RETURNING id`)
-      .bind(audioId, actor.id, story, letterId, mime, data.length, duration, data.length, 256 * 1024 * 1024).first();
-    if (!inserted) fail(422, '语音空间已达到当前上限。');
-  } catch (error) { await store!.delete(`audio/${audioId}`); throw error; }
+    await store.put(`audio/${audioId}`, data);
+  } catch (error) {
+    await db.prepare('UPDATE memory_audio SET reclaiming = 1 WHERE id = ?').bind(audioId).run();
+    await deleteAudioBytes(db, store, audioId);
+    throw error;
+  }
   return json({ id: audioId, mime, bytes: data.length, duration }, 201);
 }
 /** Dispatch only after the existing shared-session gate. This module additionally checks individual identity. */
@@ -284,6 +375,7 @@ export async function handleMemoryRequest(request: Request, env: MemoryEnv): Pro
     if (!await parentSession(request, env.DB)) fail(401, '请先登录手账。');
     if (path === '/api/memory/identity') return await identity(request, env.DB);
     if (path === '/api/memory/bootstrap' && request.method === 'GET') return json(await memoryBootstrap(request, env.DB));
+    if (path === '/api/memory/sync' && request.method === 'GET') return await syncMemory(request, env);
     const actor = await memoryActor(request, env.DB);
     if (!actor) fail(403, '请先进入自己的个人身份。');
     const match = /^\/api\/memory\/(stories|letters|places|wishPlans|audio)(?:\/([a-zA-Z0-9-]{1,80}))?(?:\/(part|seal|withdraw))?$/.exec(path);
@@ -303,6 +395,6 @@ export async function handleMemoryRequest(request: Request, env: MemoryEnv): Pro
     else if (request.method === 'PUT' && collection === 'places' && !action) await savePlace(request, env.DB, id);
     else if (request.method === 'PUT' && collection === 'wishPlans' && !action) await saveWishPlan(request, env.DB, id);
     else fail(405, '方法不支持。');
-    return json(await memoryBootstrap(request, env.DB));
+    return json(await memoryBootstrap(request, env.DB, actor));
   } catch (error) { return error instanceof Failure ? json({ error: error.message }, error.status) : json({ error: '回忆册暂时不可用，请稍后重试。' }, 503); }
 }

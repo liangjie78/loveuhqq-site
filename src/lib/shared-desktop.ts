@@ -3,3 +3,4 @@ export interface DesktopItem {
   x: number; y: number; rotation: number; version: number;
 }
 export interface DesktopSnapshot { revision: number; items: DesktopItem[]; current: { kind: 'story' | 'photo'; id: string; memberId: string } | null }
+export interface DesktopUndo { itemId: string; version: number; undoUntil: number }

@@ -40,7 +40,7 @@ npm run preview
 
 构建产物在 `dist/`。首页入口是 [`src/pages/index.astro`](src/pages/index.astro)，各页通过 [`src/layouts/Base.astro`](src/layouts/Base.astro) 加载共享样式。
 
-相册照片不进仓库：用 `npm run photos:prepare -- <照片文件夹> --featured "标题,标题,标题"` 在本机生成去除 EXIF 的 WebP 和清单（输出到已忽略的 `.private-photos/`，文件名即标题），再用 `npm run photos:upload:preview` 或 `photos:upload:production` 上传到对应的 KV 命名空间，详见 [部署说明](docs/DEPLOYMENT.md#私密相册)。日期仍只修改 `src/lib/anniversary.ts` 中的来源，不在页面写死天数。
+相册照片不进仓库。用 `npm run photos:prepare -- <照片文件夹> --featured "标题,标题,标题"` 在本机生成去除 EXIF 的 WebP 和清单（输出到已忽略的 `.private-photos/`，文件名即标题），再用 `npm run photos:upload:preview` 或 `photos:upload:production` 追加新照片。站内取下的照片可在相册底部恢复，期限为 30 天。详见 [部署说明](docs/DEPLOYMENT.md#私密相册)。
 
 百日信正式正文放在已忽略的 `.private-letter/hundred-day.json`，运行 `npm run letter:check` 检查格式；得到当前任务生产上传授权后用 `npm run letter:upload:production` 写入私密 KV。真实信件不上传预览环境，也不写入源码、测试或 PR；详见 [私密百日信](docs/DEPLOYMENT.md#私密百日信)。
 

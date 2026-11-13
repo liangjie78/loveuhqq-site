@@ -167,9 +167,9 @@ const newButtons: Record<string, { attr: string; label: string }> = {
                       <label class="field"><span>年份</span><input class="input" name="year" type="number" min="1900" max="2200" required /></label>
                     </div>
                     <div class="form-row">
-                      <label class="field"><span>关联故事</span><select class="select" name="storyId" data-place-story><option value="">暂不关联</option></select></label>
-                      <label class="field"><span>关联愿望</span><select class="select" name="wishId" data-place-wish><option value="">暂不关联</option></select></label>
                     </div>
+                    <fieldset><legend>关联故事</legend><div class="choice-list" data-place-story></div></fieldset>
+                    <fieldset><legend>关联愿望</legend><div class="choice-list" data-place-wish></div></fieldset>
                     <details class="coords"><summary>坐标（选填）</summary><p class="meta">留空也能保存，不会读取设备定位。</p><div class="form-row"><label class="field"><span>纬度</span><input class="input" name="latitude" type="number" min="-90" max="90" step="any" /></label><label class="field"><span>经度</span><input class="input" name="longitude" type="number" min="-180" max="180" step="any" /></label></div></details>
                     <div class="row-actions"><button class="btn btn-solid" type="submit">收好地点</button><button class="btn" type="button" data-place-cancel>先不记</button></div>
                   </form>

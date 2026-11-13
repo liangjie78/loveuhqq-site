@@ -114,6 +114,12 @@
 }
 .album-status { display: flex; flex-wrap: wrap; align-items: center; gap: 1rem; margin-bottom: 2rem; }
 .album-status:not(:has(:not([hidden]))) { display: none; }
+.album-removed { margin-bottom: var(--chapter-pad); border-top: 1px solid var(--hairline); padding-top: 1rem; }
+.album-removed summary { width: fit-content; cursor: pointer; color: var(--ink-2); }
+.album-removed ul { list-style: none; padding: 0; }
+.album-removed li { display: flex; flex-wrap: wrap; align-items: center; gap: .5rem 1rem; margin-top: .75rem; }
+.album-removed li span { min-width: 0; overflow-wrap: anywhere; }
+.album-removed small { color: var(--ink-2); }
 .album-locked { margin-bottom: 3rem; }
 .wall { display: grid; grid-template-columns: repeat(var(--cols, 3), minmax(0, 1fr)); gap: var(--gutter); align-items: start; padding-bottom: var(--chapter-pad); }
 .wall-col { display: grid; gap: var(--gutter); }

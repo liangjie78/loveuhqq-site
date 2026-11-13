@@ -174,7 +174,66 @@ describe('photos', () => {
     manifest = (await reader.call(`/api/photos/${ids[0]}`, { method: 'DELETE', body: { expectedRevision: manifest.revision } })).json;
     assert.ok(!manifest.photos.some(photo => photo.id === ids[0]));
     assert.ok(!manifest.featured.includes(ids[0]), 'removing a photo also takes it off the home page');
+    assert.equal((await reader.call(`/api/photos/${ids[0]}/thumb`)).status, 404);
+    assert.equal((await reader.call('/api/photos')).json.removed, undefined);
+    assert.equal((await env.client().call('/api/photos?removed')).status, 401);
+    const removed = (await reader.call('/api/photos?removed')).json.removed.find(photo => photo.id === ids[0]);
+    assert.equal(removed.title, '改过的名字');
+    assert.ok(removed.restoreUntil > Date.now());
+    const restored = await reader.call(`/api/photos/${ids[0]}/restore`, { method: 'PUT', body: { expectedRevision: manifest.revision } });
+    assert.equal(restored.status, 200);
+    assert.equal(restored.json.photos.find(photo => photo.id === ids[0]).title, removed.title);
+    assert.ok(!restored.json.featured.includes(ids[0]));
+    assert.equal((await reader.call(`/api/photos/${ids[0]}/thumb`, { raw: true })).status, 200);
   });
+
+  test('expired removals and failed uploads are cleaned without touching active photos', async () => {
+    const reader = env.client();
+    await reader.login(env.password);
+    const revision = (await reader.call('/api/photos')).json.revision;
+    const id = 'd000000000000001';
+    const saved = await upload(reader, { id, title: '回收期限测试', revision });
+    assert.equal(saved.status, 200);
+    const removed = await reader.call(`/api/photos/${id}`, { method: 'DELETE', body: { expectedRevision: saved.json.revision } });
+    assert.equal(removed.status, 200);
+    const row = await env.db.prepare('UPDATE album_photos SET removed_at = 1 WHERE id = ? RETURNING object_id').bind(id).first();
+    const kv = await env.mf.getKVNamespace('PHOTOS');
+    const staged = 'test-expired-upload';
+    await kv.put(`photos/${staged}/thumb.webp`, await webp(20, 25));
+    await env.db.prepare('INSERT INTO album_uploads VALUES (?, 1)').bind(staged).run();
+    const afterExpiry = (await reader.call('/api/photos?removed')).json;
+    assert.ok(!afterExpiry.removed.some(photo => photo.id === id));
+    assert.equal((await reader.call(`/api/photos/${id}/restore`, { method: 'PUT', body: { expectedRevision: afterExpiry.revision } })).status, 404);
+    assert.ok(await kv.get(`photos/${row.object_id}/thumb.webp`, 'arrayBuffer'));
+    const worker = await env.mf.getWorker();
+    assert.equal((await worker.scheduled({ cron: '0 * * * *' })).outcome, 'ok');
+    assert.equal(await kv.get(`photos/${row.object_id}/thumb.webp`), null);
+    assert.equal(await kv.get(`photos/${row.object_id}/large.webp`), null);
+    assert.equal(await kv.get(`photos/${staged}/thumb.webp`), null);
+    assert.equal(await env.db.prepare('SELECT id FROM album_photos WHERE id = ?').bind(id).first(), null);
+    assert.equal((await reader.call('/api/photos/a000000000000002/thumb', { raw: true })).status, 200);
+  });
+});
+
+test('the first image read can import either legacy album manifest without rewriting bytes', async () => {
+  for (const source of ['D1', 'KV']) {
+    const legacy = await startWorker();
+    try {
+      const photo = { id: 'd1d1d1d1d1d1d1d1', title: '旧照片', date: null, width: 1, height: 1 };
+      const manifest = { version: 1, revision: 17, photos: [photo], featured: [photo.id] };
+      const kv = await legacy.mf.getKVNamespace('PHOTOS');
+      const bytes = await sharp({ create: { width: 1, height: 1, channels: 3, background: '#fff' } }).webp().toBuffer();
+      await kv.put(`photos/${photo.id}/thumb.webp`, bytes);
+      if (source === 'D1') await legacy.db.prepare('INSERT INTO photo_manifest VALUES (1, ?, 17)').bind(JSON.stringify(manifest)).run();
+      else await kv.put('manifest.json', JSON.stringify(manifest));
+      const reader = legacy.client();
+      await reader.login(legacy.password);
+      const image = await reader.call(`/api/photos/${photo.id}/thumb`, { raw: true });
+      assert.equal(image.status, 200);
+      assert.deepEqual(Buffer.from(await image.arrayBuffer()), bytes);
+      assert.deepEqual((await reader.call('/api/photos')).json, manifest);
+    } finally { await legacy.mf.dispose(); }
+  }
 });
 
 describe('the hundred-day letter', () => {
