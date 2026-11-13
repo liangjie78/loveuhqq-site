@@ -1,7 +1,7 @@
 import { defineConfig, devices } from '@playwright/test';
 
 const port = process.env.E2E_PORT ?? '8790';
-const baseURL = `http://localhost:${port}`;
+const baseURL = `http://127.0.0.1:${port}`;
 
 export default defineConfig({
   testDir: 'tests/e2e',
@@ -27,7 +27,8 @@ export default defineConfig({
   webServer: {
     command: 'node scripts/e2e-server.mjs',
     url: `${baseURL}/api/session`,
-    reuseExistingServer: !process.env.CI,
+    reuseExistingServer: false,
+    gracefulShutdown: { signal: 'SIGTERM', timeout: 5000 },
     timeout: 120_000,
   },
 });

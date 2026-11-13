@@ -10,13 +10,20 @@ export class ApiError extends Error {
 
 export async function api<T>(path: string, options: RequestInit = {}): Promise<T> {
   const controller = new AbortController();
+  const signal = options.signal;
+  const abort = () => controller.abort();
+  if (signal?.aborted) abort();
+  else signal?.addEventListener('abort', abort, { once: true });
   const timeout = setTimeout(() => controller.abort(), 20_000);
   try {
     const response = await fetch(path, { credentials: 'same-origin', cache: 'no-store', ...options,
-      signal: options.signal ?? controller.signal,
+      signal: controller.signal,
       headers: { 'Content-Type': 'application/json', ...options.headers } });
     const result = await response.json();
     if (!response.ok) throw new ApiError(response.status, result.error ?? '暂时无法连接手账，请稍后重试。');
     return result as T;
-  } finally { clearTimeout(timeout); }
+  } finally {
+    clearTimeout(timeout);
+    signal?.removeEventListener('abort', abort);
+  }
 }

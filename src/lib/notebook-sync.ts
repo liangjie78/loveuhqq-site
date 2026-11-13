@@ -26,9 +26,7 @@ export function validateCloud(value: unknown): CloudNotebook {
 }
 
 /** Keeps, per note and per wish, whichever side carries the newer revision. */
-export function mergeCloud(currentValue: CloudNotebook, incomingValue: CloudNotebook): CloudNotebook {
-  const current = validateCloud(currentValue);
-  const incoming = validateCloud(incomingValue);
+export function mergeCloud(current: CloudNotebook, incoming: CloudNotebook): CloudNotebook {
   const notes: Record<string, string> = { ...current.notes };
   const noteVersions: Record<string, number> = { ...current.revisions.notes };
   const noteKeys = new Set([...Object.keys(current.revisions.notes), ...Object.keys(incoming.revisions.notes), ...Object.keys(current.notes), ...Object.keys(incoming.notes)]);
@@ -52,7 +50,7 @@ export function mergeCloud(currentValue: CloudNotebook, incomingValue: CloudNote
   const order = [...current.wishes.map(({ id }) => id), ...incoming.wishes.map(({ id }) => id).filter(id => !currentById.has(id))];
   for (const id of order) {
     const selected = revisionOf(incoming.revisions.wishes, id) >= revisionOf(current.revisions.wishes, id) ? incomingById.get(id) : currentById.get(id);
-    if (selected && !wishes.some(wish => wish.id === id)) wishes.push(selected);
+    if (selected) wishes.push(selected);
   }
   return { version: 1, notes, wishes, revisions: { notes: noteVersions, wishes: wishVersions } };
 }

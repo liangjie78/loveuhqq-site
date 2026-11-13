@@ -72,7 +72,9 @@ const image = new URL('/images/og-yuwen.jpg', Astro.site).href;
         }
         // Fail-safe: if the gate bundle never runs, never leave the page behind a lock nobody can open.
         setTimeout(function () {
-          if (!logoutUnconfirmed && !root.classList.contains('gate-ready')) root.classList.remove('is-locked');
+          if (!logoutUnconfirmed && !root.classList.contains('gate-ready')) {
+            root.classList.remove('is-locked', 'has-js', 'can-reveal');
+          }
         }, 3000);
         // Hold the opening until both serifs are in, so the title never swaps faces mid-way.
         if (document.fonts && document.fonts.load) {

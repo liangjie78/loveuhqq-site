@@ -269,6 +269,8 @@
 @media (max-width: 63.99rem) {
   .masthead { grid-template-columns: 1fr auto; }
   .pillnav { display: none; }
+  html:not(.has-js) .pillnav { display: flex; grid-column: 1 / -1; grid-row: 2; flex-wrap: wrap; }
+  html:not(.has-js) .masthead:has(.pillnav) { height: auto; }
   .menu-toggle { display: inline-grid; }
   .day-chip { display: none; }
   .masthead-tools > .session:has(+ .menu-toggle:last-child) { margin-right: 0; }

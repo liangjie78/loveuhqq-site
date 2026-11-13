@@ -11,11 +11,12 @@
  */
 
 import { createHash } from 'node:crypto';
-import { mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdirSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { basename, dirname, extname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import sharp from 'sharp';
-import { parsePhotoManifest, photoManifestKey, photoObjectKey } from '../src/lib/photos.ts';
+import { isCalendarDate } from '../src/lib/notebook.ts';
+import { parsePhotoManifest, photoManifestKey, photoObjectKey, sortPhotos } from '../src/lib/photos.ts';
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 export const outDir = join(root, '.private-photos');
@@ -23,8 +24,9 @@ export const outDir = join(root, '.private-photos');
 /** EXIF DateTimeOriginal/DateTime is plain ASCII "YYYY:MM:DD HH:MM:SS" in phone local time. */
 export function exifDate(exif) {
   const match = exif?.toString('latin1').match(/(\d{4}):(\d{2}):(\d{2}) \d{2}:\d{2}:\d{2}/);
-  if (!match || match[1] === '0000') return null;
-  return `${match[1]}-${match[2]}-${match[3]}`;
+  if (!match) return null;
+  const date = `${match[1]}-${match[2]}-${match[3]}`;
+  return isCalendarDate(date) ? date : null;
 }
 
 export const photoId = (bytes) => createHash('sha256').update(bytes).digest('hex').slice(0, 16);
@@ -36,9 +38,11 @@ async function main() {
   const featuredArg = args.includes('--featured') ? args[args.indexOf('--featured') + 1] : '';
   const featuredTitles = featuredArg ? featuredArg.split(/[,，]/).map(title => title.trim()).filter(Boolean) : [];
 
-  rmSync(outDir, { recursive: true, force: true });
+  const files = readdirSync(source, { withFileTypes: true })
+    .filter(file => file.isFile() && /\.(jpe?g|png|webp|heic|heif)$/i.test(file.name))
+    .map(file => file.name).sort();
+  if (!files.length) throw new Error('No photos found in the source folder.');
   const photos = [];
-  const files = readdirSync(source).filter(name => /\.(jpe?g|png|webp|heic|heif)$/i.test(name)).sort();
   for (const name of files) {
     const bytes = readFileSync(join(source, name));
     const id = photoId(bytes);
@@ -51,17 +55,17 @@ async function main() {
       .webp({ quality: 80 }).toFile(join(outDir, photoObjectKey(id, 'thumb')));
     const large = await image().resize({ width: 1800, height: 1800, fit: 'inside', withoutEnlargement: true })
       .webp({ quality: 82 }).toFile(join(outDir, photoObjectKey(id, 'large')));
-    photos.push({ id, title, date: exifDate(exif), width: large.width, height: large.height });
-    console.log(`${id}  ${exifDate(exif) ?? '----------'}  ${large.width}×${large.height}  ${title}`);
+    const date = exifDate(exif);
+    photos.push({ id, title, date, width: large.width, height: large.height });
+    console.log(`${id}  ${date ?? '----------'}  ${large.width}×${large.height}  ${title}`);
   }
-  photos.sort((a, b) => (a.date ?? '9999').localeCompare(b.date ?? '9999') || a.title.localeCompare(b.title, 'zh'));
 
   const featured = featuredTitles.map(title => {
     const match = photos.find(photo => photo.title === title);
     if (!match) throw new Error(`No photo titled "${title}"`);
     return match.id;
   });
-  const manifest = parsePhotoManifest({ version: 1, featured, photos });
+  const manifest = parsePhotoManifest({ version: 1, featured, photos: sortPhotos(photos) });
   writeFileSync(join(outDir, photoManifestKey), `${JSON.stringify(manifest, null, 2)}\n`);
   console.log(`${photos.length} photos -> ${outDir}`);
 }

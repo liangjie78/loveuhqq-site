@@ -1,4 +1,4 @@
-import type { DesktopItem, DesktopSnapshot } from './shared-desktop';
+import type { DesktopItem, DesktopSnapshot, DesktopUndo } from './shared-desktop';
 
 export interface DesktopProtocol {
   snapshot: DesktopSnapshot;
@@ -13,6 +13,7 @@ export interface DesktopMessage {
   mutationId?: string;
   state?: DesktopSnapshot;
   error?: string;
+  undo?: DesktopUndo | null;
 }
 
 export const emptyDesktopProtocol = (): DesktopProtocol => ({
@@ -75,6 +76,7 @@ export function adoptLatestDesktopPosition(protocol: DesktopProtocol): DesktopPr
 export function retryDesktopPosition(protocol: DesktopProtocol, mutationId: string): DesktopProtocol | null {
   if (!protocol.conflicted) return null;
   const latest = protocol.snapshot.items.find(item => item.id === protocol.conflicted!.id);
+  if (!latest && protocol.conflicted.version > 0) return null;
   const pending = { ...protocol.conflicted, version: latest?.version ?? 0 };
   return { ...protocol, pending, pendingMutationId: mutationId, conflicted: null, status: 'saving' };
 }

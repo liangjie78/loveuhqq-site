@@ -5,10 +5,10 @@ export interface CloudNotebook extends Notebook {
 }
 export const emptyNotebook = (): Notebook => ({ version: 1, notes: {}, wishes: [] });
 
-export function isCalendarDate(date: string): boolean {
+export function isCalendarDate(date: unknown): date is string {
+  if (typeof date !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(date) || Number(date.slice(0, 4)) < 1900) return false;
   const parsed = new Date(`${date}T00:00:00Z`);
-  return /^\d{4}-\d{2}-\d{2}$/.test(date) && Number(date.slice(0, 4)) >= 1900 &&
-    Number.isFinite(parsed.getTime()) && parsed.toISOString().slice(0, 10) === date;
+  return Number.isFinite(parsed.getTime()) && parsed.toISOString().slice(0, 10) === date;
 }
 
 /** Validate a complete notebook payload without truncating any writing. */

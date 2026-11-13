@@ -1,7 +1,7 @@
 import { api } from '../lib/cloud-notebook';
 import { beginMemberRequest, isLatestMemberRequest, selectMember, setCurrentMember } from '../lib/member';
 import type { MemoryBootstrap } from '../lib/memory-book';
-import { getSession, refreshSession } from '../lib/session';
+import { onSessionChange } from '../lib/session';
 import { memberStore } from '../stores/member';
 import { sessionStore } from '../stores/session';
 import { askOtherDrafts, broadcastMemberChange, discardIdentityMessage, openIdentityChannel } from '../lib/identity-channel';
@@ -94,18 +94,12 @@ export function startIdentity(): void {
   channel?.addEventListener('message', event => { if (event.data === 'changed') void refresh(); });
   document.addEventListener('gate:open', () => void refresh());
   window.addEventListener('storage', event => { if (event.key === 'loveuhqq_member_changed') void refresh(); });
-  window.addEventListener('pagehide', () => { generation++; hide(); setCurrentMember(null); });
-  window.addEventListener('pageshow', event => {
-    if (!event.persisted) return;
-    void refreshSession().then(state => { if (state.authenticated) void refresh(); }).catch(hide);
-  });
-  let wasAuthenticated = sessionStore.getState().authenticated;
-  sessionStore.subscribe(state => {
+  let wasAuthenticated = false;
+  onSessionChange(state => {
     if (state.authenticated === wasAuthenticated) return;
     wasAuthenticated = state.authenticated;
     if (!state.authenticated) { generation++; setCurrentMember(null); hide(); }
     else if (!root.classList.contains('is-locked')) void refresh();
   });
   paint();
-  void getSession().then(() => refresh()).catch(hide);
 }

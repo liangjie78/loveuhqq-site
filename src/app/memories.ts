@@ -1,18 +1,19 @@
 /** The shared memory book: stories, plans, letters, screening, places and the desk. */
 import { api, ApiError } from '../lib/cloud-notebook';
+import { getShanghaiDate } from '../lib/anniversary';
 import { getSession, onSessionChange, publishSession, refreshSession } from '../lib/session';
 import { parsePhotoManifest, photoUrl, type PrivatePhoto } from '../lib/photos';
-import type { CloudNotebook, Wish } from '../lib/notebook';
-import { audioMaxBytes, audioMaxSeconds, memoryApiRoot, memoryAudioUrl, type MemoryBootstrap, type MemoryStory, type MemoryLetter, type MemoryPlace, type StoryInput, type LetterInput, type PartInput } from '../lib/memory-book';
+import type { Wish } from '../lib/notebook';
+import { audioMaxBytes, audioMaxSeconds, memoryApiRoot, memoryAudioUrl, type MemoryBootstrap, type MemorySync, type MemoryStory, type MemoryLetter, type MemoryPlace, type StoryInput, type LetterInput, type PartInput, type WishPlanInput } from '../lib/memory-book';
 import { buildMemoryExport } from '../lib/memory-export';
 import { lucideSvg, type LucideIconNode } from '../lib/lucide-dom';
 import { selectMember, setCurrentMember } from '../lib/member';
 import { emitSharedDeskUpdate } from '../lib/shared-desk-events';
-import { askOtherDrafts as askDrafts, discardIdentityMessage } from '../lib/identity-channel';
+import { askOtherDrafts, broadcastMemberChange, discardIdentityMessage, openIdentityChannel } from '../lib/identity-channel';
 import { scrollToElement } from '../motion/pointer';
 import './desk';
 import { mountAura } from '../motion/aura';
-import { ArrowDown, ArrowRight, ArrowUp, Lock, Pencil, RotateCw, Trash2 } from 'lucide';
+import { ArrowDown, ArrowRight, ArrowUp, Lock, Pencil, RotateCw } from 'lucide';
 
 const $ = <T extends HTMLElement = HTMLElement>(selector: string, parent: ParentNode = document) => parent.querySelector<T>(selector)!;
 const all = <T extends HTMLElement = HTMLElement>(selector: string, parent: ParentNode = document) => [...parent.querySelectorAll<T>(selector)];
@@ -29,13 +30,13 @@ const formTriggers = new Map<HTMLFormElement, HTMLElement>();
 const field = (form: HTMLFormElement, name: string) => form.elements.namedItem(name) as HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement;
 const value = (form: HTMLFormElement, name: string) => field(form, name).value;
 const set = (form: HTMLFormElement, name: string, content: string) => { field(form, name).value = content; };
-const today = () => new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Shanghai', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date());
+const today = () => getShanghaiDate(new Date());
 const empty = (): MemoryBootstrap => ({ member: null, members: [], stories: [], letters: [], places: [], wishPlans: [] });
 let book = empty();
 let authenticated = false;
 let generation = 0;
 let photos: PrivatePhoto[] = [];
-let notebook: CloudNotebook | null = null;
+let photoRevision: number | null = null;
 let selectedStory: string | null = new URLSearchParams(location.search).get('story');
 let selectedLetter: string | null = null;
 let storyEditVersion = 0;
@@ -53,8 +54,8 @@ const cleanups = new Set<() => void>();
 const recordingCleanups = new WeakMap<HTMLElement, () => void>();
 let filter = new URLSearchParams(location.search);
 let selectedPlaceYear = '';
-let loading: Promise<void> | null = null;
-let lastWriteConflict = false;
+let loading: Promise<boolean> | null = null;
+let letterSelection = 0;
 let switching = false;
 let remotePending = false;
 let loadedOnce = false;
@@ -95,8 +96,6 @@ async function exportVisibleRecords() {
   exportStatus.textContent = '正在整理已保存的记录…';
   exportTimeout = setTimeout(() => controller.abort(), 20_000);
   try {
-    const notes = await api<CloudNotebook>('/api/notebook', { signal: controller.signal });
-    if (!active()) return;
     const fresh = await api<MemoryBootstrap>(`${memoryApiRoot}/bootstrap`, { signal: controller.signal });
     if (!active()) return;
     if (fresh.member?.id !== memberId) {
@@ -105,7 +104,7 @@ async function exportVisibleRecords() {
     const session = await refreshSession();
     if (!active() || fresh.member?.id !== memberId || !session.authenticated) return;
     const exportedAt = new Date().toISOString();
-    const json = JSON.stringify(buildMemoryExport(fresh, notes.wishes, exportedAt), null, 2);
+    const json = JSON.stringify(buildMemoryExport(fresh, fresh.wishes ?? [], exportedAt), null, 2);
     if (!active() || fresh.member?.id !== memberId) return;
     exportUrl = URL.createObjectURL(new Blob([json], { type: 'application/json;charset=utf-8' }));
     const link = document.createElement('a');
@@ -131,8 +130,8 @@ async function exportVisibleRecords() {
 function resetMedia() { cleanups.forEach(clean => clean()); cleanups.clear(); all<HTMLMediaElement>('audio, video', privateRoot).forEach(media => { media.pause(); media.removeAttribute('src'); media.load(); }); }
 function disposeRecordings(parent: HTMLElement) { all<HTMLElement>('.memory-recording', parent).forEach(node => { const clean = recordingCleanups.get(node); clean?.(); if (clean) cleanups.delete(clean); }); }
 function clearSelectors() {
-  $<HTMLSelectElement>('[data-place-story]').replaceChildren(new Option('暂不关联', ''));
-  $<HTMLSelectElement>('[data-place-wish]').replaceChildren(new Option('暂不关联', ''));
+  $('[data-place-story]').replaceChildren();
+  $('[data-place-wish]').replaceChildren();
   const year = $<HTMLSelectElement>('[data-place-year]');
   year.replaceChildren(new Option('所有年份', '')); delete year.dataset.years; selectedPlaceYear = '';
   all<HTMLOptionElement>('option', field(letterForm, 'recipientId')).forEach(option => { option.textContent = option.value === 'one' ? '第一位' : '第二位'; });
@@ -146,7 +145,7 @@ function discardShownContent() {
   loading = null;
   stopScreening(); screening = []; screeningIndex = 0;
   resetMedia(); emitSharedDeskUpdate(null); setCurrentMember(null);
-  book = empty(); photos = []; notebook = null; selectedLetter = null; loadedOnce = false;
+  book = empty(); photos = []; photoRevision = null; selectedLetter = null; loadedOnce = false;
   all<HTMLFormElement>('form', privateRoot).forEach(form => { form.reset(); delete form.dataset.dirty; });
   for (const selector of ['[data-story-list]', '[data-story-detail]', '[data-story-photos]', '[data-story-wishes]', '[data-memory-wishes]', '[data-letter-list]', '[data-letter-detail]', '[data-screening-options]', '[data-screening-order]', '[data-place-list]']) $(selector).replaceChildren();
   $('[data-screening-stage]').replaceChildren(el('p', '选几页真实的内容，再开始播放。'));
@@ -170,10 +169,11 @@ function discardShownContent() {
 function clearPrivate() {
   discardShownContent();
   $('[data-memory-locked]').hidden = false;
+  $('[data-memory-retry]').hidden = true;
   status.textContent = '';
 }
 async function load() {
-  if (!authenticated || switching) return;
+  if (!authenticated || switching || mutations.size) return false;
   if (loading) return loading;
   const token = generation;
   const controller = new AbortController(); request = controller;
@@ -182,48 +182,68 @@ async function load() {
   if (!loadedOnce) status.textContent = '正在翻开回忆册…';
   loading = (async () => {
     try {
-      const next = await api<MemoryBootstrap>(`${memoryApiRoot}/bootstrap`, { signal: controller.signal });
-      if (token !== generation || !authenticated) return;
-      if (book.member && book.member.id !== next.member?.id) {
+      const query = new URLSearchParams({ member: book.member?.id ?? '' });
+      if (book.revision !== undefined) query.set('revision', String(book.revision));
+      if (book.day) query.set('day', book.day);
+      if (photoRevision !== null) query.set('photos', String(photoRevision));
+      const update = await api<MemorySync>(`${memoryApiRoot}/sync?${query}`, { signal: controller.signal });
+      const next = update.book;
+      if (controller.signal.aborted || token !== generation || !authenticated) return false;
+      if (book.member && book.member.id !== update.memberId) {
         cancelExport();
         if (hasUnsavedChanges() && !window.confirm(discardIdentityMessage)) {
           await api<MemoryBootstrap>(`${memoryApiRoot}/identity`, { method: 'POST', signal: controller.signal, body: JSON.stringify({ id: book.member.id }) });
-          if (token !== generation || !authenticated) return;
+          if (controller.signal.aborted || token !== generation || !authenticated) return false;
           postMemberChanged();
           status.textContent = '';
-          return;
+          return false;
         }
-        if (token !== generation || !authenticated) return;
+        if (controller.signal.aborted || token !== generation || !authenticated) return false;
         resetMedia(); stopScreening(); screening = []; screeningIndex = 0; emitSharedDeskUpdate(null); setCurrentMember(null);
         all<HTMLFormElement>('form', privateRoot).forEach(form => { form.reset(); delete form.dataset.dirty; });
+        $('[data-memory-wishes]').replaceChildren();
+        renderedLists.delete($('[data-memory-wishes]'));
         clearSelectors();
         all<HTMLElement>('[data-story-detail], [data-letter-detail], [data-screening-stage], [data-screening-order]', privateRoot).forEach(node => node.replaceChildren());
         storyForm.hidden = letterForm.hidden = placeForm.hidden = true;
         formTriggers.clear();
       }
-      book = next;
-      setCurrentMember(next.member?.id ?? null);
-      if (next.member) {
-        const [manifest, notes] = await Promise.all([api('/api/photos', { signal: controller.signal }), api<CloudNotebook>('/api/notebook', { signal: controller.signal })]);
-        if (token !== generation || !authenticated) return;
-        photos = parsePhotoManifest(manifest).photos; notebook = notes;
-      } else { photos = []; notebook = null; }
-      render(); status.textContent = ''; $('[data-memory-retry]').hidden = true;
+      if (next) { book = next; setCurrentMember(next.member?.id ?? null); }
+      if (update.album) photos = parsePhotoManifest(update.album).photos;
+      if (update.photoRevision === null) photos = [];
+      photoRevision = update.photoRevision;
+      if (!loadedOnce || next || update.album) render();
+      status.textContent = ''; $('[data-memory-retry]').hidden = true;
       loadedOnce = true;
-    } catch (error) { if (token === generation && !controller.signal.aborted) report(error); }
-    finally { if (token === generation) { request = null; loading = null; } }
+      return true;
+    } catch (error) {
+      if (token === generation && !controller.signal.aborted) report(error);
+      return false;
+    }
+    finally { if (request === controller) { request = null; loading = null; } }
   })();
   return loading;
 }
-async function write(path: string, method: string, body?: unknown): Promise<boolean> {
-  lastWriteConflict = false;
+async function write(path: string, method: string, body?: unknown): Promise<'saved' | 'conflict' | 'failed'> {
+  request?.abort(); request = null; loading = null;
   const token = generation;
   const controller = new AbortController(); mutations.add(controller);
   try {
     const next = await api<MemoryBootstrap>(`${memoryApiRoot}${path}`, { method, signal: controller.signal, ...(body === undefined ? {} : { body: JSON.stringify(body) }) });
-    if (token !== generation || !authenticated) return false;
-    book = next; render(); status.textContent = '收好了。'; return true;
-  } catch (error) { if (token === generation && !controller.signal.aborted) { lastWriteConflict = error instanceof ApiError && error.status === 409; report(error); } return false; }
+    if (token !== generation || !authenticated) return 'failed';
+    if (next.member?.id !== book.member?.id) { scheduleRemote(false); return 'failed'; }
+    if ((next.revision ?? -1) > (book.revision ?? -1)
+      || (next.revision === book.revision && (next.day ?? '') >= (book.day ?? ''))) {
+      book = next;
+      render();
+    }
+    status.textContent = '收好了。';
+    return 'saved';
+  } catch (error) {
+    if (token !== generation || controller.signal.aborted) return 'failed';
+    report(error);
+    return error instanceof ApiError && error.status === 409 ? 'conflict' : 'failed';
+  }
   finally { mutations.delete(controller); }
 }
 async function submit(form: HTMLFormElement, task: () => Promise<void>) {
@@ -245,11 +265,13 @@ function cancelForm(form: HTMLFormElement, fallback: HTMLElement) {
 }
 function memberName(id: string) { return id === 'one' ? '男生' : '女生'; }
 function conflictReview(form: HTMLFormElement, latest: () => { text: string; accept: () => void }) {
-  if (!lastWriteConflict || form.querySelector('[data-conflict-review]')) return;
+  if (form.querySelector('[data-conflict-review]')) return;
   const section = el('section'); section.dataset.conflictReview = '';
   section.append(el('p', '服务端已有更新，当前输入还在。先查看最新内容，再决定是否用当前输入替换。'));
   section.append(button('查看最新内容', () => { void (async () => {
-    await load(); if (!form.isConnected || !book.member) return;
+    const fresh = await load();
+    if (!section.isConnected || !book.member) return;
+    if (!fresh) { section.querySelector('p')!.textContent = '暂时没能读取最新内容，请再试一次。'; return; }
     const current = latest(); section.replaceChildren(el('p', '手账里的最新内容：'), el('p', current.text, 'memory-prose'), button('确认保留当前输入，准备重新保存', () => { current.accept(); section.remove(); status.textContent = '当前输入已保留，检查后再按保存。'; }));
   })(); })); form.append(section);
 }
@@ -269,24 +291,25 @@ async function selectIdentity(id: string) {
   let failed = false;
   const controller = new AbortController();
   try {
-    const elsewhere = await askOtherDrafts();
+    const elsewhere = await askOtherDrafts(identityChanges);
     if (!authenticated || book.member?.id === id) return;
     if ((hasUnsavedChanges() || elsewhere) && !window.confirm(discardIdentityMessage)) return;
     discardShownContent();
-    privateRoot.hidden = false;
     $('[data-memory-locked]').hidden = true;
     status.textContent = '正在选择…';
     const token = generation;
     mutations.add(controller);
     const next = await selectMember(id, controller.signal);
-    if (!next || token !== generation || !authenticated) return;
+    if (token !== generation || !authenticated) return;
+    if (!next) { remotePending = true; return; }
     postMemberChanged();
-    book = next;
-    if (next.member) {
-      const [manifest, notes] = await Promise.all([api('/api/photos', { signal: controller.signal }), api<CloudNotebook>('/api/notebook', { signal: controller.signal })]);
-      if (token !== generation || !authenticated) return;
-      photos = parsePhotoManifest(manifest).photos; notebook = notes;
-    } else { photos = []; notebook = null; }
+    const query = new URLSearchParams({ member: id, revision: String(next.revision), day: next.day ?? '' });
+    const update = await api<MemorySync>(`${memoryApiRoot}/sync?${query}`, { signal: controller.signal });
+    if (token !== generation || !authenticated) return;
+    if (update.memberId !== id) { remotePending = true; return; }
+    book = update.book ?? next;
+    photos = update.album ? parsePhotoManifest(update.album).photos : [];
+    photoRevision = update.photoRevision;
     render();
     if (book.member && document.activeElement === document.body) $('[data-switch-identity]').focus({ preventScroll: true });
     status.textContent = '';
@@ -380,31 +403,57 @@ function openStory(id: string) {
   scrollToElement($('[data-story-detail]'));
 }
 function imageFor(photo: PrivatePhoto, size: 'thumb' | 'large' = 'large') { const image = el('img'); image.src = photoUrl(photo.id, size); image.alt = photo.title; image.width = photo.width; image.height = photo.height; image.loading = 'lazy'; return image; }
+function renderPartContent(container: HTMLElement, part?: MemoryStory['parts'][number]) {
+  const key = JSON.stringify(part ?? null);
+  if (container.dataset.key === key || all<HTMLAudioElement>('audio', container).some(audio => !audio.paused)) return;
+  container.dataset.key = key;
+  if (part?.text === undefined) {
+    container.replaceChildren(el('p', part?.submitted ? '已经写好，等两个人一起打开。' : '还没提交自己的版本。'));
+    return;
+  }
+  container.replaceChildren(el('p', part.text || '还没有写下正文。', 'memory-prose'));
+  if (part.reply) container.append(el('p', `回应：${part.reply}`, 'memory-prose'));
+  for (const id of part.audioIds ?? []) container.append(audioCard(id));
+}
 function renderStory() {
   const detail = $('[data-story-detail]');
   const story = book.stories.find(item => item.id === selectedStory);
   detail.hidden = !story;
-  if (!story) { renderedStory = ''; detail.replaceChildren(); return; }
-  const snapshot = JSON.stringify([story, book.members, photos, notebook?.wishes, book.wishPlans, book.places]);
-  if (detail.dataset.storyId === story.id && (renderedStory === snapshot || [...detail.querySelectorAll('audio')].some(audio => !audio.paused))) return;
-  // Keep an active personal draft and its recording when metadata refreshes.
-  const active = detail.querySelector<HTMLFormElement>('form[data-part-form]');
-  if (active && active.dataset.storyId === story.id && active.dataset.dirty === 'yes') return;
-  if (detail.dataset.storyId === story.id && detail.querySelector('form[data-dirty="yes"]')) return;
+  if (!story) { renderedStory = ''; disposeRecordings(detail); detail.replaceChildren(); return; }
+  const storyPhotos = photos.filter(photo => story.photoIds.includes(photo.id));
+  const wishes = (book.wishes ?? []).filter(wish => story.wishIds.includes(wish.id) || book.wishPlans.some(plan => plan.id === wish.id && plan.storyId === story.id));
+  const plans = book.wishPlans.filter(plan => wishes.some(wish => wish.id === plan.id));
+  const locations = book.places.filter(place => place.storyIds.includes(story.id));
+  const snapshot = JSON.stringify([story, book.members, storyPhotos, wishes, plans, locations]);
+  if (detail.dataset.storyId === story.id) {
+    if (renderedStory === snapshot) return;
+    if (detail.querySelector('form[data-dirty="yes"], form[data-busy="yes"]') || all<HTMLAudioElement>('audio', detail).some(audio => !audio.paused)) {
+      for (const content of all<HTMLElement>('[data-part-member]', detail)) {
+        renderPartContent(content, story.parts.find(part => part.memberId === content.dataset.partMember));
+      }
+      return;
+    }
+  }
   detail.dataset.storyId = story.id;
   renderedStory = snapshot;
   disposeRecordings(detail); detail.replaceChildren(); detail.dataset.layout = story.layout;
   detail.append(el('p', story.date, 'memory-meta'), el('h3', story.title), el('p', story.text, 'memory-prose'));
-  detail.append(button('改这一页', trigger => openStoryForm(story, trigger), 'btn btn-sm', Pencil));
-  const wall = el('div', '', 'memory-story-photos'); story.photoIds.forEach(id => { const photo = photos.find(item => item.id === id); if (photo) wall.append(imageFor(photo)); }); detail.append(wall);
+  detail.append(button('改这一页', trigger => openStoryForm(book.stories.find(item => item.id === story.id) ?? story, trigger), 'btn btn-sm', Pencil));
+  const wall = el('div', '', 'memory-story-photos'); story.photoIds.forEach(id => { const photo = storyPhotos.find(item => item.id === id); if (photo) wall.append(imageFor(photo)); }); detail.append(wall);
   const parts = el('div', '', 'memory-parts');
   for (const member of book.members) {
-    const part = story.parts.find(item => item.memberId === member.id);
     const section = el('section', '', 'memory-part'); section.append(el('h4', `${member.name} 的这一页`));
-    if (part?.text !== undefined) { section.append(el('p', part.text || '还没有写下正文。', 'memory-prose')); if (part.reply) section.append(el('p', `回应：${part.reply}`, 'memory-prose')); (part.audioIds ?? []).forEach(id => section.append(audioCard(id))); }
-    else section.append(el('p', part?.submitted ? '已经写好，等两个人一起打开。' : '还没提交自己的版本。'));
+    const content = el('div'); content.dataset.partMember = member.id;
+    renderPartContent(content, story.parts.find(item => item.memberId === member.id));
+    section.append(content);
     if (member.id === book.member?.id) {
+      const refreshAfterEdit = () => {
+        edit.hidden = false;
+        renderStory();
+        detail.querySelector<HTMLElement>('[data-part-edit]')?.focus({ preventScroll: true });
+      };
       const edit = button('写自己的版本', () => {
+        const part = book.stories.find(item => item.id === story.id)?.parts.find(item => item.memberId === member.id);
         edit.hidden = true;
         const form = el('form', '', 'memory-form'); form.dataset.partForm = ''; form.dataset.storyId = story.id;
         const text = labeledTextarea('我记得的这一页', part?.text ?? ''); const reply = labeledTextarea('想回应对方的话', part?.reply ?? '', 3000);
@@ -412,35 +461,71 @@ function renderStory() {
         const label = el('label', '', 'memory-check'); label.append(submitted, el('span', '我写好了，可以提交（两人揭晓模式会等另一份提交）'));
         let audioIds = [...(part?.audioIds ?? [])]; let partEditVersion = part?.version ?? 0;
         text.input.maxLength = 10000; reply.input.maxLength = 3000;
-        form.append(text.label, reply.label, label, recorder({ storyId: story.id }, id => { audioIds.push(id); form.dataset.dirty = 'yes'; }));
+        form.append(text.label, reply.label, label, recorder({ storyId: story.id }, id => { audioIds.push(id); form.dataset.dirty = 'yes'; }, id => { audioIds = audioIds.filter(audioId => audioId !== id); }));
         const save = el('button', '收好自己的版本', 'btn btn-sm btn-solid'); save.type = 'submit';
-        form.append(save, button('先不改', () => { disposeRecordings(form); form.remove(); edit.hidden = false; edit.focus(); }));
+        const close = () => { disposeRecordings(form); form.remove(); refreshAfterEdit(); };
+        form.append(save, button('先不改', close));
         form.addEventListener('input', () => { form.dataset.dirty = 'yes'; });
-        form.addEventListener('submit', event => { event.preventDefault(); void submit(form, async () => { const body: PartInput = { expectedVersion: partEditVersion, text: text.input.value, reply: reply.input.value, submitted: submitted.checked, audioIds }; if (await write(`/stories/${story.id}/part`, 'PUT', body)) { delete form.dataset.dirty; renderStory(); } else conflictReview(form, () => { const latest = book.stories.find(item => item.id === story.id)?.parts.find(item => item.memberId === member.id); return { text: `${latest?.text ?? ''}\n${latest?.reply ?? ''}`, accept() { partEditVersion = latest?.version ?? 0; } }; }); }); });
+        form.addEventListener('submit', event => { event.preventDefault(); void submit(form, async () => {
+          if (form.querySelector('[data-recording-busy]')) { status.textContent = '录音还在处理，请稍后再保存。'; return; }
+          const body: PartInput = { expectedVersion: partEditVersion, text: text.input.value, reply: reply.input.value, submitted: submitted.checked, audioIds };
+          const result = await write(`/stories/${story.id}/part`, 'PUT', body);
+          if (result === 'saved' && form.isConnected) close();
+          else if (result === 'conflict') conflictReview(form, () => {
+            const latest = book.stories.find(item => item.id === story.id)?.parts.find(item => item.memberId === member.id);
+            return { text: `${latest?.text ?? ''}\n${latest?.reply ?? ''}`, accept() { partEditVersion = latest?.version ?? 0; } };
+          });
+        }); });
         section.append(form); text.input.focus();
-      }); section.append(edit);
+      }); edit.dataset.partEdit = ''; section.append(edit);
     }
     parts.append(section);
   }
   detail.append(parts);
   if (story.revealTogether) detail.append(el('p', story.openedAt ? '两个人的版本已经一起打开。' : '两个人都提交后，这一页才会揭晓。提交前可以继续改自己的版本。', 'memory-meta'));
-  const wishes = (notebook?.wishes ?? []).filter(wish => story.wishIds.includes(wish.id) || book.wishPlans.some(plan => plan.id === wish.id && plan.storyId === story.id));
   for (const wish of wishes) {
-    const plan = book.wishPlans.find(item => item.id === wish.id);
+    const plan = plans.find(item => item.id === wish.id);
     const card = el('section', '', 'memory-wish-plan');
-    card.append(el('h4', `从往后走到后来：${wish.text}`), el('p', `${wish.done ? '已经一起做过' : '还想一起做'} · ${plan?.plannedDate ?? '还没定日期'}`, 'memory-meta'));
+    const summary = el('p', wishPlanSummary(wish, plan?.plannedDate), 'memory-meta');
+    card.append(el('h4', `从往后走到后来：${wish.text}`), summary);
     const edit = button('安排这件事', () => {
+      const current = book.wishes?.find(item => item.id === wish.id);
+      if (!current) return;
       edit.hidden = true;
-      const form = wishPlan(wish, story);
-      form.append(button('先不改', () => { form.remove(); edit.hidden = false; edit.focus(); })); card.append(form);
+      const close = () => {
+        const current = book.wishes?.find(item => item.id === wish.id) ?? wish;
+        const currentPlan = book.wishPlans.find(item => item.id === wish.id);
+        summary.textContent = wishPlanSummary(current, currentPlan?.plannedDate);
+        edit.hidden = false;
+        renderStory();
+        detail.querySelector<HTMLElement>(`[data-story-wish-id="${CSS.escape(wish.id)}"] [data-wish-plan-open]`)?.focus({ preventScroll: true });
+      };
+      const form = wishPlan(current, story, close);
+      form.append(button('先不改', () => { form.remove(); close(); })); card.append(form);
     });
+    edit.dataset.wishPlanOpen = '';
+    card.dataset.storyWishId = wish.id;
     card.append(edit); detail.append(card);
   }
-  const locations = book.places.filter(place => place.storyIds.includes(story.id));
   if (locations.length) { const area = el('section'); area.append(el('h4', '这一页里的地点')); locations.forEach(place => area.append(button(`${place.name} · 查看地点`, () => { selectedPlaceYear = String(place.year); renderPlaces(); scrollToElement($('#places')); document.querySelector<HTMLElement>(`[data-place-id="${CSS.escape(place.id)}"]`)?.focus({ preventScroll: true }); }))); detail.append(area); }
 }
 function labeledTextarea(text: string, initial: string, maxLength = 10000) { const label = el('label', text); const input = el('textarea'); input.className = 'textarea'; input.rows = 5; input.maxLength = maxLength; input.value = initial; label.append(input); return { label, input }; }
+function relationChoice(name: string, id: string, text: string, checked: boolean) {
+  const label = el('label', '', 'memory-choice');
+  const input = el('input'); input.type = 'checkbox'; input.name = name; input.value = id; input.checked = checked;
+  label.append(input, el('span', text));
+  return label;
+}
+function showRelations(container: HTMLElement, name: string, items: { id: string; text: string }[], selected: string[], unavailable: string, emptyText: string) {
+  const known = new Set(items.map(item => item.id));
+  container.replaceChildren(
+    ...items.map(item => relationChoice(name, item.id, item.text, selected.includes(item.id))),
+    ...selected.filter(id => !known.has(id)).map(id => relationChoice(name, id, unavailable, true)),
+  );
+  if (!container.childElementCount) container.append(el('p', emptyText));
+}
 function openStoryForm(story?: MemoryStory, trigger = $('[data-story-new]')) {
+  if (storyForm.dataset.busy) return;
   formTriggers.set(storyForm, trigger);
   all<HTMLElement>('[data-conflict-review]', storyForm).forEach(node => node.remove());
   storyForm.reset(); delete storyForm.dataset.dirty; storyEditVersion = story?.version ?? 0;
@@ -449,37 +534,61 @@ function openStoryForm(story?: MemoryStory, trigger = $('[data-story-new]')) {
   $('[data-story-form-title]').textContent = story ? '改这一页' : '写一篇故事';
   const picker = $('[data-story-photos]'); picker.replaceChildren();
   for (const photo of photos) { const label = el('label', '', 'memory-photo-choice'); const input = el('input'); input.type = 'checkbox'; input.name = 'photoIds'; input.value = photo.id; input.checked = story ? story.photoIds.includes(photo.id) : filter.get('photo') === photo.id; label.append(imageFor(photo, 'thumb'), input, el('span', photo.title)); picker.append(label); }
-  if (!photos.length) picker.append(el('p', '还没有照片，可以先去相册贴一张。'));
-  const wishes = $('[data-story-wishes]'); wishes.replaceChildren();
-  for (const wish of notebook?.wishes ?? []) { const label = el('label', '', 'memory-choice'); const input = el('input'); input.type = 'checkbox'; input.name = 'wishIds'; input.value = wish.id; input.checked = story ? story.wishIds.includes(wish.id) : filter.get('wish') === wish.id; label.append(input, el('span', wish.text)); wishes.append(label); }
-  if (!notebook?.wishes.length) wishes.append(el('p', '清单还空着，想好再关联。'));
+  for (const id of story?.photoIds ?? []) if (!photos.some(photo => photo.id === id)) picker.append(relationChoice('photoIds', id, '已取下的照片', true));
+  if (!picker.childElementCount) picker.append(el('p', '还没有照片，可以先去相册贴一张。'));
+  const wishes = book.wishes ?? [];
+  showRelations($('[data-story-wishes]'), 'wishIds', wishes, story?.wishIds ?? wishes.filter(wish => wish.id === filter.get('wish')).map(wish => wish.id), '已取下的愿望', '清单还空着，想好再关联。');
   storyForm.hidden = false; scrollToElement(storyForm); field(storyForm, 'title').focus();
 }
 function checked(form: HTMLFormElement, name: string) { return all<HTMLInputElement>(`input[name="${name}"]:checked`, form).map(input => input.value); }
 storyForm.addEventListener('submit', event => { event.preventDefault(); void submit(storyForm, async () => {
   const id = value(storyForm, 'id'); const body: StoryInput = { expectedVersion: storyEditVersion, title: value(storyForm, 'title'), date: value(storyForm, 'date'), text: value(storyForm, 'text'), layout: value(storyForm, 'layout') as StoryInput['layout'], revealTogether: (field(storyForm, 'revealTogether') as HTMLInputElement).checked, photoIds: checked(storyForm, 'photoIds'), wishIds: checked(storyForm, 'wishIds') };
-  if (await write(`/stories/${id}`, 'PUT', body)) { delete storyForm.dataset.dirty; storyForm.hidden = true; openStory(id); }
-  else conflictReview(storyForm, () => { const latest = book.stories.find(item => item.id === id); return { text: latest ? `${latest.title}\n${latest.date}\n${latest.text}` : '这篇故事暂时不存在。', accept() { storyEditVersion = latest?.version ?? 0; } }; });
+  const result = await write(`/stories/${id}`, 'PUT', body);
+  if (result === 'saved') { delete storyForm.dataset.dirty; storyForm.hidden = true; openStory(id); }
+  else if (result === 'conflict') conflictReview(storyForm, () => { const latest = book.stories.find(item => item.id === id); return { text: latest ? `${latest.title}\n${latest.date}\n${latest.text}` : '这篇故事暂时不存在。', accept() { storyEditVersion = latest?.version ?? 0; } }; });
 }); });
 
 function renderWishes() {
   const list = $('[data-memory-wishes]');
-  // Preserve an open scheduling draft while the surrounding book refreshes.
-  if (list.querySelector('form[data-dirty="yes"]')) return;
-  list.replaceChildren();
-  if (!notebook?.wishes.length) { const back = el('a', '回到往后的小清单', 'link'); back.href = '/#future'; back.append(lucideSvg(ArrowRight, 16)); list.append(el('p', '往后的清单还空着。'), back); return; }
-  for (const wish of notebook.wishes) {
+  const key = JSON.stringify([book.wishes, book.wishPlans, book.stories.map(({ id, title, wishIds }) => [id, title, wishIds])]);
+  if (renderedLists.get(list) === key) return;
+  renderedLists.set(list, key);
+  const cards = new Map(all<HTMLElement>('[data-memory-wish-id]', list).map(card => [card.dataset.memoryWishId!, card]));
+  const entries = book.wishes ?? [];
+  if (!entries.length && !list.querySelector('form')) { const back = el('a', '回到往后的小清单', 'link'); back.href = '/#future'; back.append(lucideSvg(ArrowRight, 16)); list.replaceChildren(el('p', '往后的清单还空着。'), back); return; }
+  for (const child of [...list.children]) if (!(child as HTMLElement).dataset.memoryWishId) child.remove();
+  for (const wish of entries) {
+    const previous = cards.get(wish.id);
+    cards.delete(wish.id);
+    if (previous?.querySelector('form')) continue;
     const plan = book.wishPlans.find(item => item.id === wish.id);
     const story = book.stories.find(item => item.id === plan?.storyId) ?? book.stories.find(item => item.wishIds.includes(wish.id));
-    const card = el('article', '', 'memory-card'); card.append(el('h3', wish.text), el('p', `${wish.done ? '已经做过' : '还想一起做'}${plan?.plannedDate ? ` · 商定在 ${plan.plannedDate}` : ' · 还没定日期'}`, 'memory-meta'));
+    const card = el('article', '', 'memory-card');
+    card.dataset.memoryWishId = wish.id;
+    card.append(el('h3', wish.text), el('p', `${wish.done ? '已经做过' : '还想一起做'}${plan?.plannedDate ? ` · 商定在 ${plan.plannedDate}` : ' · 还没定日期'}`, 'memory-meta'));
     if (story) card.append(button(`翻开后来：${story.title}`, () => openStory(story.id)));
-    const edit = button('安排这件事', () => { edit.hidden = true; const form = wishPlan(wish); const close = button('先不改', () => { form.remove(); edit.hidden = false; edit.focus(); }); form.append(close); card.append(form); });
-    card.append(edit, button('为这件事写故事', trigger => { filter.set('wish', wish.id); openStoryForm(undefined, trigger); })); list.append(card);
+    const edit = button('安排这件事', () => {
+      edit.hidden = true;
+      const form = wishPlan(wish);
+      form.append(button('先不改', () => {
+        form.remove();
+        renderedLists.delete(list);
+        renderWishes();
+        list.querySelector<HTMLElement>(`[data-memory-wish-id="${CSS.escape(wish.id)}"] [data-wish-plan-open]`)?.focus({ preventScroll: true });
+      }));
+      card.append(form);
+    });
+    edit.dataset.wishPlanOpen = '';
+    card.append(edit, button('为这件事写故事', trigger => { filter.set('wish', wish.id); openStoryForm(undefined, trigger); }));
+    if (previous) previous.replaceWith(card); else list.append(card);
   }
+  for (const card of cards.values()) if (!card.querySelector('form')) card.remove();
 }
-function wishPlan(wish: Wish, story?: MemoryStory) {
+const wishPlanSummary = (wish: Wish, date?: string | null) => `${wish.done ? '已经一起做过' : '还想一起做'} · ${date ?? '还没定日期'}`;
+function wishPlan(wish: Wish, story?: MemoryStory, onSave?: () => void) {
   const plan = book.wishPlans.find(item => item.id === wish.id);
   let planVersion = plan?.version ?? 0;
+  let wishVersion = book.wishRevisions?.[wish.id] ?? 0;
   const form = el('form', '', 'memory-form memory-wish-plan');
   form.append(el('h4', `从往后走到后来：${wish.text}`));
   const dateLabel = el('label', '商定的日期（可以留空）'); const date = el('input'); date.className = 'input'; date.type = 'date'; date.value = plan?.plannedDate ?? ''; dateLabel.append(date);
@@ -489,12 +598,26 @@ function wishPlan(wish: Wish, story?: MemoryStory) {
   form.addEventListener('input', () => { form.dataset.dirty = 'yes'; });
   const save = el('button', '收好安排与关联', 'btn btn-sm btn-solid'); save.type = 'submit'; form.append(save);
   form.addEventListener('submit', event => { event.preventDefault(); void submit(form, async () => {
-    const token = generation;
-    if (done.checked !== wish.done) {
-      try { const updated = await api<CloudNotebook>(`/api/wishes/${encodeURIComponent(wish.id)}`, { method: 'PUT', body: JSON.stringify({ expectedVersion: notebook?.revisions.wishes[wish.id] ?? 0, text: notebook?.wishes.find(item => item.id === wish.id)?.text ?? wish.text, done: done.checked }) }); if (token !== generation) return; notebook = updated; } catch (error) { if (token === generation) report(error); return; }
+    const body: WishPlanInput = {
+      expectedVersion: planVersion, expectedWishVersion: wishVersion, done: done.checked,
+      plannedDate: date.value || null, storyId: select.value || null,
+    };
+    const result = await write(`/wishPlans/${wish.id}`, 'PUT', body);
+    if (result === 'saved') {
+      form.remove();
+      if (story) renderedStory = '';
+      renderedLists.delete($('[data-memory-wishes]'));
+      renderWishes(); renderStory();
+      onSave?.();
     }
-    if (await write(`/wishPlans/${wish.id}`, 'PUT', { expectedVersion: planVersion, plannedDate: date.value || null, storyId: select.value || null })) { delete form.dataset.dirty; renderWishes(); renderStory(); }
-    else conflictReview(form, () => { const latest = book.wishPlans.find(item => item.id === wish.id); return { text: `日期：${latest?.plannedDate ?? '未定'}；故事：${book.stories.find(item => item.id === latest?.storyId)?.title ?? '未关联'}`, accept() { planVersion = latest?.version ?? 0; } }; });
+    else if (result === 'conflict') conflictReview(form, () => {
+      const latest = book.wishPlans.find(item => item.id === wish.id);
+      const current = book.wishes?.find(item => item.id === wish.id);
+      return {
+        text: current ? `${wishPlanSummary(current, latest?.plannedDate)} · ${book.stories.find(item => item.id === latest?.storyId)?.title ?? '未关联'}` : '清单里的这件事已被移除。',
+        accept() { planVersion = latest?.version ?? 0; wishVersion = book.wishRevisions?.[wish.id] ?? 0; },
+      };
+    });
   }); }); return form;
 }
 
@@ -505,8 +628,14 @@ function renderLetters() {
     if (!book.letters.length) list.append(el('p', '邮局里还没有信，想写的时候再来。'));
     for (const letter of book.letters) {
       const card = button('', () => { void (async () => {
-        const token = generation; const controller = new AbortController(); mutations.add(controller); card.disabled = true;
-        try { const latest = await api<MemoryLetter>(`${memoryApiRoot}/letters/${letter.id}`, { signal: controller.signal }); if (token !== generation) return; book.letters = book.letters.map(item => item.id === latest.id ? latest : item); selectedLetter = letter.id; renderLetter(); scrollToElement($('[data-letter-detail]')); }
+        const token = generation; const selection = ++letterSelection; const revision = book.revision;
+        const controller = new AbortController(); mutations.add(controller); card.disabled = true;
+        try {
+          const latest = await api<MemoryLetter>(`${memoryApiRoot}/letters/${letter.id}`, { signal: controller.signal });
+          if (token !== generation || selection !== letterSelection) return;
+          book.letters = book.letters.map(item => item.id === latest.id && (latest.version > item.version || latest.version === item.version && book.revision === revision) ? latest : item);
+          selectedLetter = letter.id; renderLetter(); scrollToElement($('[data-letter-detail]'));
+        }
         catch (error) { if (token === generation && !controller.signal.aborted) report(error); } finally { mutations.delete(controller); card.disabled = false; }
       })(); }, 'memory-card'); const senders = el('p', '', 'memory-meta'); senders.append(el('span', memberName(letter.senderId)), lucideSvg(ArrowRight, 14), el('span', memberName(letter.recipientId))); card.append(senders, el('h3', letter.title), el('p', `${letter.openDate} · ${letter.status === 'draft' ? '草稿' : letter.readable ? '可以拆信' : '已封好'}`)); list.append(card);
     }
@@ -516,7 +645,8 @@ function letterInput(letter: MemoryLetter, audioIds = letter.audioIds ?? []): Le
 function renderLetter() {
   const detail = $('[data-letter-detail]'); const letter = book.letters.find(item => item.id === selectedLetter); detail.hidden = !letter;
   if (!letter) { renderedLetter = ''; detail.replaceChildren(); return; }
-  const snapshot = JSON.stringify([letter, book.members]);
+  const canWithdraw = letter.status === 'sealed' && letter.openDate > today();
+  const snapshot = JSON.stringify([letter, book.members, canWithdraw]);
   if (detail.dataset.letterId === letter.id && (renderedLetter === snapshot || [...detail.querySelectorAll('audio')].some(audio => !audio.paused))) return;
   if (detail.dataset.letterId === letter.id && detail.querySelector('[data-recording-pending="yes"]')) return;
   detail.dataset.letterId = letter.id;
@@ -528,8 +658,12 @@ function renderLetter() {
   if (letter.senderId === book.member?.id) {
     if (letter.status === 'draft') {
       detail.append(button('接着写', trigger => openLetter(letter, trigger)), button('确认封好这封信', () => sealLetter(letter), 'btn btn-sm btn-solid', Lock));
-      detail.append(recorder({ letterId: letter.id }, async id => { if (!await write(`/letters/${letter.id}`, 'PUT', letterInput(letter, [...(letter.audioIds ?? []), id]))) throw new Error('Audio attachment failed'); }));
-    } else detail.append(button('撤回为草稿', () => withdrawLetter(letter)));
+      detail.append(recorder({ letterId: letter.id }, async id => {
+        const latest = book.letters.find(item => item.id === letter.id) ?? letter;
+        const audioIds = latest.audioIds ?? [];
+        if (!audioIds.includes(id) && await write(`/letters/${letter.id}`, 'PUT', letterInput(latest, [...audioIds, id])) !== 'saved') throw new Error('Audio attachment failed');
+      }));
+    } else if (canWithdraw) detail.append(button('撤回为草稿', () => withdrawLetter(letter)));
   }
 }
 // These two actions sit at the bottom of the page, far from the hero's status line,
@@ -542,19 +676,27 @@ function letterFeedback(message: string) {
 }
 async function sealLetter(letter: MemoryLetter) {
   const ok = await write(`/letters/${letter.id}/seal`, 'POST', { expectedVersion: letter.version });
-  if (!ok) letterFeedback(lastWriteConflict ? '这封信已在别处更新，请稍后再试。' : '这次没能封好，信的内容还在，可以再试一次。');
+  if (ok !== 'saved') letterFeedback(ok === 'conflict' ? '这封信已在别处更新，请稍后再试。' : '这次没能封好，信的内容还在，可以再试一次。');
 }
 async function withdrawLetter(letter: MemoryLetter) {
   const ok = await write(`/letters/${letter.id}/withdraw`, 'POST', { expectedVersion: letter.version });
-  if (!ok) letterFeedback(lastWriteConflict ? '这封信已在别处更新，请稍后再试。' : '这次没能撤回，信还在封存中，可以再试一次。');
+  if (ok !== 'saved') letterFeedback(ok === 'conflict' ? '这封信已在别处更新，请稍后再试。' : '这次没能撤回，信还在封存中，可以再试一次。');
 }
 function openLetter(letter?: MemoryLetter, trigger = $('[data-letter-new]')) {
+  if (letterForm.dataset.busy) return;
   formTriggers.set(letterForm, trigger);
   all<HTMLElement>('[data-conflict-review]', letterForm).forEach(node => node.remove());
   letterForm.reset(); delete letterForm.dataset.dirty; letterEditVersion = letter?.version ?? 0; set(letterForm, 'id', letter?.id ?? crypto.randomUUID()); set(letterForm, 'title', letter?.title ?? ''); set(letterForm, 'text', letter?.text ?? ''); set(letterForm, 'openDate', letter?.openDate ?? today()); set(letterForm, 'pairKey', letter?.pairKey ?? ''); set(letterForm, 'recipientId', letter?.recipientId ?? (book.member?.id === 'one' ? 'two' : 'one'));
   letterForm.hidden = false; field(letterForm, 'title').focus();
 }
-letterForm.addEventListener('submit', event => { event.preventDefault(); void submit(letterForm, async () => { const id = value(letterForm, 'id'); const existing = book.letters.find(item => item.id === id); const body: LetterInput = { expectedVersion: letterEditVersion, title: value(letterForm, 'title'), text: value(letterForm, 'text'), recipientId: value(letterForm, 'recipientId') as LetterInput['recipientId'], openDate: value(letterForm, 'openDate'), pairKey: value(letterForm, 'pairKey'), audioIds: existing?.audioIds ?? [] }; if (await write(`/letters/${id}`, 'PUT', body)) { delete letterForm.dataset.dirty; selectedLetter = id; letterForm.hidden = true; renderLetter(); } else conflictReview(letterForm, () => { const latest = book.letters.find(item => item.id === id); return { text: latest ? `${latest.title}\n${latest.text ?? '信件暂不可读'}` : '信件暂时不存在。', accept() { letterEditVersion = latest?.version ?? 0; } }; }); }); });
+letterForm.addEventListener('submit', event => { event.preventDefault(); void submit(letterForm, async () => {
+  const id = value(letterForm, 'id');
+  const existing = book.letters.find(item => item.id === id);
+  const body: LetterInput = { expectedVersion: letterEditVersion, title: value(letterForm, 'title'), text: value(letterForm, 'text'), recipientId: value(letterForm, 'recipientId') as LetterInput['recipientId'], openDate: value(letterForm, 'openDate'), pairKey: value(letterForm, 'pairKey'), audioIds: existing?.audioIds ?? [] };
+  const result = await write(`/letters/${id}`, 'PUT', body);
+  if (result === 'saved') { delete letterForm.dataset.dirty; selectedLetter = id; letterForm.hidden = true; renderLetter(); }
+  else if (result === 'conflict') conflictReview(letterForm, () => { const latest = book.letters.find(item => item.id === id); return { text: latest ? `${latest.title}\n${latest.text ?? '信件暂不可读'}` : '信件暂时不存在。', accept() { letterEditVersion = latest?.version ?? 0; } }; });
+}); });
 
 function audioCard(id: string) {
   const card = el('div', '', 'memory-audio-card'); const audio = el('audio'); audio.controls = true; audio.preload = 'none'; audio.src = memoryAudioUrl(id);
@@ -562,21 +704,64 @@ function audioCard(id: string) {
   audio.addEventListener('error', () => { hint.textContent = '录音暂时没能打开，可能仍在同步，可以稍后再试。'; retry.hidden = false; });
   audio.addEventListener('canplay', () => { hint.textContent = ''; retry.hidden = true; }); card.append(el('p', '留在这一页的声音'), audio, hint, retry); return card;
 }
-function recorder(owner: { storyId?: string; letterId?: string }, onUploaded: (id: string) => void | Promise<void>) {
+function recorder(owner: { storyId?: string; letterId?: string }, onUploaded: (id: string) => void | Promise<void>, onDiscarded?: (id: string) => void) {
   const box = el('section', '', 'memory-recording'); box.append(el('h4', '留一段声音'), el('p', '最多 60 秒、4 MiB。录好后先试听，再收进这一页。', 'memory-meta'));
   const feedback = el('p', '', 'memory-recording-status'); feedback.setAttribute('role', 'status');
   const preview = el('audio'); preview.controls = true; preview.hidden = true;
+  const pending = el('div', '', 'row-actions');
   const file = el('input'); file.className = 'input'; file.type = 'file'; file.accept = 'audio/*'; file.setAttribute('aria-label', '上传已有录音');
   let blob: Blob | null = null; let duration = 0; let objectUrl = ''; let media: MediaRecorder | null = null; let stream: MediaStream | null = null; let timeout: ReturnType<typeof setTimeout> | undefined; let started = 0; let savedId: string | null = null; let attached = false; let disposed = false; let probe: HTMLAudioElement | null = null; let probeGeneration = 0;
   const release = () => { disposed = true; probeGeneration++; if (timeout) clearTimeout(timeout); if (media?.state === 'recording') { media.ondataavailable = null; media.onstop = null; media.stop(); } stream?.getTracks().forEach(track => track.stop()); stream = null; probe?.pause(); probe?.removeAttribute('src'); probe?.load(); probe = null; preview.pause(); preview.removeAttribute('src'); preview.load(); if (objectUrl) URL.revokeObjectURL(objectUrl); objectUrl = ''; blob = null; savedId = null; };
   cleanups.add(release);
   recordingCleanups.set(box, release);
+  const clearPreview = () => {
+    probeGeneration++;
+    preview.pause(); preview.removeAttribute('src'); preview.load(); preview.hidden = true;
+    if (objectUrl) URL.revokeObjectURL(objectUrl);
+    objectUrl = ''; blob = null; savedId = null; attached = false;
+    file.value = '';
+    upload.textContent = '收进这一页'; upload.disabled = true; discard.hidden = true;
+    delete box.dataset.recordingPending;
+  };
+  const discardUpload = async (id: string | null, control: HTMLButtonElement) => {
+    if (box.hasAttribute('data-recording-busy')) return;
+    const token = generation;
+    const controller = new AbortController(); mutations.add(controller);
+    box.dataset.recordingBusy = '';
+    let discarded = false;
+    control.disabled = true; upload.disabled = true; record.disabled = true; file.disabled = true;
+    try {
+      if (id) {
+        try { await api(`${memoryApiRoot}/audio/${id}`, { method: 'DELETE', signal: controller.signal }); }
+        catch (error) { if (!(error instanceof ApiError) || error.status !== 404) throw error; }
+      }
+      if (token !== generation || disposed) return;
+      if (id) onDiscarded?.(id);
+      if (!id || id === savedId) clearPreview();
+      if (control !== discard) control.remove();
+      feedback.textContent = '录音已丢弃。';
+      discarded = true;
+    } catch (error) {
+      if (token === generation && !disposed) { feedback.textContent = '暂时没能丢弃录音，请再试一次。'; report(error); }
+    } finally {
+      mutations.delete(controller);
+      delete box.dataset.recordingBusy;
+      if (token === generation && !disposed) {
+        control.disabled = false; record.disabled = false; file.disabled = false;
+        upload.disabled = attached || !blob || !Number.isFinite(duration) || duration <= 0 || duration > audioMaxSeconds || blob.size > audioMaxBytes;
+        if (discarded) (upload.disabled ? file : upload).focus({ preventScroll: true });
+      }
+    }
+  };
+  const discard = button('丢弃这段录音', () => void discardUpload(savedId, discard));
+  discard.hidden = true;
   const choose = async (next: Blob, recordedDuration?: number) => {
     if (disposed) return; const token = generation; const probeToken = ++probeGeneration;
     box.dataset.recordingPending = 'yes'; box.dispatchEvent(new Event('input', { bubbles: true }));
-    if (objectUrl) URL.revokeObjectURL(objectUrl); blob = next; savedId = null; attached = false; upload.textContent = '收进这一页'; objectUrl = URL.createObjectURL(next); preview.src = objectUrl; preview.hidden = false; upload.disabled = true;
-    duration = recordedDuration ?? await new Promise<number>(resolve => { probe?.pause(); probe?.removeAttribute('src'); probe?.load(); const pending = new Audio(); probe = pending; pending.preload = 'metadata'; pending.onloadedmetadata = () => { const length = pending.duration; pending.removeAttribute('src'); pending.load(); resolve(length); }; pending.onerror = () => resolve(NaN); pending.src = objectUrl; });
+    if (objectUrl) URL.revokeObjectURL(objectUrl); blob = next; savedId = null; attached = false; upload.textContent = '收进这一页'; objectUrl = URL.createObjectURL(next); preview.src = objectUrl; preview.hidden = false; upload.disabled = true; discard.hidden = false;
+    const seconds = recordedDuration ?? await new Promise<number>(resolve => { probe?.pause(); probe?.removeAttribute('src'); probe?.load(); const pending = new Audio(); probe = pending; pending.preload = 'metadata'; pending.onloadedmetadata = () => { const length = pending.duration; pending.removeAttribute('src'); pending.load(); resolve(length); }; pending.onerror = () => resolve(NaN); pending.src = objectUrl; });
     if (disposed || token !== generation || probeToken !== probeGeneration) return;
+    duration = seconds;
     if (!Number.isFinite(duration) || duration <= 0 || duration > audioMaxSeconds || next.size > audioMaxBytes) { feedback.textContent = '请选择 60 秒内、4 MiB 以内，浏览器能够试听的录音。'; return; }
     feedback.textContent = `可以试听了，约 ${Math.ceil(duration)} 秒。${owner.storyId ? '上传后还要收好自己的版本。' : ''}`; upload.disabled = false;
   };
@@ -594,8 +779,10 @@ function recorder(owner: { storyId?: string; letterId?: string }, onUploaded: (i
     } catch { record.disabled = false; feedback.textContent = '没有取得麦克风权限。可以允许录音后重试，也可以上传已有录音。'; stream?.getTracks().forEach(track => track.stop()); }
   })(); });
   const stop = button('录好了', () => { if (media?.state === 'recording') media.stop(); }); stop.disabled = true;
+  let take = 0;
   const upload = button('收进这一页', () => { void (async () => {
-    if (!blob || upload.disabled) return; const token = generation; const controller = new AbortController(); mutations.add(controller); upload.disabled = true; file.disabled = true; record.disabled = true;
+    if (!blob || upload.disabled || box.hasAttribute('data-recording-busy')) return; const token = generation; const controller = new AbortController(); mutations.add(controller); upload.disabled = true; discard.disabled = true; file.disabled = true; record.disabled = true;
+    box.dataset.recordingBusy = '';
     try {
       if (!savedId) {
         const query = new URLSearchParams(owner as Record<string, string>);
@@ -603,13 +790,20 @@ function recorder(owner: { storyId?: string; letterId?: string }, onUploaded: (i
         const data = await response.json(); if (!response.ok) throw new ApiError(response.status, data.error ?? '录音暂时没能收好。');
         if (token !== generation) return; savedId = data.id;
       }
-      await onUploaded(savedId!); if (token !== generation) return; attached = true; upload.textContent = '录音已上传'; delete box.dataset.recordingPending; feedback.textContent = owner.storyId ? '录音已上传。收好自己的版本后，换设备也能听。' : '录音已收进信里。';
-      if (owner.letterId) renderLetter();
+      const id = savedId!;
+      await onUploaded(id); if (token !== generation || disposed) return;
+      attached = true; upload.textContent = '录音已上传'; discard.hidden = true; delete box.dataset.recordingPending;
+      feedback.textContent = owner.storyId ? '录音已上传。收好自己的版本后，换设备也能听。未收好的录音保留 7 天。' : '录音已收进信里。';
+      if (onDiscarded) {
+        const drop = button(`丢弃录音 ${++take}`, () => void discardUpload(id, drop));
+        pending.append(drop);
+      }
+      if (owner.letterId) { preview.pause(); renderLetter(); }
     } catch (error) { if (token === generation) { feedback.textContent = '没能收好，录音还在，可以重试。'; report(error); } }
-    finally { mutations.delete(controller); if (token === generation && !disposed) { upload.disabled = attached; file.disabled = false; record.disabled = false; } }
+    finally { mutations.delete(controller); delete box.dataset.recordingBusy; if (token === generation && !disposed) { upload.disabled = attached; discard.disabled = false; file.disabled = false; record.disabled = false; } }
   })(); }, 'btn btn-sm btn-solid'); upload.disabled = true;
   file.addEventListener('change', () => { const selected = file.files?.[0]; if (selected) void choose(selected); });
-  box.append(record, stop, file, preview, feedback, upload); return box;
+  box.append(record, stop, file, preview, feedback, upload, discard, pending); return box;
 }
 
 type Slide = { kind: 'story' | 'photo'; id: string };
@@ -653,7 +847,7 @@ function renderPlaces() {
       // record by ID; a retained card must not reopen the editor with stale state.
       card.append(el('h3', place.name), el('p', String(place.year), 'memory-meta'), button('改这个地点', trigger => openPlace(book.places.find(item => item.id === place.id) ?? place, trigger)));
       place.storyIds.forEach(id => { const story = book.stories.find(item => item.id === id); if (story) card.append(button(`翻开：${story.title}`, () => openStory(id))); });
-      place.wishIds.forEach(id => { const wish = notebook?.wishes.find(item => item.id === id); if (wish) card.append(button(`往后的小事：${wish.text}`, () => { scrollToElement($('#wishes')); })); }); list.append(card);
+      place.wishIds.forEach(id => { const wish = book.wishes?.find(item => item.id === id); if (wish) card.append(button(`往后的小事：${wish.text}`, () => { scrollToElement($('#wishes')); })); }); list.append(card);
     }
   });
   // Rebuilding the select would close it under a reader, so only touch it on change.
@@ -666,17 +860,27 @@ function renderPlaces() {
   year.value = selectedPlaceYear;
 }
 function openPlace(place?: MemoryPlace, trigger = $('[data-place-new]')) {
+  if (placeForm.dataset.busy) return;
   formTriggers.set(placeForm, trigger);
   all<HTMLElement>('[data-conflict-review]', placeForm).forEach(node => node.remove());
   placeForm.querySelector('details')?.removeAttribute('open');
   placeForm.reset(); delete placeForm.dataset.dirty; placeEditVersion = place?.version ?? 0; set(placeForm, 'id', place?.id ?? crypto.randomUUID()); set(placeForm, 'name', place?.name ?? ''); set(placeForm, 'year', String(place?.year ?? Number(today().slice(0, 4)))); set(placeForm, 'latitude', place?.lat == null ? '' : String(place.lat)); set(placeForm, 'longitude', place?.lng == null ? '' : String(place.lng));
-  const stories = $<HTMLSelectElement>('[data-place-story]'); stories.replaceChildren(new Option('暂不关联', '')); book.stories.forEach(story => stories.add(new Option(story.title, story.id))); stories.value = place?.storyIds[0] ?? selectedStory ?? '';
-  const wishes = $<HTMLSelectElement>('[data-place-wish]'); wishes.replaceChildren(new Option('暂不关联', '')); notebook?.wishes.forEach(wish => wishes.add(new Option(wish.text, wish.id))); wishes.value = place?.wishIds[0] ?? filter.get('wish') ?? '';
+  const stories = book.stories.map(story => ({ id: story.id, text: story.title }));
+  const wishes = book.wishes ?? [];
+  showRelations($('[data-place-story]'), 'storyIds', stories, place?.storyIds ?? stories.filter(story => story.id === selectedStory).map(story => story.id), '已取下的故事', '还没有故事。');
+  showRelations($('[data-place-wish]'), 'wishIds', wishes, place?.wishIds ?? wishes.filter(wish => wish.id === filter.get('wish')).map(wish => wish.id), '已取下的愿望', '还没有愿望。');
   placeForm.hidden = false; scrollToElement(placeForm); field(placeForm, 'name').focus();
 }
-placeForm.addEventListener('submit', event => { event.preventDefault(); void submit(placeForm, async () => { const storyId = value(placeForm, 'storyId'); const wishId = value(placeForm, 'wishId'); const id = value(placeForm, 'id'); const latitude = value(placeForm, 'latitude').trim(); const longitude = value(placeForm, 'longitude').trim(); if (await write(`/places/${id}`, 'PUT', { expectedVersion: placeEditVersion, name: value(placeForm, 'name'), lat: latitude === '' ? null : Number(latitude), lng: longitude === '' ? null : Number(longitude), year: Number(value(placeForm, 'year')), storyIds: storyId ? [storyId] : [], wishIds: wishId ? [wishId] : [] })) { delete placeForm.dataset.dirty; placeForm.hidden = true; } else conflictReview(placeForm, () => { const latest = book.places.find(item => item.id === id); return { text: latest ? `${latest.name} · ${latest.year}${latest.lat == null ? ' · 未填坐标' : ` · ${latest.lat}, ${latest.lng}`}` : '地点暂时不存在。', accept() { placeEditVersion = latest?.version ?? 0; } }; }); }); });
+placeForm.addEventListener('submit', event => { event.preventDefault(); void submit(placeForm, async () => {
+  const id = value(placeForm, 'id');
+  const latitude = value(placeForm, 'latitude').trim(); const longitude = value(placeForm, 'longitude').trim();
+  const input = { expectedVersion: placeEditVersion, name: value(placeForm, 'name'), lat: latitude === '' ? null : Number(latitude), lng: longitude === '' ? null : Number(longitude), year: Number(value(placeForm, 'year')), storyIds: checked(placeForm, 'storyIds'), wishIds: checked(placeForm, 'wishIds') };
+  const result = await write(`/places/${id}`, 'PUT', input);
+  if (result === 'saved') { delete placeForm.dataset.dirty; placeForm.hidden = true; }
+  else if (result === 'conflict') conflictReview(placeForm, () => { const latest = book.places.find(item => item.id === id); return { text: latest ? `${latest.name} · ${latest.year}${latest.lat == null ? ' · 未填坐标' : ` · ${latest.lat}, ${latest.lng}`}` : '地点暂时不存在。', accept() { placeEditVersion = latest?.version ?? 0; } }; });
+}); });
 
-const identityChanges = typeof BroadcastChannel !== 'undefined' ? new BroadcastChannel('loveuhqq_member') : null;
+const identityChanges = openIdentityChannel();
 window.addEventListener('memory:shared-desk-request', updateSharedDesk);
 document.addEventListener('memory:open-story', event => {
   const id = (event as CustomEvent<{ id?: unknown }>).detail?.id;
@@ -685,11 +889,7 @@ document.addEventListener('memory:open-story', event => {
 let remoteTimer: ReturnType<typeof setTimeout> | null = null;
 let remoteAsk = true;
 
-function postMemberChanged() {
-  identityChanges?.postMessage('changed');
-  try { localStorage.setItem('loveuhqq_member_changed', String(Date.now())); } catch { /* Optional cross-tab fallback. */ }
-}
-const askOtherDrafts = () => askDrafts(identityChanges);
+const postMemberChanged = () => broadcastMemberChange(identityChanges);
 function applyRemoteIdentity() {
   if (!authenticated) { clearPrivate(); return; }
   discardShownContent();
@@ -736,8 +936,6 @@ $('[data-story-filter-clear]').addEventListener('click', () => { filter = new UR
 $<HTMLSelectElement>('[data-place-year]').addEventListener('change', event => { selectedPlaceYear = (event.target as HTMLSelectElement).value; renderPlaces(); });
 onSessionChange(state => { authenticated = state.authenticated; if (!authenticated) clearPrivate(); else if (!exportRequest) void load(); });
 document.addEventListener('click', event => { if ((event.target as Element).closest('[data-session-logout], [data-lock-site]')) { authenticated = false; clearPrivate(); } }, { capture: true });
-window.addEventListener('pagehide', clearPrivate);
-window.addEventListener('pageshow', event => { if (event.persisted) { clearPrivate(); void refreshSession().then(state => { authenticated = state.authenticated; if (authenticated) void load(); }).catch(report); } });
 document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden') stopScreening(); else if (authenticated && !switching) void load(); });
 window.setInterval(() => { if (authenticated && !switching && document.visibilityState === 'visible' && !mutations.size) void load(); }, 10_000);
 for (const form of [storyForm, letterForm, placeForm]) form.addEventListener('input', () => { form.dataset.dirty = 'yes'; });

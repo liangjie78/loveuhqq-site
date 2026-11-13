@@ -50,7 +50,6 @@ export function startLamp(): void {
 }
 
 let lenis: Lenis | null = null;
-export const smooth = () => lenis;
 
 /** Desktop smooth scrolling; paused whenever a gate, dialog or menu owns the page. */
 export function startSmoothScroll(): void {

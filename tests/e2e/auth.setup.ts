@@ -6,6 +6,6 @@ import { signedIn } from './session';
 setup('sign in once', async ({ request, baseURL }) => {
   const password = process.env.E2E_PASSWORD ?? 'e2e-only-password';
   const response = await request.post('/api/session', { data: { password, remember: true }, headers: { Origin: new URL(baseURL!).origin } });
-  expect(response.ok()).toBeTruthy();
+  expect(response.ok(), `本地 Worker 登录返回 HTTP ${response.status()}`).toBeTruthy();
   await request.storageState({ path: signedIn });
 });

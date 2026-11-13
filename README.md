@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="./assets/readme/hero.svg" width="100%" alt="loveuhqq 项目标识：Astro 静态纪念站，手动部署到 Cloudflare Worker">
+  <img src="./assets/readme/hero.svg" width="100%" alt="loveuhqq 项目标识，Astro 静态纪念站">
 </p>
 
 # loveuhqq
@@ -34,13 +34,13 @@ npm run build
 npm run preview
 ```
 
-新增可见文案后运行 `npm run subset:font` 重新生成宋体子集并连同字符清单一起提交，否则 `tests/font-subset.test.mjs` 会失败、页面会回退到系统字体。
+新增用字后运行 `npm run subset:font`，把宋体子集和字符清单一并提交。`tests/unit/fonts.test.mjs` 会检查字符清单是否覆盖页面用字。
 
 `npm test` 运行单元测试（日期、日记同步与合并、照片、桌面协议、门禁问题、导出、字体子集隐私、运维脚本）和真实 workerd（D1/KV/Durable Object）上的接口测试；`npm run test:build` 在构建后检查产物（文案、外部资源、分享预览不含门禁答案、私密信件不在静态文件中）；`npm run test:e2e` 用 Playwright 在隔离的本地 Worker 上跑桌面与手机两套端到端流程（本地使用系统 Chrome，CI 安装 Chromium）。CI 依次执行类型检查、`npm test`、构建、`test:build` 与端到端测试。
 
-构建输出在 `dist/`，不提交到 Git。当前页面入口是 [`src/pages/index.astro`](src/pages/index.astro)，样式入口是 [`src/styles/global.css`](src/styles/global.css)。
+构建产物在 `dist/`。首页入口是 [`src/pages/index.astro`](src/pages/index.astro)，各页通过 [`src/layouts/Base.astro`](src/layouts/Base.astro) 加载共享样式。
 
-相册照片不进仓库：用 `npm run photos:prepare -- <照片文件夹> --featured "标题,标题,标题"` 在本机生成去除 EXIF 的 WebP 和清单（输出到已忽略的 `.private-photos/`，文件名即标题），再用 `npm run photos:upload:preview` 或 `photos:upload:production` 上传到对应的 KV 命名空间，详见 [部署说明](docs/DEPLOYMENT.md#私密相册)。日期仍只修改 `src/lib/anniversary.ts` 中的来源，不在页面写死天数。
+相册照片不进仓库。用 `npm run photos:prepare -- <照片文件夹> --featured "标题,标题,标题"` 在本机生成去除 EXIF 的 WebP 和清单（输出到已忽略的 `.private-photos/`，文件名即标题），再用 `npm run photos:upload:preview` 或 `photos:upload:production` 追加新照片。站内取下的照片可在相册底部恢复，期限为 30 天。详见 [部署说明](docs/DEPLOYMENT.md#私密相册)。
 
 百日信正式正文放在已忽略的 `.private-letter/hundred-day.json`，运行 `npm run letter:check` 检查格式；得到当前任务生产上传授权后用 `npm run letter:upload:production` 写入私密 KV。真实信件不上传预览环境，也不写入源码、测试或 PR；详见 [私密百日信](docs/DEPLOYMENT.md#私密百日信)。
 
@@ -52,13 +52,13 @@ npm run preview
 GitHub main → npm run build → dist/ → Cloudflare Worker → loveuhqq.x23.shop
 ```
 
-**合并 PR 即上线**：合并前先在临时预览站验收。也可以在 Actions 页面手动运行该工作流重新部署；本地仍可用 `npm run deploy` 手动部署，需当前任务明确授权。GitHub 是唯一正式源码，生产构建来自本仓库相同提交，不使用其他仓库或 Sites 托管副本。
+合并前先在临时预览站验收。合并后等 `CI` 和 `Deploy loveuhqq` 完成，发布时以 `main` 最新提交为准。经当前任务明确授权，也可在 Actions 页面从 `main` 手动重发，或在本地运行 `npm run deploy`。GitHub 是唯一正式源码，生产构建使用本仓库对应提交。
 
 ## 临时预览
 
 可见 UI 改动完成后，运行 `npm run deploy:preview`，从当前分支构建并更新独立 Worker `loveuhqq-site-preview`。验收地址是 [临时预览站](https://loveuhqq-site-preview.1756127916.workers.dev/)；每次更新后需实际检查首页、受影响页面和资源，并把链接与截图发给用户。此地址公开可访问，始终显示最近一次手动上传的预览版本，不会自动跟随 Git 提交，也不影响正式域名。
 
-预览配置位于 `wrangler.preview.jsonc`，只有 `workers.dev` 地址，没有正式站点的 Custom Domain 路由。共享手账使用独立的 `loveuhqq-notebook-preview` 数据库，不能导入真实私人记录用于公开验收。通过 `npm run password:preview` 在交互式终端设置预览编辑密码，输入不会显示，也不需要写进聊天或源码。
+预览配置位于 `wrangler.preview.jsonc`，只绑定 `workers.dev`。共享手账使用独立的 `loveuhqq-notebook-preview` 数据库，公开验收使用合成记录。沿用已配置的共同门禁密码，仅在用户明确要求时通过 `npm run password:preview` 设置。
 
 生产操作、回滚、DNS 边界和已有验证证据见 [部署说明](docs/DEPLOYMENT.md)，视觉约束见 [设计说明](docs/DESIGN.md)。生产部署、Cloudflare 和 DNS 修改都需要当前任务的明确授权。
 
@@ -74,6 +74,8 @@ GitHub main → npm run build → dist/ → Cloudflare Worker → loveuhqq.x23.s
 | [`src/lib/anniversary.ts`](src/lib/anniversary.ts) | 起始日期、北京时间天数与跨日计算 |
 | [`scripts/subset-font.mjs`](scripts/subset-font.mjs) | 按站点用字生成思源宋体子集（`npm run subset:font`） |
 | [`docs/DESIGN.md`](docs/DESIGN.md) | 「余温」的视觉、动效、布局与交互约定 |
+
+字体授权见 [Noto Serif SC](public/licenses/Noto-Serif-SC-OFL.txt) 和 [Instrument Serif](public/licenses/Instrument-Serif-OFL.txt)。
 
 ## 生产状态说明
 

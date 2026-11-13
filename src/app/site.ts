@@ -40,11 +40,9 @@ toggle?.addEventListener('click', () => {
   const radius = Math.hypot(Math.max(x, innerWidth - x), Math.max(y, innerHeight - y));
   root.classList.add('is-theming');
   const transition = start.call(document, () => applyTheme(next));
-  transition.ready.then(() => {
-    root.animate({ clipPath: [`circle(0 at ${x}px ${y}px)`, `circle(${radius}px at ${x}px ${y}px)`] },
-      { duration: 900, easing: 'cubic-bezier(.65,0,.35,1)', pseudoElement: '::view-transition-new(root)' })
-      .finished.finally(() => root.classList.remove('is-theming'));
-  }).catch(() => root.classList.remove('is-theming'));
+  void transition.ready.then(() => root.animate({ clipPath: [`circle(0 at ${x}px ${y}px)`, `circle(${radius}px at ${x}px ${y}px)`] },
+    { duration: 900, easing: 'cubic-bezier(.65,0,.35,1)', pseudoElement: '::view-transition-new(root)' }).finished
+  ).catch(() => { /* A later transition can cancel this one. */ }).finally(() => root.classList.remove('is-theming'));
 });
 paintToggle();
 
@@ -117,11 +115,14 @@ if (menuToggle && menu) {
     root.classList.toggle('menu-open', open);
     if (open) {
       menu.hidden = false;
-      requestAnimationFrame(() => requestAnimationFrame(() => menu.classList.add('is-open')));
-      menu.querySelector<HTMLElement>('a')?.focus({ preventScroll: true });
+      requestAnimationFrame(() => requestAnimationFrame(() => {
+        if (!root.classList.contains('menu-open')) return;
+        menu.classList.add('is-open');
+        menu.querySelector<HTMLElement>('a')?.focus({ preventScroll: true });
+      }));
     } else {
       menu.classList.remove('is-open');
-      window.setTimeout(() => { if (!menu.classList.contains('is-open')) menu.hidden = true; }, calm.matches ? 0 : 900);
+      window.setTimeout(() => { if (!root.classList.contains('menu-open')) menu.hidden = true; }, calm.matches ? 0 : 900);
       if (restore) menuToggle.focus({ preventScroll: true });
     }
   };

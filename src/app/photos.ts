@@ -1,6 +1,6 @@
-import { dotted } from '../lib/anniversary';
+import { dotted, getShanghaiDate } from '../lib/anniversary';
 import { api, ApiError } from '../lib/cloud-notebook';
-import { featuredPhotoCount, featuredPhotos, parsePhotoManifest, photoSummary, photoUrl, type PhotoManifest, type PrivatePhoto } from '../lib/photos';
+import { featuredPhotoCount, featuredPhotos, parsePhotoManifest, photoIdPattern, photoSummary, photoUrl, type PhotoManifest, type PrivatePhoto, type RemovedPhoto } from '../lib/photos';
 import { getSession, onSessionChange, publishSession } from '../lib/session';
 import { balanceColumns, encodeWebp, exifDateFromBytes, looksLikeImage, sha16, titleFromFileName } from '../lib/photo-upload';
 import { lucideSvg } from '../lib/lucide-dom';
@@ -20,6 +20,9 @@ const summary = document.querySelector<HTMLElement>('[data-photos-summary]');
 const albumLinks = document.querySelectorAll<HTMLAnchorElement>('[data-album-link]');
 const lockedSummary = summary?.textContent ?? '';
 const albumPage = walls.some(wall => wall.dataset.photoWall === 'all');
+const removedPanel = document.querySelector<HTMLDetailsElement>('[data-photos-removed]');
+const removedList = removedPanel?.querySelector<HTMLUListElement>('[data-photos-removed-list]');
+const restoreStatus = removedPanel?.querySelector<HTMLElement>('[data-photos-restore-status]');
 
 const print = dialog.querySelector<HTMLElement>('.lightbox-print')!;
 const frame = dialog.querySelector<HTMLElement>('.lightbox-frame')!;
@@ -96,16 +99,16 @@ const syncDialogClass = () => root.classList.toggle('has-dialog', dialog.open ||
 
 /* ---------- Prints ---------- */
 
-const reveal = new IntersectionObserver(entries => {
+const reveal = 'IntersectionObserver' in window ? new IntersectionObserver((entries, observer) => {
   for (const entry of entries) {
     if (!entry.isIntersecting) continue;
     const element = entry.target as HTMLElement;
     const img = element.querySelector('img');
     const show = () => element.classList.add('is-shown');
     if (!img || img.complete) show(); else { img.addEventListener('load', show, { once: true }); img.addEventListener('error', show, { once: true }); }
-    reveal.unobserve(element);
+    observer.unobserve(element);
   }
-}, { rootMargin: '0px 0px -6% 0px' });
+}, { rootMargin: '0px 0px -6% 0px' }) : null;
 
 function print_(photo: PrivatePhoto, list: PrivatePhoto[], position: number, kind: 'all' | 'featured'): HTMLAnchorElement {
   const link = document.createElement('a');
@@ -139,7 +142,7 @@ function print_(photo: PrivatePhoto, list: PrivatePhoto[], position: number, kin
     event.preventDefault();
     open(list, position, link, kind);
   });
-  if (calm.matches) link.classList.add('is-shown'); else reveal.observe(link);
+  if (calm.matches || !reveal) link.classList.add('is-shown'); else reveal.observe(link);
   return link;
 }
 
@@ -238,7 +241,32 @@ function render(photos: PrivatePhoto[], featured: PrivatePhoto[]) {
   if (summary) summary.textContent = photoSummary(photos.length);
 }
 
-function applyManifest(manifest: PhotoManifest, focusId?: string) {
+function renderRemoved(removed: RemovedPhoto[]) {
+  if (!removedPanel || !removedList) return;
+  removedList.replaceChildren(...removed.map(photo => {
+    const row = document.createElement('li');
+    const label = document.createElement('span');
+    const deadline = document.createElement('small');
+    const restore = document.createElement('button');
+    label.textContent = photo.title;
+    deadline.textContent = `恢复期限 ${dotted(getShanghaiDate(new Date(photo.restoreUntil)))}`;
+    restore.className = 'btn btn-sm';
+    restore.type = 'button';
+    restore.textContent = '恢复';
+    restore.setAttribute('aria-label', `恢复「${photo.title}」`);
+    restore.addEventListener('click', () => void restorePhoto(photo.id, restore));
+    row.append(label, deadline, restore);
+    return row;
+  }));
+  removedPanel.hidden = removed.length === 0;
+}
+function applyManifest(raw: PhotoManifest & { removed?: RemovedPhoto[] }, focusId?: string) {
+  const manifest = parsePhotoManifest(raw);
+  if (loaded && manifest.revision < revision) return;
+  const removed = raw.removed ?? [];
+  if (!Array.isArray(removed) || removed.some(photo => !photo || !photoIdPattern.test(photo.id) || typeof photo.title !== 'string'
+    || !Number.isFinite(photo.restoreUntil) || Number.isNaN(new Date(photo.restoreUntil).getTime()))) throw new Error('Invalid removed photo list');
+  renderRemoved(removed);
   revision = manifest.revision;
   featuredIds = new Set(manifest.featured);
   loaded = true;
@@ -284,6 +312,9 @@ function clearPhotos() {
   lightboxManagement.hidden = true;
   title.textContent = meta.textContent = '';
   current = []; allPhotos = []; currentKind = 'all'; featuredIds = new Set();
+  renderRemoved([]);
+  if (removedPanel) removedPanel.open = false;
+  if (restoreStatus) restoreStatus.textContent = '';
   for (const wall of walls) {
     wall.replaceChildren(...placeholders.get(wall)!.map(node => node.cloneNode(true)));
     if (wall.dataset.photoWall === 'all') { wall.classList.add('is-placeholder'); wall.style.removeProperty('--cols'); }
@@ -293,24 +324,24 @@ function clearPhotos() {
   setStatus('');
 }
 
-async function loadPhotos() {
-  if (!authenticated || loaded || request) return;
-  const currentGeneration = ++generation;
+async function loadPhotos(force = false) {
+  if (!authenticated || (loaded && !force) || request) return false;
+  const currentGeneration = generation;
   const controller = new AbortController();
   request = controller;
-  const timeout = window.setTimeout(() => controller.abort(), 20_000);
   setStatus('正在翻开相册…');
   try {
-    const manifest = parsePhotoManifest(await api('/api/photos', { signal: controller.signal }));
-    if (!authenticated || generation !== currentGeneration) return;
+    const manifest = await api<PhotoManifest & { removed?: RemovedPhoto[] }>(albumPage ? '/api/photos?removed' : '/api/photos', { signal: controller.signal });
+    if (!authenticated || generation !== currentGeneration) return false;
     applyManifest(manifest);
+    return true;
   } catch (error) {
-    if (!authenticated || generation !== currentGeneration) return;
-    if (error instanceof ApiError && error.status === 401) { clearPhotos(); publishSession({ authenticated: false, configured: true }); return; }
+    if (!authenticated || generation !== currentGeneration) return false;
+    if (error instanceof ApiError && error.status === 401) { clearPhotos(); publishSession({ authenticated: false, configured: true }); return false; }
     setStatus('相册暂时打不开，请稍后再试。', true);
+    return false;
   } finally {
-    window.clearTimeout(timeout);
-    if (generation === currentGeneration) request = null;
+    if (request === controller) request = null;
   }
 }
 
@@ -410,7 +441,7 @@ function openPhotoDelete(photo: PrivatePhoto, from: HTMLElement) {
   if (!manageDialog || !editPanel || !deletePanel || !deleteCopy || !authenticated || !loaded) return;
   managePhoto = photo; manageTrigger = from; manageMode = 'delete';
   editPanel.hidden = true; deletePanel.hidden = false;
-  deleteCopy.textContent = `要把「${photo.title}」从这本相册里取下来吗？首页精选也会一并撤下。`;
+  deleteCopy.textContent = `要取下「${photo.title}」吗？首页精选也会撤下，30 天内可以在相册底部恢复。`;
   if (deleteConfirm) { deleteConfirm.disabled = false; deleteConfirm.textContent = '确认取下'; }
   setError(titleError, ''); setError(deleteError, '');
   manageDialog.showModal(); syncDialogClass();
@@ -437,17 +468,44 @@ async function mutatePhoto(path: string, method: 'PUT' | 'DELETE', payload: Reco
   const controller = new AbortController();
   photoMutation = controller;
   try {
-    const manifest = parsePhotoManifest(await api<PhotoManifest>(path, { method, signal: controller.signal, body: JSON.stringify(payload) }));
+    const manifest = await api<PhotoManifest & { removed?: RemovedPhoto[] }>(path, { method, signal: controller.signal, body: JSON.stringify(payload) });
     if (!authenticated || generation !== requestGeneration) return null;
     applyManifest(manifest, focusId);
     return manifest;
   } catch (error) {
     if (!authenticated || generation !== requestGeneration) return null;
     if (error instanceof ApiError && error.status === 401) { clearPhotos(); publishSession({ authenticated: false, configured: true }); return null; }
-    if (error instanceof ApiError && error.status === 409) { loaded = false; await loadPhotos(); }
+    if (error instanceof ApiError && error.status === 409) {
+      const refreshed = await loadPhotos(true);
+      if (!authenticated || generation !== requestGeneration) return null;
+      if (!refreshed) throw new Error('Album refresh failed');
+    }
     throw error;
   } finally {
     if (photoMutation === controller) { photoMutation = null; photoBusy = false; }
+  }
+}
+async function restorePhoto(id: string, button: HTMLButtonElement) {
+  if (!restoreStatus || photoBusy) return;
+  button.disabled = true;
+  restoreStatus.textContent = '正在摆回相册…';
+  try {
+    if (!await mutatePhoto(`/api/photos/${id}/restore`, 'PUT', { expectedRevision: revision }, id)) return;
+    restoreStatus.textContent = '';
+    setStatus('照片已摆回相册。');
+  } catch (error) {
+    if (authenticated) {
+      const message = error instanceof ApiError ? error.message : '照片暂时没能恢复，请再试一次。';
+      if (!removedPanel?.hidden) restoreStatus.textContent = message;
+      else setStatus(message);
+      if (!button.isConnected) {
+        const target = document.querySelector<HTMLElement>(`[data-photo-wall="all"] a[data-photo-id="${id}"]`) ??
+          removedList?.querySelector('button') ?? document.querySelector<HTMLElement>('[data-photo-wall="all"] .frame-add');
+        target?.focus({ preventScroll: true });
+      }
+    }
+  } finally {
+    button.disabled = false;
   }
 }
 
@@ -487,7 +545,7 @@ deleteConfirm?.addEventListener('click', async () => {
     const removed = await mutatePhoto(`/api/photos/${photo.id}`, 'DELETE', { expectedRevision: revision });
     if (!removed) return;
     closePhotoManage(false);
-    setStatus('这张照片已从相册收好。');
+    setStatus('这张照片已取下，30 天内可恢复。');
     if (dialog.open) (lightboxFeature.disabled || next.hidden ? lightboxClose : lightboxFeature).focus({ preventScroll: true });
     else (document.querySelector<HTMLElement>('[data-photo-wall="all"] a[data-photo-id]') ?? document.querySelector<HTMLElement>('[data-photo-wall="all"] .frame-add'))?.focus({ preventScroll: true });
   } catch (error) {
@@ -544,16 +602,21 @@ async function applySelectedFile(file: File) {
   if (pasteEmpty) pasteEmpty.hidden = true;
   if (pasteSwap) pasteSwap.hidden = false;
   if (pasteTitle && !titleDirty) pasteTitle.value = titleFromFileName(file.name);
-  try { if (pasteDate) pasteDate.value = exifDateFromBytes(await file.arrayBuffer()) ?? ''; }
-  catch { if (pasteDate) pasteDate.value = ''; }
   setError(pasteError, '');
   if (pasteTitle && !pasteTitle.value.trim()) pasteTitle.focus();
+  if (!pasteDate) return;
+  pasteDate.value = '';
+  try {
+    const date = exifDateFromBytes(await file.slice(0, 128 * 1024).arrayBuffer());
+    if (pasteSource === file && !pasteDate.value && date) pasteDate.value = date;
+  } catch { /* The date can still be entered by hand. */ }
 }
 
 pasteForm?.addEventListener('submit', async event => {
   event.preventDefault();
   if (!pasteDialog || uploading || !authenticated) return;
-  if (!pasteSource) { setError(pasteError, '先选一张图再贴。'); pastePick?.focus(); return; }
+  const file = pasteSource;
+  if (!file) { setError(pasteError, '先选一张图再贴。'); pastePick?.focus(); return; }
   const name = pasteTitle?.value.trim() ?? '';
   if (!name) { setError(pasteError, '给这张写个名字再贴。'); pasteTitle?.focus(); return; }
   const date = pasteDate?.value || '';
@@ -563,20 +626,21 @@ pasteForm?.addEventListener('submit', async event => {
   setPasteControls(true);
   const controller = new AbortController();
   uploadRequest = controller;
-  const uploadGeneration = generation;
+  const active = () => authenticated && uploadRequest === controller;
+  let timeout: number | undefined;
   try {
-    const original = await pasteSource.arrayBuffer();
-    if (!authenticated || generation !== uploadGeneration) return;
+    const original = await file.arrayBuffer();
+    if (!active()) return;
     const id = await sha16(original);
     let bitmap: ImageBitmap;
-    try { bitmap = await createImageBitmap(pasteSource); } catch { throw new ApiError(400, '换一张照片试试。'); }
+    try { bitmap = await createImageBitmap(file); } catch { throw new ApiError(400, '换一张照片试试。'); }
     let thumb: Awaited<ReturnType<typeof encodeWebp>>;
     let large: Awaited<ReturnType<typeof encodeWebp>>;
     try {
       thumb = await encodeWebp(bitmap, 800, 1000, .8);
       large = await encodeWebp(bitmap, 1800, 1800, .82);
     } finally { bitmap.close(); }
-    if (!authenticated || generation !== uploadGeneration) return;
+    if (!active()) return;
     const body = new FormData();
     body.set('title', name);
     body.set('date', date);
@@ -586,24 +650,25 @@ pasteForm?.addEventListener('submit', async event => {
     body.set('height', String(large.height));
     body.set('thumb', thumb.blob, 'thumb.webp');
     body.set('large', large.blob, 'large.webp');
+    timeout = window.setTimeout(() => controller.abort(), 20_000);
     const response = await fetch('/api/photos', { method: 'POST', credentials: 'same-origin', cache: 'no-store', signal: controller.signal, body });
     const result = await response.json().catch(() => ({ error: '这张暂时贴不上，再试一次。' }));
-    if (!authenticated || generation !== uploadGeneration) return;
+    if (!active()) return;
     if (!response.ok) {
       if (response.status === 401) { clearPhotos(); publishSession({ authenticated: false, configured: true }); return; }
-      if (response.status === 409) { loaded = false; await loadPhotos(); throw new ApiError(409, result.error ?? '相册刚在其他设备更新，请刷新后再贴。'); }
+      if (response.status === 409 && !await loadPhotos(true)) throw new Error('Album refresh failed');
       throw new ApiError(response.status, result.error ?? '这张暂时贴不上，再试一次。');
     }
-    const manifest = parsePhotoManifest(result);
     closePaste(false);
-    applyManifest(manifest, id);
+    applyManifest(result, id);
   } catch (error) {
-    if (!authenticated || generation !== uploadGeneration || (error as Error).name === 'AbortError') return;
+    if (!active()) return;
     setError(pasteError, error instanceof ApiError ? error.message : '这张暂时贴不上，再试一次。');
     if (pasteSubmit) { pasteSubmit.disabled = false; pasteSubmit.textContent = '再试一次'; }
     setPasteControls(false);
   } finally {
-    if (generation === uploadGeneration) { uploadRequest = null; uploading = false; }
+    window.clearTimeout(timeout);
+    if (uploadRequest === controller) { uploadRequest = null; uploading = false; }
   }
 });
 
@@ -688,7 +753,7 @@ document.addEventListener('gate:open', () => {
   pendingAlbum = false;
 });
 
-retry?.addEventListener('click', () => void loadPhotos());
+retry?.addEventListener('click', () => void loadPhotos(true));
 onSessionChange(state => {
   authenticated = state.authenticated;
   if (authenticated) { albumLinks.forEach(link => link.removeAttribute('data-open-login')); void loadPhotos(); }
@@ -697,8 +762,5 @@ onSessionChange(state => {
 document.addEventListener('click', event => {
   if ((event.target as Element).closest('[data-session-logout], [data-lock-site]')) { pendingAlbum = false; clearPhotos(); }
 }, { capture: true });
-// A page restored from the back/forward cache must not show photos without a session.
-addEventListener('pagehide', clearPhotos);
-addEventListener('pageshow', event => { if (event.persisted) void loadPhotos(); });
 void getSession().catch(() => { /* The gate handles unavailable sessions. */ });
 

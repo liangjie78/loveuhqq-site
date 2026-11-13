@@ -108,7 +108,7 @@ button.memory-card { cursor: pointer; }
 .memory-wish-plan { display: grid; gap: .6rem; padding: 1.25rem; border-left: 2px solid var(--rouge); }
 
 /* Forms in the book. */
-.book-form { display: grid; gap: 1.25rem; padding: clamp(1.5rem, 4vw, 2.75rem); scroll-margin-top: calc(var(--header-h) + 2rem); }
+.book-form { display: grid; grid-template-columns: minmax(0, 1fr); gap: 1.25rem; padding: clamp(1.5rem, 4vw, 2.75rem); scroll-margin-top: calc(var(--header-h) + 2rem); }
 .book-form h3 { font-size: var(--step-3); font-weight: 300; }
 .form-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 14rem), 1fr)); gap: 1.25rem var(--gutter); }
 fieldset { min-width: 0; margin: 0; padding: 0; border: 0; display: grid; gap: .75rem; }
@@ -120,8 +120,9 @@ legend { padding: 0 0 .5rem; font-size: var(--step--1); letter-spacing: .08em; c
 .memory-check input:checked, .memory-choice input:checked, .memory-photo-choice input:checked { background: var(--rouge); border-color: var(--rouge); }
 .memory-check input:checked::after, .memory-choice input:checked::after, .memory-photo-choice input:checked::after { content: ""; width: .6rem; height: .6rem; background: var(--on-rouge); clip-path: polygon(14% 52%, 0 66%, 38% 100%, 100% 22%, 86% 8%, 38% 72%); }
 .choice-list { display: grid; gap: .6rem; }
-.photo-picker { display: grid; grid-template-columns: repeat(auto-fill, minmax(8rem, 1fr)); gap: .75rem; }
-.memory-photo-choice { position: relative; display: grid; gap: .4rem; cursor: pointer; font-size: var(--step--2); color: var(--ink-2); }
+.memory-choice span, .memory-photo-choice span { min-width: 0; overflow-wrap: anywhere; }
+.photo-picker { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 8rem), 1fr)); gap: .75rem; }
+.memory-photo-choice { position: relative; display: grid; grid-template-columns: minmax(0, 1fr); min-width: 0; gap: .4rem; cursor: pointer; font-size: var(--step--2); color: var(--ink-2); }
 .memory-photo-choice img { width: 100%; aspect-ratio: 1; object-fit: cover; border-radius: var(--radius-s); transition: transform var(--t-ui) var(--ease-out), outline-color var(--t-ui); outline: 2px solid transparent; outline-offset: 2px; }
 .memory-photo-choice:has(input:checked) img { outline-color: var(--rouge); transform: scale(.96); }
 .memory-photo-choice input { position: absolute; top: .5rem; right: .5rem; background: var(--paper); }
@@ -211,6 +212,7 @@ section[data-conflict-review] { display: grid; gap: .75rem; padding: 1rem 1.25re
 .desk-controls .select { max-width: 18rem; }
 .desk-controls .input { flex: 1 1 12rem; max-width: 20rem; }
 .desk-hint { font-size: var(--step--1); color: var(--ink-2); min-height: 1.6em; }
+.desk-feedback { display: flex; flex-wrap: wrap; align-items: center; gap: .5rem 1rem; }
 .desk-conflict { margin-block: .5rem; }
 .desk {
   position: relative;
@@ -242,8 +244,10 @@ section[data-conflict-review] { display: grid; gap: .75rem; padding: 1rem 1.25re
   user-select: none;
   transition: box-shadow var(--t-ui) var(--ease-out), scale var(--t-ui) var(--ease-out), left 700ms var(--ease-out), top 700ms var(--ease-out);
 }
-.desk-item p { font-size: var(--step--1); line-height: 1.5; overflow-wrap: anywhere; }
+.desk-item p { font-size: var(--step--1); line-height: 1.5; overflow-wrap: anywhere; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
 .desk-item img { width: 100%; height: 5.5rem; object-fit: cover; border-radius: .5rem; pointer-events: none; }
+.desk-item.is-photo p { -webkit-line-clamp: 1; }
+.desk-item-actions { display: flex; gap: .2rem; }
 .desk-item.is-note { background: color-mix(in oklab, var(--glow-3) 45%, var(--paper)); }
 .desk-item.is-ticket { background: var(--paper); border: 1px dashed var(--rouge); border-radius: .4rem; }
 .desk-item.is-story p { font-family: var(--font-serif); font-size: var(--step-0); }

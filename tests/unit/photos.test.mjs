@@ -35,6 +35,7 @@ describe('upload preparation', () => {
     const exif = new TextEncoder().encode('....Exif....2026:08:15 18:30:00....').buffer;
     assert.equal(upload.exifDateFromBytes(exif), '2026-08-15');
     assert.equal(upload.exifDateFromBytes(new TextEncoder().encode('0000:00:00 00:00:00').buffer), null);
+    assert.equal(upload.exifDateFromBytes(new TextEncoder().encode('2026:02:30 18:30:00').buffer), null);
     assert.equal(upload.exifDateFromBytes(new ArrayBuffer(8)), null);
   });
 

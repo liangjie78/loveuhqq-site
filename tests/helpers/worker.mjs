@@ -29,7 +29,7 @@ export async function startWorker({ password = 'test-only-password', configured 
   const db = await mf.getD1Database('DB');
   for (const file of readdirSync(`${root}/migrations`).filter(name => name.endsWith('.sql')).sort()) {
     const sql = readFileSync(`${root}/migrations/${file}`, 'utf8').replace(/--[^\n]*/g, '');
-    const statements = sql.split(';').map(part => part.trim()).filter(Boolean);
+    const statements = sql.split(/;[ \t]*(?:\r?\n|$)/).map(part => part.trim()).filter(Boolean);
     for (const statement of statements) await db.prepare(statement).run();
   }
   return { mf, db, password, client: () => client(mf) };
@@ -57,6 +57,7 @@ export function client(mf) {
       init.body = new Uint8Array(await encoded.arrayBuffer());
       init.headers['Content-Type'] = encoded.headers.get('Content-Type');
     }
+    else if (body instanceof Uint8Array) init.body = body;
     else if (body !== undefined) { init.body = JSON.stringify(body); init.headers['Content-Type'] = 'application/json'; }
     const response = remember(await mf.dispatchFetch(origin + path, init));
     if (raw) return response;

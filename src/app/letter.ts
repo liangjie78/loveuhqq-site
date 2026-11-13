@@ -24,12 +24,13 @@ let authenticated = false;
 let pendingLogin = false;
 let generation = 0;
 let request: AbortController | null = null;
+let openingTimer: number | undefined;
 let noteTimer: number | undefined;
 let midnightTimer: number | undefined;
 
 const canOpen = () => getAnniversaryDay(new Date()) >= 100;
 
-export const validLetter = (letter: Letter) => typeof letter.salutation === 'string' && typeof letter.closing === 'string'
+const validLetter = (letter: Letter) => typeof letter.salutation === 'string' && typeof letter.closing === 'string'
   && Array.isArray(letter.paragraphs) && letter.paragraphs.every(paragraph => typeof paragraph === 'string');
 
 function showNote(message: string) {
@@ -49,6 +50,8 @@ function clearLetter() {
   dialog.removeAttribute('aria-busy');
 }
 function closeLetter() {
+  window.clearTimeout(openingTimer);
+  openingTimer = undefined;
   clearLetter();
   if (dialog.open) dialog.close();
   envelope.classList.remove('is-opening');
@@ -84,7 +87,6 @@ async function loadLetter() {
   const token = generation;
   const controller = new AbortController();
   request = controller;
-  const timeout = window.setTimeout(() => controller.abort(), 20_000);
   status.textContent = '正在拆开这封信…';
   dialog.setAttribute('aria-busy', 'true');
   try {
@@ -114,7 +116,6 @@ async function loadLetter() {
       : error instanceof ApiError && error.status === 503 ? '这封信暂时无法打开，请稍后再来。' : '暂时没能打开这封信，请再试一次。';
     retry.hidden = error instanceof ApiError && error.status === 403;
   } finally {
-    window.clearTimeout(timeout);
     if (generation === token) { request = null; dialog.removeAttribute('aria-busy'); }
   }
 }
@@ -122,8 +123,10 @@ async function loadLetter() {
 function openLetter() {
   if (!authenticated) return;
   if (!canOpen()) { waitForDate(); return; }
-  if (dialog.open) return;
+  if (dialog.open || openingTimer !== undefined) return;
   const reveal = () => {
+    openingTimer = undefined;
+    if (!authenticated || root.classList.contains('is-locked')) return;
     dialog.showModal();
     root.classList.add('has-dialog');
     dialog.querySelector<HTMLElement>('[data-letter-scroll]')!.scrollTop = 0;
@@ -133,7 +136,7 @@ function openLetter() {
   // The seal cracks, the flap swings back, light spills out, the page rises — then the reading opens.
   envelope.classList.remove('is-tracking');
   envelope.classList.add('is-opening');
-  window.setTimeout(reveal, 1800);
+  openingTimer = window.setTimeout(reveal, 1800);
 }
 
 envelope.hidden = false;
@@ -170,7 +173,7 @@ dialog.addEventListener('click', event => {
 dialog.addEventListener('close', () => {
   clearLetter();
   root.classList.remove('has-dialog');
-  window.setTimeout(() => envelope.classList.remove('is-opening'), 200);
+  envelope.classList.remove('is-opening');
   if (!root.classList.contains('is-locked')) {
     envelope.focus({ preventScroll: true });
     if (authenticated) showNote('信已收好。');

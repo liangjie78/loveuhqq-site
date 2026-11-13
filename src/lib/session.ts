@@ -11,10 +11,10 @@ export function onSessionChange(listener: (state: SessionState) => void): void {
 }
 export function publishSession(state: SessionState, logoutUnconfirmed = sessionStore.getState().logoutUnconfirmed) {
   generation++;
-  current = state;
+  current = logoutUnconfirmed ? { ...state, authenticated: false } : state;
   initialized = true;
-  pending = Promise.resolve(state);
-  sessionStore.setState({ ...state, logoutUnconfirmed });
+  pending = Promise.resolve(current);
+  sessionStore.setState({ ...current, logoutUnconfirmed });
 }
 export function getSession(): Promise<SessionState> {
   return pending ??= readSession();
@@ -28,7 +28,7 @@ async function readSession(): Promise<SessionState> {
     const state = await api<SessionState>('/api/session');
     if (requestGeneration !== generation) return current;
     publishSession(state);
-    return state;
+    return current;
   } catch (error) {
     if (requestGeneration !== generation) return current;
     pending = undefined;

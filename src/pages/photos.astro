@@ -28,6 +28,11 @@ import '../styles/photos.css';
     <div class="wall is-placeholder" data-photo-wall="all">
       <PhotoSlots count={6} />
     </div>
+    <details class="album-removed" data-photos-removed hidden>
+      <summary>最近取下的照片</summary>
+      <p role="status" data-photos-restore-status></p>
+      <ul data-photos-removed-list></ul>
+    </details>
   </main>
   <Footer backHref="/#photos" />
 

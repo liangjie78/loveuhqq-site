@@ -1,4 +1,5 @@
 /** Client-side preparation for "贴一张": everything is re-encoded, so EXIF never leaves the device. */
+import { isCalendarDate } from './notebook';
 
 export function titleFromFileName(name: string): string {
   return name.replace(/\.[^.]+$/, '').normalize('NFC').trim().slice(0, 80);
@@ -9,9 +10,9 @@ export function exifDateFromBytes(buffer: ArrayBuffer): string | null {
   const sample = new Uint8Array(buffer, 0, Math.min(buffer.byteLength, 128 * 1024));
   const text = new TextDecoder('latin1').decode(sample);
   const match = text.match(/(\d{4}):(\d{2}):(\d{2}) \d{2}:\d{2}:\d{2}/);
-  if (!match || match[1] === '0000') return null;
+  if (!match) return null;
   const date = `${match[1]}-${match[2]}-${match[3]}`;
-  return Number.isNaN(Date.parse(`${date}T00:00:00Z`)) ? null : date;
+  return isCalendarDate(date) ? date : null;
 }
 
 export async function sha16(buffer: ArrayBuffer): Promise<string> {
