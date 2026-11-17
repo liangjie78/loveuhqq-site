@@ -295,8 +295,9 @@
 /* ---------- Future ---------- */
 
 .future-grid { display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); column-gap: var(--gutter); row-gap: 3rem; align-items: start; }
-.future-intro { grid-column: 1 / span 5; display: grid; gap: 1.5rem; position: sticky; top: calc(var(--header-h) + 3rem); }
-.future-title { display: grid; font-size: clamp(2.6rem, 1.4rem + 3.6vw, 6.2rem); line-height: 1.1; white-space: nowrap; }
+.future-intro { grid-column: 1 / span 6; container-type: inline-size; display: grid; gap: 1.5rem; position: sticky; top: calc(var(--header-h) + 3rem); }
+/* Allow room for the six characters and one-em indent on the second line. */
+.future-title { display: grid; font-size: min(clamp(2.6rem, 1.4rem + 3.6vw, 6.2rem), 14cqi); line-height: 1.1; white-space: nowrap; }
 .future-title .is-soft { color: var(--rouge); padding-left: 1em; }
 .future-draw { display: grid; justify-items: start; gap: 1rem; margin-top: .5rem; }
 .future-draw-result { font-size: var(--step-2); line-height: 1.4; min-height: 1.4em; }
